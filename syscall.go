@@ -24,6 +24,7 @@ const (
 	SYS_shm_open2     = 571
 	SYS_shutdown      = 134
 	SYS_socket        = 97
+	SYS_write         = 4
 	SYS_writev        = 121
 )
 
@@ -150,7 +151,12 @@ func Socket(domain, typ, protocol int32) (int32, error) {
 	return int32(r1), SyscallError("socket failed with code", errno)
 }
 
+func Write(fd int32, buf []byte) (int64, error) {
+	r1, _, errno := Syscall(SYS_write, uintptr(fd), uintptr(unsafe.Pointer(unsafe.SliceData(buf))), uintptr(len(buf)))
+	return int64(r1), SyscallError("write failed with code", errno)
+}
+
 func Writev(fd int32, iov []Iovec) (int64, error) {
 	r1, _, errno := Syscall(SYS_writev, uintptr(fd), uintptr(unsafe.Pointer(unsafe.SliceData(iov))), uintptr(len(iov)))
-	return int64(r1), SyscallError("write failed with code", errno)
+	return int64(r1), SyscallError("writev failed with code", errno)
 }

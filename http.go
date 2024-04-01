@@ -29,18 +29,22 @@ type HTTPRequestParser struct {
 	Request HTTPRequest
 }
 
+type HTTPStatus int
+
+const (
+	HTTPStatusOK                    HTTPStatus = 200
+	HTTPStatusBadRequest                       = 400
+	HTTPStatusNotFound                         = 404
+	HTTPStatusMethodNotAllowed                 = 405
+	HTTPStatusRequestTimeout                   = 408
+	HTTPStatusRequestEntityTooLarge            = 413
+	HTTPStatusInternalServerError              = 500
+)
+
 type HTTPResponse struct {
-	/* Holds pointers to response. Data must live long enough. */
-	Iovs *[]Iovec
-
-	/* ContentLength is calculated with each WriteBodyNoCopy call. */
-	ContentLength int
-
-	/* ContentLengthBuf points to stack-allocated buffer enough to hold 'Content-Length' header. */
-	ContentLengthBuf []byte
-
-	/* DateBuf points to array with current date in RFC822 format, which updates every second by kevent timer. */
-	DateBuf []byte
+	StatusCode HTTPStatus
+	Headers    []Iovec
+	Body       []Iovec
 }
 
 type HTTPContext struct {
@@ -56,51 +60,38 @@ type HTTPContext struct {
 
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 
-const (
-	HTTPStatusOK                    = 200
-	HTTPStatusBadRequest            = 400
-	HTTPStatusNotFound              = 404
-	HTTPStatusMethodNotAllowed      = 405
-	HTTPStatusRequestTimeout        = 408
-	HTTPStatusRequestEntityTooLarge = 413
-)
-
-const (
-	HTTPResponseBadRequest            = "HTTP/1.1 400 Bad HTTPRequest\r\nContent-Type: text/html\r\nContent-Length: 175\r\nConnection: close\r\n\r\n<!DOCTYPE html><head><title>400 Bad HTTPRequest</title></head><body><h1>400 Bad HTTPRequest</h1><p>Your browser sent a request that this server could not understand.</p></body></html>"
-	HTTPResponseNotFound              = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 152\r\nConnection: close\r\n\r\n<!DOCTYPE html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p></body></html>"
-	HTTPResponseMethodNotAllowed      = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/html\r\nContent-Length: ...\r\nConnection: close\r\n\r\n"
-	HTTPResponseRequestTimeout        = "HTTP/1.1 408 HTTPRequest Timeout\r\nContent-Type: text/html\r\nContent-Length: ...\r\nConnection: close\r\n\r\n"
-	HTTPResponseRequestEntityTooLarge = "HTTP/1.1 413 HTTPRequest Entity Too Large\r\nContent-Type: text/html\r\nConent-Length: ...\r\nConnection: close\r\n\r\n"
-)
-
-func (w *HTTPResponse) WriteResponseNoCopyFunc(contentType string, f func(*HTTPResponse)) {
-	*w.Iovs = append(*w.Iovs, IovecForString("HTTP/1.1 200 OK\r\nHost: rant\r\nDate: "), IovecForByteSlice(w.DateBuf), IovecForString("\r\nContent-Type: "), IovecForString(contentType), IovecForString("\r\nContent-Length: "), IovecForByteSlice(w.ContentLengthBuf), IovecForString("\r\n\r\n"))
-	contentLengthIdx := len(*w.Iovs) - 2
-
-	f(w)
-
-	n := SlicePutInt(w.ContentLengthBuf, int(w.ContentLength))
-	(*w.Iovs)[contentLengthIdx].Len = uint64(n)
-}
-
-func (w *HTTPResponse) WriteBodyNoCopy(body []byte) {
-	*w.Iovs = append(*w.Iovs, IovecForByteSlice(body))
-	w.ContentLength += len(body)
-}
-
-func (w *HTTPResponse) WriteResponseNoCopy(contentType string, body []byte) {
-	n := SlicePutInt(w.ContentLengthBuf, len(body))
-
-	*w.Iovs = append(*w.Iovs, IovecForString("HTTP/1.1 200 OK\r\nHost: rant\r\nDate: "), IovecForByteSlice(w.DateBuf), IovecForString("\r\nContent-Type: "), IovecForString(contentType), IovecForString("\r\nContent-Length: "), IovecForByteSlice(w.ContentLengthBuf[:n]), IovecForString("\r\n\r\n"), IovecForByteSlice(body))
-}
-
-func (w *HTTPResponse) WriteBuiltinError(code int) {
-	switch code {
-	case HTTPStatusBadRequest:
-		*w.Iovs = append(*w.Iovs, IovecForString(HTTPResponseBadRequest))
-	case HTTPStatusNotFound:
-		*w.Iovs = append(*w.Iovs, IovecForString(HTTPResponseNotFound))
+func (w *HTTPResponse) Append(b []byte) {
+	if len(w.Body) == cap(w.Body) {
+		panic("no more space in w.Body")
 	}
+	w.Body = w.Body[:len(w.Body)+1]
+	w.Body[len(w.Body)-1] = IovecForByteSlice(b)
+}
+
+func (w *HTTPResponse) AppendString(s string) {
+	w.Append(unsafe.Slice(unsafe.StringData(s), len(s)))
+}
+
+func (w *HTTPResponse) SetHeader(header string, value string) {
+
+}
+
+/* TODO(anton2920): allow large data to be written. */
+func (w *HTTPResponse) Write(b []byte) (int, error) {
+	if w.StatusCode == 0 {
+		w.StatusCode = HTTPStatusOK
+	}
+
+	/* TODO(anton2920): replace with allocation from arena. */
+	buffer := make([]byte, len(b))
+	copy(buffer, b)
+	w.Append(buffer)
+
+	return len(b), nil
+}
+
+func (w *HTTPResponse) WriteString(s string) (int, error) {
+	return w.Write(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
 /* NOTE(anton2920): Noescape hides a pointer from escape analysis. Noescape is the identity function but escape analysis doesn't think the output depends on the input. Noescape is inlined and currently compiles down to zero instructions. */
@@ -134,7 +125,7 @@ func GetContextAndCheck(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
 	return ctx, check
 }
 
-func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, rp *HTTPRequestParser, contentLengthBuf, dateBuf []byte, router HTTPRouter) {
+func HTTPHandleRequests(wIovs []Iovec, rBuf *CircularBuffer, rp *HTTPRequestParser, tp Timespec, router HTTPRouter) {
 	var w HTTPResponse
 	r := &rp.Request
 
@@ -165,7 +156,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, rp *HTTPRequestPar
 				case "GET":
 					r.Method = "GET"
 				default:
-					*wIovs = append(*wIovs, IovecForString(HTTPResponseMethodNotAllowed))
+					Errorf("TODO: method not allowed: %s", unconsumed[:3])
 					return
 				}
 				rBuf.Consume(len(r.Method) + 1)
@@ -179,7 +170,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, rp *HTTPRequestPar
 
 				uriEnd := FindChar(unconsumed[:lineEnd], ' ')
 				if uriEnd == -1 {
-					*wIovs = append(*wIovs, IovecForString(HTTPResponseBadRequest))
+					Errorf("TODO: bad request 1")
 					return
 				}
 
@@ -195,7 +186,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, rp *HTTPRequestPar
 				const httpVersionPrefix = "HTTP/"
 				httpVersion := unconsumed[uriEnd+1 : lineEnd]
 				if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
-					*wIovs = append(*wIovs, IovecForString(HTTPResponseBadRequest))
+					Errorf("TODO: bad request 2")
 					return
 				}
 				r.Version = httpVersion[len(httpVersionPrefix):]
@@ -213,10 +204,10 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, rp *HTTPRequestPar
 			}
 		}
 
-		w.Iovs = wIovs
-		w.DateBuf = dateBuf
-		w.ContentLength = 0
-		w.ContentLengthBuf = contentLengthBuf
+		const split = 16
+		w.Headers = wIovs[1 : split+1]
+		w.Body = wIovs[split+1:]
+
 		router((*HTTPResponse)(Noescape(unsafe.Pointer(&w))), r)
 
 		// println("Executed:", r.Method, r.URL.Path, r.URL.Query)
@@ -234,23 +225,20 @@ func HTTPWorker(l int32, router HTTPRouter) {
 
 	kq, err := Kqueue()
 	if err != nil {
-		FatalError("Failed to open kernel queue: ", err)
+		Fatalf("Failed to open kernel queue: %v", err)
 	}
 	chlist := [...]Kevent_t{
 		{Ident: uintptr(l), Filter: EVFILT_READ, Flags: EV_ADD | EV_CLEAR},
 		{Ident: 1, Filter: EVFILT_TIMER, Flags: EV_ADD, Fflags: NOTE_SECONDS, Data: 1},
 	}
 	if _, err := Kevent(kq, unsafe.Slice(&chlist[0], len(chlist)), nil, nil); err != nil {
-		FatalError("Failed to add event for listener socket: ", err)
+		Fatalf("Failed to add event for listener socket: %v", err)
 	}
 
 	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
-		FatalError("Failed to get current walltime: ", err)
+		Fatalf("Failed to get current walltime: %v", err)
 	}
 	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
-	dateBuf := make([]byte, 31)
-
-	contentLengthBuf := make([]byte, 10)
 
 	ctxPool := NewPool(NewHTTPContext)
 
@@ -283,7 +271,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 
 				ctx = (*HTTPContext)(ctxPool.Get())
 				if ctx == nil {
-					Fatal("Failed to acquire new HTTP context")
+					Fatalf("Failed to acquire new HTTP context")
 				}
 				pinner.Pin(ctx)
 
@@ -299,7 +287,6 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				continue
 			case 1:
 				tp.Sec += int64(e.Data)
-				SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 				continue
 			}
 
@@ -315,11 +302,12 @@ func HTTPWorker(l int32, router HTTPRouter) {
 			switch e.Filter {
 			case EVFILT_READ:
 				rBuf := &ctx.RequestBuffer
+				wIovs := ctx.ResponseIovs
 				parser := &ctx.Parser
 
 				if rBuf.RemainingSpace() == 0 {
 					Shutdown(c, SHUT_RD)
-					Writev(c, []Iovec{IovecForString(HTTPResponseRequestEntityTooLarge)})
+					Errorf("TODO: request entity too large")
 					goto closeConnection
 				}
 
@@ -330,9 +318,8 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				}
 				rBuf.Produce(int(n))
 
-				HTTPHandleRequests(&ctx.ResponseIovs, rBuf, parser, contentLengthBuf, dateBuf, router)
+				HTTPHandleRequests(wIovs, rBuf, parser, tp, router)
 
-				wIovs := ctx.ResponseIovs
 				n, err = Writev(c, wIovs[ctx.ResponsePos:])
 				if err != nil {
 					println("ERROR: failed to write data to socket:", err.Error())

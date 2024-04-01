@@ -1,10 +1,24 @@
 package main
 
-import "unsafe"
+import (
+	"fmt"
+	"runtime/debug"
+)
 
 type E struct {
 	Message string
 	Code    int
+}
+
+/* TODO(anton2920): think about placing this into 'http.go' file. */
+type HTTPError struct {
+	StatusCode HTTPStatus
+	Message    string
+}
+
+type PanicError struct {
+	Value interface{}
+	Trace []byte
 }
 
 const (
@@ -20,18 +34,22 @@ const (
 	ENOSYS      = 78     /* Function not implemented */
 )
 
-func (e E) Error() string {
-	var buf [512]byte
+var (
+	NotFoundError      = HTTPError{StatusCode: HTTPStatusNotFound, Message: "whoops... Requested page not found"}
+	TryAgainLaterError = HTTPError{StatusCode: HTTPStatusInternalServerError, Message: "whoops... Something went wrong. Please try again later"}
+)
 
-	n := copy(buf[:], e.Message)
-	buf[n] = ' '
+func (e E) Error() string {
+	buffer := make([]byte, 512)
+	n := copy(buffer, e.Message)
+	buffer[n] = ' '
 	n++
 
 	if e.Code != 0 {
-		n += SlicePutInt(buf[n:], e.Code)
+		n += SlicePutInt(buffer[n:], e.Code)
 	}
 
-	return string(unsafe.Slice(&buf[0], n))
+	return string(buffer[:n])
 }
 
 func Error(msg string) error {
@@ -47,4 +65,42 @@ func SyscallError(msg string, errno uintptr) error {
 		return nil
 	}
 	return error(E{Message: msg, Code: int(errno)})
+}
+
+func NewHTTPError(statusCode HTTPStatus, message string) HTTPError {
+	return HTTPError{StatusCode: statusCode, Message: message}
+}
+
+func (e HTTPError) Error() string {
+	return e.Message
+}
+
+func NewPanicError(value interface{}) PanicError {
+	return PanicError{Value: value, Trace: debug.Stack()}
+}
+
+func (e PanicError) Error() string {
+	buffer := make([]byte, 0, 1024)
+	buffer = fmt.Appendf(buffer, "%v\n", e.Value)
+	buffer = append(buffer, e.Trace...)
+	return string(buffer)
+}
+
+func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, statusCode HTTPStatus, err error) {
+	const pageFormat = `
+<!DOCTYPE html>
+<head>
+	<title>Error</title>
+</head>
+<body>
+	<h1>Master's degree</h1>
+	<h2>Error</h2>
+
+	<p>Error: %v.</p>
+</body>
+</html>
+`
+
+	w.StatusCode = statusCode
+	fmt.Fprintf(w, pageFormat, err)
 }
