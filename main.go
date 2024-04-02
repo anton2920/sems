@@ -31,9 +31,12 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 }
 
 func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
-	switch path {
-	case "/signin":
-		return SigninHandler(w, r)
+	switch {
+	case StringStartsWith(path, "/user"):
+		switch path[len("/user"):] {
+		case "/signin":
+			return SigninHandler(w, r)
+		}
 	}
 
 	return NotFoundError

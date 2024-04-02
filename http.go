@@ -2,31 +2,38 @@ package main
 
 import (
 	"runtime"
+	"strconv"
 	"unsafe"
+)
+
+type HTTPState int
+
+const (
+	HTTPStateUnknown HTTPState = iota
+
+	HTTPStateMethod
+	HTTPStateURI
+	HTTPStateVersion
+	HTTPStateHeader
+	HTTPStateBody
+
+	HTTPStateDone
 )
 
 type HTTPRequest struct {
 	Method  string
 	URL     URL
 	Version string
+
+	Headers []string
+	Body    []byte
 }
-
-type HTTPState int
-
-const (
-	HTTP_STATE_UNKNOWN HTTPState = iota
-
-	HTTP_STATE_METHOD
-	HTTP_STATE_URI
-	HTTP_STATE_VERSION
-	HTTP_STATE_HEADER
-
-	HTTP_STATE_DONE
-)
 
 type HTTPRequestParser struct {
 	State   HTTPState
 	Request HTTPRequest
+
+	ContentLength int
 }
 
 type HTTPStatus int
@@ -118,7 +125,7 @@ func NewHTTPContext() unsafe.Pointer {
 	var err error
 
 	c := new(HTTPContext)
-	c.Parser.State = HTTP_STATE_METHOD
+	c.Parser.State = HTTPStateMethod
 
 	if c.RequestBuffer, err = NewCircularBuffer(PageSize); err != nil {
 		println("ERROR: failed to create request buffer:", err.Error())
@@ -153,6 +160,8 @@ func HTTPWriteError(wIovs *[]Iovec, arena *Arena, statusCode HTTPStatus) {
 
 func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *HTTPRequestParser, dateBuf []byte, router HTTPRouter) {
 	var w HTTPResponse
+	var err error
+
 	r := &rp.Request
 
 	w.Arena = arena
@@ -160,38 +169,48 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 	w.Bodies = make([]Iovec, 128)
 
 	for {
-		for rp.State != HTTP_STATE_DONE {
+		r.Headers = r.Headers[:0]
+		rp.ContentLength = 0
+
+		for rp.State != HTTPStateDone {
 			switch rp.State {
 			default:
 				println(rp.State)
 				panic("unknown HTTP parser state")
-			case HTTP_STATE_UNKNOWN:
+			case HTTPStateUnknown:
 				unconsumed := rBuf.UnconsumedString()
 				if len(unconsumed) < 2 {
 					return
 				}
 				if unconsumed[:2] == "\r\n" {
 					rBuf.Consume(len("\r\n"))
-					rp.State = HTTP_STATE_DONE
+
+					if rp.ContentLength != 0 {
+						rp.State = HTTPStateBody
+					} else {
+						rp.State = HTTPStateDone
+					}
 				} else {
-					rp.State = HTTP_STATE_HEADER
+					rp.State = HTTPStateHeader
 				}
 
-			case HTTP_STATE_METHOD:
+			case HTTPStateMethod:
 				unconsumed := rBuf.UnconsumedString()
-				if len(unconsumed) < 3 {
+				if len(unconsumed) < 4 {
 					return
 				}
-				switch unconsumed[:3] {
-				case "GET":
+				switch unconsumed[:4] {
+				case "GET ":
 					r.Method = "GET"
+				case "POST":
+					r.Method = "POST"
 				default:
 					HTTPWriteError(wIovs, arena, HTTPStatusMethodNotAllowed)
 					return
 				}
 				rBuf.Consume(len(r.Method) + 1)
-				rp.State = HTTP_STATE_URI
-			case HTTP_STATE_URI:
+				rp.State = HTTPStateURI
+			case HTTPStateURI:
 				unconsumed := rBuf.UnconsumedString()
 				lineEnd := FindChar(unconsumed, '\r')
 				if lineEnd == -1 {
@@ -221,16 +240,36 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 				}
 				r.Version = httpVersion[len(httpVersionPrefix):]
 				rBuf.Consume(len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n"))
-				rp.State = HTTP_STATE_UNKNOWN
-			case HTTP_STATE_HEADER:
+				rp.State = HTTPStateUnknown
+			case HTTPStateHeader:
 				unconsumed := rBuf.UnconsumedString()
 				lineEnd := FindChar(unconsumed, '\r')
 				if lineEnd == -1 {
 					return
 				}
 				header := unconsumed[:lineEnd]
+				r.Headers = append(r.Headers, header)
 				rBuf.Consume(len(header) + len("\r\n"))
-				rp.State = HTTP_STATE_UNKNOWN
+
+				if StringStartsWith(header, "Content-Length: ") {
+					header = header[len("Content-Length: "):]
+					rp.ContentLength, err = strconv.Atoi(header)
+					if err != nil {
+						HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
+						return
+					}
+				}
+
+				rp.State = HTTPStateUnknown
+			case HTTPStateBody:
+				unconsumed := rBuf.UnconsumedSlice()
+				if len(unconsumed) < rp.ContentLength {
+					return
+				}
+
+				r.Body = unconsumed[:rp.ContentLength]
+				rBuf.Consume(len(r.Body))
+				rp.State = HTTPStateDone
 			}
 		}
 
@@ -256,7 +295,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 		*wIovs = append(*wIovs, IovecForString("\r\n"))
 		*wIovs = append(*wIovs, w.Bodies...)
 
-		rp.State = HTTP_STATE_METHOD
+		rp.State = HTTPStateMethod
 	}
 }
 

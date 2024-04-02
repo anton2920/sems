@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"unsafe"
+)
 
 func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	const pageFormat = `
@@ -37,5 +40,17 @@ func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func SigninHandler(w *HTTPResponse, r *HTTPRequest) error {
+	const pageFormat = `
+<!DOCTYPE html>
+<body>
+	<h1>Master's degree</h1>
+	<h2>API signin</h2>
+	
+	<p>%s</p>
+</body>
+</html>
+`
+
+	fmt.Fprintf(w, pageFormat, unsafe.String(unsafe.SliceData(r.Body), len(r.Body)))
 	return nil
 }
