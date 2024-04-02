@@ -41,14 +41,36 @@ const (
 	HTTPStatusInternalServerError              = 500
 )
 
+var Status2String = [...]string{
+	HTTPStatusOK:                    "200",
+	HTTPStatusBadRequest:            "400",
+	HTTPStatusNotFound:              "404",
+	HTTPStatusMethodNotAllowed:      "405",
+	HTTPStatusRequestTimeout:        "408",
+	HTTPStatusRequestEntityTooLarge: "413",
+	HTTPStatusInternalServerError:   "500",
+}
+
+var Status2Reason = [...]string{
+	HTTPStatusOK:                    "OK",
+	HTTPStatusBadRequest:            "Bad Request",
+	HTTPStatusNotFound:              "Not Found",
+	HTTPStatusMethodNotAllowed:      "Method Not Allowed",
+	HTTPStatusRequestTimeout:        "Request Timeout",
+	HTTPStatusRequestEntityTooLarge: "Request Entity Too Large",
+	HTTPStatusInternalServerError:   "Internal Server Error",
+}
+
 type HTTPResponse struct {
 	StatusCode HTTPStatus
+	Arena      *Arena
 	Headers    []Iovec
-	Body       []Iovec
+	Bodies     []Iovec
 }
 
 type HTTPContext struct {
 	RequestBuffer CircularBuffer
+	ResponseArena Arena
 	ResponseIovs  []Iovec
 	ResponsePos   int
 
@@ -61,15 +83,11 @@ type HTTPContext struct {
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 
 func (w *HTTPResponse) Append(b []byte) {
-	if len(w.Body) == cap(w.Body) {
-		panic("no more space in w.Body")
-	}
-	w.Body = w.Body[:len(w.Body)+1]
-	w.Body[len(w.Body)-1] = IovecForByteSlice(b)
+	w.Bodies = append(w.Bodies, IovecForByteSlice(b))
 }
 
 func (w *HTTPResponse) AppendString(s string) {
-	w.Append(unsafe.Slice(unsafe.StringData(s), len(s)))
+	w.Bodies = append(w.Bodies, IovecForString(s))
 }
 
 func (w *HTTPResponse) SetHeader(header string, value string) {
@@ -78,12 +96,7 @@ func (w *HTTPResponse) SetHeader(header string, value string) {
 
 /* TODO(anton2920): allow large data to be written. */
 func (w *HTTPResponse) Write(b []byte) (int, error) {
-	if w.StatusCode == 0 {
-		w.StatusCode = HTTPStatusOK
-	}
-
-	/* TODO(anton2920): replace with allocation from arena. */
-	buffer := make([]byte, len(b))
+	buffer := w.Arena.NewSlice(len(b))
 	copy(buffer, b)
 	w.Append(buffer)
 
@@ -111,7 +124,7 @@ func NewHTTPContext() unsafe.Pointer {
 		println("ERROR: failed to create request buffer:", err.Error())
 		return nil
 	}
-	c.ResponseIovs = make([]Iovec, 0, 256)
+	c.ResponseIovs = make([]Iovec, 0, 512)
 
 	return unsafe.Pointer(c)
 }
@@ -125,9 +138,15 @@ func GetContextAndCheck(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
 	return ctx, check
 }
 
-func HTTPHandleRequests(wIovs []Iovec, rBuf *CircularBuffer, rp *HTTPRequestParser, tp Timespec, router HTTPRouter) {
+func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *HTTPRequestParser, dateBuf []byte, router HTTPRouter) {
 	var w HTTPResponse
 	r := &rp.Request
+
+	w.Arena = arena
+
+	/* TODO(anton2920): make sure it's allocated from the stack. */
+	w.Headers = make([]Iovec, 32)
+	w.Bodies = make([]Iovec, 128)
 
 	for {
 		for rp.State != HTTP_STATE_DONE {
@@ -204,13 +223,27 @@ func HTTPHandleRequests(wIovs []Iovec, rBuf *CircularBuffer, rp *HTTPRequestPars
 			}
 		}
 
-		const split = 16
-		w.Headers = wIovs[1 : split+1]
-		w.Body = wIovs[split+1:]
-
+		w.Headers = w.Headers[:0]
+		w.Bodies = w.Bodies[:0]
 		router((*HTTPResponse)(Noescape(unsafe.Pointer(&w))), r)
+		if w.StatusCode == 0 {
+			w.StatusCode = HTTPStatusOK
+		}
 
-		// println("Executed:", r.Method, r.URL.Path, r.URL.Query)
+		var length int
+		for i := 0; i < len(w.Bodies); i++ {
+			length += int(w.Bodies[i].Len)
+		}
+
+		lengthBuf := arena.NewSlice(20)
+		n := SlicePutInt(lengthBuf, length)
+
+		*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
+		*wIovs = append(*wIovs, w.Headers...)
+		*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
+		*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+		*wIovs = append(*wIovs, IovecForString("\r\n"))
+		*wIovs = append(*wIovs, w.Bodies...)
 
 		rp.State = HTTP_STATE_METHOD
 	}
@@ -239,6 +272,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 		Fatalf("Failed to get current walltime: %v", err)
 	}
 	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
+	dateBuf := make([]byte, 31)
 
 	ctxPool := NewPool(NewHTTPContext)
 
@@ -287,6 +321,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				continue
 			case 1:
 				tp.Sec += int64(e.Data)
+				SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 				continue
 			}
 
@@ -302,7 +337,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 			switch e.Filter {
 			case EVFILT_READ:
 				rBuf := &ctx.RequestBuffer
-				wIovs := ctx.ResponseIovs
+
 				parser := &ctx.Parser
 
 				if rBuf.RemainingSpace() == 0 {
@@ -318,8 +353,9 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				}
 				rBuf.Produce(int(n))
 
-				HTTPHandleRequests(wIovs, rBuf, parser, tp, router)
+				HTTPHandleRequests(&ctx.ResponseIovs, rBuf, &ctx.ResponseArena, parser, dateBuf, router)
 
+				wIovs := ctx.ResponseIovs
 				n, err = Writev(c, wIovs[ctx.ResponsePos:])
 				if err != nil {
 					println("ERROR: failed to write data to socket:", err.Error())
