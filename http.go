@@ -138,13 +138,24 @@ func GetContextAndCheck(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
 	return ctx, check
 }
 
+func HTTPWriteError(wIovs *[]Iovec, arena *Arena, statusCode HTTPStatus) {
+	body := Status2Reason[statusCode]
+
+	lengthBuf := arena.NewSlice(20)
+	n := SlicePutInt(lengthBuf, len(body))
+
+	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[statusCode]), IovecForString(" "), IovecForString(Status2Reason[statusCode]), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString("Connection: close\r\n"))
+	*wIovs = append(*wIovs, IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString(body))
+}
+
 func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *HTTPRequestParser, dateBuf []byte, router HTTPRouter) {
 	var w HTTPResponse
 	r := &rp.Request
 
 	w.Arena = arena
-
-	/* TODO(anton2920): make sure it's allocated from the stack. */
 	w.Headers = make([]Iovec, 32)
 	w.Bodies = make([]Iovec, 128)
 
@@ -175,7 +186,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 				case "GET":
 					r.Method = "GET"
 				default:
-					Errorf("TODO: method not allowed: %s", unconsumed[:3])
+					HTTPWriteError(wIovs, arena, HTTPStatusMethodNotAllowed)
 					return
 				}
 				rBuf.Consume(len(r.Method) + 1)
@@ -189,7 +200,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 
 				uriEnd := FindChar(unconsumed[:lineEnd], ' ')
 				if uriEnd == -1 {
-					Errorf("TODO: bad request 1")
+					HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
 					return
 				}
 
@@ -205,7 +216,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 				const httpVersionPrefix = "HTTP/"
 				httpVersion := unconsumed[uriEnd+1 : lineEnd]
 				if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
-					Errorf("TODO: bad request 2")
+					HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
 					return
 				}
 				r.Version = httpVersion[len(httpVersionPrefix):]
@@ -336,43 +347,25 @@ func HTTPWorker(l int32, router HTTPRouter) {
 
 			switch e.Filter {
 			case EVFILT_READ:
+				arena := &ctx.ResponseArena
 				rBuf := &ctx.RequestBuffer
-
 				parser := &ctx.Parser
 
 				if rBuf.RemainingSpace() == 0 {
 					Shutdown(c, SHUT_RD)
-					Errorf("TODO: request entity too large")
-					goto closeConnection
-				}
-
-				n, err := Read(c, rBuf.RemainingSlice())
-				if err != nil {
-					println("ERROR: failed to read data from socket:", err.Error())
-					goto closeConnection
-				}
-				rBuf.Produce(int(n))
-
-				HTTPHandleRequests(&ctx.ResponseIovs, rBuf, &ctx.ResponseArena, parser, dateBuf, router)
-
-				wIovs := ctx.ResponseIovs
-				n, err = Writev(c, wIovs[ctx.ResponsePos:])
-				if err != nil {
-					println("ERROR: failed to write data to socket:", err.Error())
-					goto closeConnection
-				}
-
-				for (ctx.ResponsePos < len(wIovs)) && (n >= int64(wIovs[ctx.ResponsePos].Len)) {
-					n -= int64(wIovs[ctx.ResponsePos].Len)
-					ctx.ResponsePos++
-				}
-				if ctx.ResponsePos == len(wIovs) {
-					ctx.ResponsePos = 0
-					ctx.ResponseIovs = ctx.ResponseIovs[:0]
+					HTTPWriteError(&ctx.ResponseIovs, arena, HTTPStatusRequestEntityTooLarge)
 				} else {
-					wIovs[ctx.ResponsePos].Base = unsafe.Add(wIovs[ctx.ResponsePos].Base, n)
-					wIovs[ctx.ResponsePos].Len -= uint64(n)
+					n, err := Read(c, rBuf.RemainingSlice())
+					if err != nil {
+						println("ERROR: failed to read data from socket:", err.Error())
+						goto closeConnection
+					}
+					rBuf.Produce(int(n))
+
+					HTTPHandleRequests(&ctx.ResponseIovs, rBuf, arena, parser, dateBuf, router)
 				}
+
+				fallthrough
 			case EVFILT_WRITE:
 				wIovs := ctx.ResponseIovs
 				if len(wIovs[ctx.ResponsePos:]) > 0 {

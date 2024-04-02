@@ -84,7 +84,6 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 			}
 		}
 
-		/* TODO(anton2920): depend on 'statusCode'. */
 		ErrorPageHandler(w, r, statusCode, displayError)
 	}
 
