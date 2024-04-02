@@ -5,6 +5,35 @@ type URL struct {
 	Query string
 }
 
+type URLValue struct {
+	Key    string
+	Values []string
+}
+
+type URLValues []URLValue
+
+func (vs URLValues) Get(key string) string {
+	for i := 0; i < len(vs); i++ {
+		if key == vs[i].Key {
+			values := vs[i].Values
+			if len(values) == 0 {
+				return ""
+			}
+			return values[0]
+		}
+	}
+	return ""
+}
+
+func (vs URLValues) GetMany(key string) []string {
+	for i := 0; i < len(vs); i++ {
+		if key == vs[i].Key {
+			return vs[i].Values
+		}
+	}
+	return nil
+}
+
 /* CharToByte returns ASCII-decoded character. For example, 'A' yields '\x0A'. */
 func CharToByte(c byte) (byte, bool) {
 	if c >= '0' && c <= '9' {

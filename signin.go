@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
@@ -25,7 +24,7 @@ func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			<input type="password" name="Password" value="%s" required>
 		</label>
 		<br><br>
-		
+
 		<input type="submit" value="Sign in">
 	</form>
 </body>
@@ -40,17 +39,18 @@ func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func SigninHandler(w *HTTPResponse, r *HTTPRequest) error {
-	const pageFormat = `
-<!DOCTYPE html>
-<body>
-	<h1>Master's degree</h1>
-	<h2>API signin</h2>
-	
-	<p>%s</p>
-</body>
-</html>
-`
+	if err := r.ParseForm(); err != nil {
+		return ReloadPageError
+	}
 
-	fmt.Fprintf(w, pageFormat, unsafe.String(unsafe.SliceData(r.Body), len(r.Body)))
+	const email = "anton2920@gmail.com"
+	const pass = "pass&word"
+
+	if (email == r.Form.Get("Email")) && (pass == r.Form.Get("Password")) {
+		w.AppendString("<h1>Success!</h1>")
+	} else {
+		w.AppendString("<h1>Failure</h1>")
+	}
+
 	return nil
 }

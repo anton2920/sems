@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"runtime"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -21,12 +23,16 @@ const (
 )
 
 type HTTPRequest struct {
+	Arena *Arena
+
 	Method  string
 	URL     URL
 	Version string
 
 	Headers []string
 	Body    []byte
+
+	Form URLValues
 }
 
 type HTTPRequestParser struct {
@@ -69,8 +75,9 @@ var Status2Reason = [...]string{
 }
 
 type HTTPResponse struct {
+	Arena *Arena
+
 	StatusCode HTTPStatus
-	Arena      *Arena
 	Headers    []Iovec
 	Bodies     []Iovec
 }
@@ -89,6 +96,68 @@ type HTTPContext struct {
 
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 
+func (r *HTTPRequest) ParseForm() error {
+	var err error
+
+	if len(r.Form) != 0 {
+		return nil
+	}
+
+	query := unsafe.String(unsafe.SliceData(r.Body), len(r.Body))
+
+forQuery:
+	for query != "" {
+		var key string
+		key, query, _ = strings.Cut(query, "&")
+		if strings.Contains(key, ";") {
+			err = errors.New("invalid semicolon separator in query")
+			continue
+		}
+		if key == "" {
+			continue
+		}
+		key, value, _ := strings.Cut(key, "=")
+
+		keyBuffer := r.Arena.NewSlice(len(key))
+		n, ok := URLDecode(keyBuffer, key)
+		if !ok {
+			if err == nil {
+				err = errors.New("invalid key")
+			}
+			continue
+		}
+		key = unsafe.String(unsafe.SliceData(keyBuffer), n)
+
+		valueBuffer := r.Arena.NewSlice(len(value))
+		n, ok = URLDecode(valueBuffer, value)
+		if !ok {
+			if err == nil {
+				err = errors.New("invalid value")
+			}
+			continue
+		}
+		value = unsafe.String(unsafe.SliceData(valueBuffer), n)
+
+		for i := 0; i < len(r.Form); i++ {
+			if key == r.Form[i].Key {
+				r.Form[i].Values = append(r.Form[i].Values, value)
+				continue forQuery
+			}
+		}
+		if len(r.Form) < cap(r.Form) {
+			l := len(r.Form)
+			r.Form = r.Form[:l+1]
+			r.Form[l].Key = key
+			r.Form[l].Values = r.Form[l].Values[:1]
+			r.Form[l].Values[0] = value
+		} else {
+			r.Form = append(r.Form, URLValue{Key: key, Values: []string{value}})
+		}
+	}
+
+	return err
+}
+
 func (w *HTTPResponse) Append(b []byte) {
 	w.Bodies = append(w.Bodies, IovecForByteSlice(b))
 }
@@ -98,7 +167,7 @@ func (w *HTTPResponse) AppendString(s string) {
 }
 
 func (w *HTTPResponse) SetHeader(header string, value string) {
-
+	panic("TODO")
 }
 
 /* TODO(anton2920): allow large data to be written. */
@@ -170,6 +239,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 
 	for {
 		r.Headers = r.Headers[:0]
+		r.Form = r.Form[:0]
 		rp.ContentLength = 0
 
 		for rp.State != HTTPStateDone {
