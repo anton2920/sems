@@ -179,8 +179,40 @@ func (w *HTTPResponse) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+// WriteHTML writes to w the escaped HTML equivalent of the plain text data b.
+func (w *HTTPResponse) WriteHTML(b []byte) {
+	last := 0
+	for i, c := range b {
+		var html string
+		switch c {
+		case '\000':
+			html = HTMLNull
+		case '"':
+			html = HTMLQuot
+		case '\'':
+			html = HTMLApos
+		case '&':
+			html = HTMLAmp
+		case '<':
+			html = HTMLLt
+		case '>':
+			html = HTMLGt
+		default:
+			continue
+		}
+		w.Write(b[last:i])
+		w.AppendString(html)
+		last = i + 1
+	}
+	w.Write(b[last:])
+}
+
 func (w *HTTPResponse) WriteString(s string) (int, error) {
 	return w.Write(unsafe.Slice(unsafe.StringData(s), len(s)))
+}
+
+func (w *HTTPResponse) WriteHTMLString(s string) {
+	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
 /* NOTE(anton2920): Noescape hides a pointer from escape analysis. Noescape is the identity function but escape analysis doesn't think the output depends on the input. Noescape is inlined and currently compiles down to zero instructions. */
@@ -542,7 +574,8 @@ func ListenAndServe(port uint16, router HTTPRouter) error {
 		return err
 	}
 
-	nworkers := runtime.GOMAXPROCS(0) / 2
+	// nworkers := runtime.GOMAXPROCS(0) / 2
+	const nworkers = 1
 	for i := 0; i < nworkers-1; i++ {
 		go HTTPWorker(l, router)
 	}

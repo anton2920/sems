@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 func SigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	const pageFormat = `
@@ -51,6 +49,9 @@ func SigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	} else {
 		w.AppendString("<h1>Failure</h1>")
 	}
+	w.AppendString("<h2>")
+	w.WriteHTMLString(r.Form.Get("Password"))
+	w.AppendString("</h2>")
 
 	return nil
 }

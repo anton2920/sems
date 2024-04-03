@@ -1,3 +1,5 @@
+/* TODO(anton2920): rewrite as proper arena later. */
+
 package main
 
 type Arena struct {
