@@ -25,8 +25,10 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
+		default:
+			return UserPageHandler(w, r)
 		case "/signin":
-			return SigninPageHandler(w, r)
+			return UserSigninPageHandler(w, r)
 		}
 	}
 
@@ -38,7 +40,7 @@ func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		case "/signin":
-			return SigninHandler(w, r)
+			return UserSigninHandler(w, r)
 		}
 	}
 

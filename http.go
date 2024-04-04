@@ -49,6 +49,7 @@ const (
 	HTTPStatusOK                    HTTPStatus = 200
 	HTTPStatusSeeOther                         = 303
 	HTTPStatusBadRequest                       = 400
+	HTTPStatusUnauthorized                     = 401
 	HTTPStatusNotFound                         = 404
 	HTTPStatusMethodNotAllowed                 = 405
 	HTTPStatusRequestTimeout                   = 408
@@ -61,6 +62,7 @@ var Status2String = [...]string{
 	HTTPStatusOK:                    "200",
 	HTTPStatusSeeOther:              "303",
 	HTTPStatusBadRequest:            "400",
+	HTTPStatusUnauthorized:          "401",
 	HTTPStatusNotFound:              "404",
 	HTTPStatusMethodNotAllowed:      "405",
 	HTTPStatusRequestTimeout:        "408",
@@ -73,6 +75,7 @@ var Status2Reason = [...]string{
 	HTTPStatusOK:                    "OK",
 	HTTPStatusSeeOther:              "See Other",
 	HTTPStatusBadRequest:            "Bad Request",
+	HTTPStatusUnauthorized:          "Unauthorized",
 	HTTPStatusNotFound:              "Not Found",
 	HTTPStatusMethodNotAllowed:      "Method Not Allowed",
 	HTTPStatusRequestTimeout:        "Request Timeout",

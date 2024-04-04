@@ -36,6 +36,7 @@ const (
 
 var (
 	ReloadPageError    = HTTPError{StatusCode: HTTPStatusBadRequest, Message: "whoops... Something went wrong. Please reload this page or try again later"}
+	UnauthorizedError  = HTTPError{StatusCode: HTTPStatusUnauthorized, Message: "whoops... You have to sign in to see this page"}
 	NotFoundError      = HTTPError{StatusCode: HTTPStatusNotFound, Message: "whoops... Requested page not found"}
 	TryAgainLaterError = HTTPError{StatusCode: HTTPStatusInternalServerError, Message: "whoops... Something went wrong. Please try again later"}
 )
