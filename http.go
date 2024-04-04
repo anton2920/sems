@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -46,30 +47,36 @@ type HTTPStatus int
 
 const (
 	HTTPStatusOK                    HTTPStatus = 200
+	HTTPStatusSeeOther                         = 303
 	HTTPStatusBadRequest                       = 400
 	HTTPStatusNotFound                         = 404
 	HTTPStatusMethodNotAllowed                 = 405
 	HTTPStatusRequestTimeout                   = 408
+	HTTPStatusConflict                         = 409
 	HTTPStatusRequestEntityTooLarge            = 413
 	HTTPStatusInternalServerError              = 500
 )
 
 var Status2String = [...]string{
 	HTTPStatusOK:                    "200",
+	HTTPStatusSeeOther:              "303",
 	HTTPStatusBadRequest:            "400",
 	HTTPStatusNotFound:              "404",
 	HTTPStatusMethodNotAllowed:      "405",
 	HTTPStatusRequestTimeout:        "408",
+	HTTPStatusConflict:              "409",
 	HTTPStatusRequestEntityTooLarge: "413",
 	HTTPStatusInternalServerError:   "500",
 }
 
 var Status2Reason = [...]string{
 	HTTPStatusOK:                    "OK",
+	HTTPStatusSeeOther:              "See Other",
 	HTTPStatusBadRequest:            "Bad Request",
 	HTTPStatusNotFound:              "Not Found",
 	HTTPStatusMethodNotAllowed:      "Method Not Allowed",
 	HTTPStatusRequestTimeout:        "Request Timeout",
+	HTTPStatusConflict:              "Conflict",
 	HTTPStatusRequestEntityTooLarge: "Request Entity Too Large",
 	HTTPStatusInternalServerError:   "Internal Server Error",
 }
@@ -95,6 +102,25 @@ type HTTPContext struct {
 }
 
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
+
+func (r *HTTPRequest) Cookie(name string) string {
+	for i := 0; i < len(r.Headers); i++ {
+		header := r.Headers[i]
+		if StringStartsWith(header, "Cookie: ") {
+			cookie := header[len("Cookie: "):]
+			if StringStartsWith(cookie, name) {
+				cookie = cookie[len(name):]
+				if cookie[0] != '=' {
+					return ""
+				}
+				return cookie[1:]
+			}
+
+		}
+	}
+
+	return ""
+}
 
 func (r *HTTPRequest) ParseForm() error {
 	var err error
@@ -166,12 +192,45 @@ func (w *HTTPResponse) AppendString(s string) {
 	w.Bodies = append(w.Bodies, IovecForString(s))
 }
 
+func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
+	/* TODO(anton2920): replace with minimum required size. */
+	cookie := w.Arena.NewSlice(128)
+
+	var n int
+	n += copy(cookie[n:], name)
+	n += copy(cookie[n:], "=")
+	n += copy(cookie[n:], value)
+	n += copy(cookie[n:], "; Path=/; Expires=")
+	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
+	n += copy(cookie[n:], "; HttpOnly; Secure; SameSite=Strict")
+
+	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+}
+
 func (w *HTTPResponse) SetHeader(header string, value string) {
-	panic("TODO")
+	buffer := w.Arena.NewSlice(len(header) + len(": ") + len(value) + len("\r\n"))
+
+	var n int
+	n += copy(buffer[n:], header)
+	n += copy(buffer[n:], ": ")
+	n += copy(buffer[n:], value)
+	n += copy(buffer[n:], "\r\n")
+
+	w.Headers = append(w.Headers, IovecForByteSlice(buffer[:n]))
+}
+
+func (w *HTTPResponse) Redirect(path string, code HTTPStatus) {
+	w.SetHeader("Location", path)
+	w.Bodies = w.Bodies[:0]
+	w.StatusCode = code
 }
 
 /* TODO(anton2920): allow large data to be written. */
 func (w *HTTPResponse) Write(b []byte) (int, error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+
 	buffer := w.Arena.NewSlice(len(b))
 	copy(buffer, b)
 	w.Append(buffer)

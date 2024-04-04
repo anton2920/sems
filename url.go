@@ -34,6 +34,32 @@ func (vs URLValues) GetMany(key string) []string {
 	return nil
 }
 
+func (vs *URLValues) Set(key string, value string) {
+	if vs == nil {
+		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+		return
+	}
+
+	for i := 0; i < len(*vs); i++ {
+		v := &(*vs)[i]
+		if key == v.Key {
+			v.Values = append(v.Values, value)
+		}
+	}
+
+	if len(*vs) < cap(*vs) {
+		l := len(*vs)
+		*vs = (*vs)[:l+1]
+
+		v := &(*vs)[l]
+		v.Key = key
+		v.Values = v.Values[:1]
+		v.Values[0] = value
+	} else {
+		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+	}
+}
+
 /* CharToByte returns ASCII-decoded character. For example, 'A' yields '\x0A'. */
 func CharToByte(c byte) (byte, bool) {
 	if c >= '0' && c <= '9' {

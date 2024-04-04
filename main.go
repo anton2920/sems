@@ -98,6 +98,8 @@ func main() {
 		SetLogLevel(LevelDebug)
 	}
 
+	Infof("Listening on 0.0.0.0:7072...")
+
 	if err := ListenAndServe(7072, Router); err != nil {
 		Fatalf("Failed to listen on port: %v", err)
 	}

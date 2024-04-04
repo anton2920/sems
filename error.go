@@ -87,21 +87,26 @@ func (e PanicError) Error() string {
 	return string(buffer)
 }
 
+func ErrorDiv(w *HTTPResponse, e string) {
+	if e != "" {
+		w.AppendString(`<div><p>Error: `)
+		w.WriteString(e)
+		w.AppendString(`.</p></div>`)
+	}
+}
+
 func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, statusCode HTTPStatus, err error) {
-	const pageFormat = `
-<!DOCTYPE html>
-<head>
-	<title>Error</title>
-</head>
-<body>
-	<h1>Master's degree</h1>
-	<h2>Error</h2>
-
-	<p>Error: %v.</p>
-</body>
-</html>
-`
-
 	w.StatusCode = statusCode
-	fmt.Fprintf(w, pageFormat, err)
+	w.Bodies = w.Bodies[:0]
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>Error</title></head>`)
+	w.AppendString(`<body>`)
+	w.AppendString(`<h1>Master's degree</h1>`)
+	w.AppendString(`<h2>Error</h2>`)
+
+	ErrorDiv(w, err.Error())
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
 }
