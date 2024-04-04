@@ -195,6 +195,17 @@ func (w *HTTPResponse) AppendString(s string) {
 	w.Bodies = append(w.Bodies, IovecForString(s))
 }
 
+func (w *HTTPResponse) DelCookie(name string) {
+	/* TODO(anton2920): replace with minimum required size. */
+	cookie := w.Arena.NewSlice(128)
+
+	var n int
+	n += copy(cookie[n:], name)
+	n += copy(cookie[n:], "=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict")
+
+	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+}
+
 func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
 	/* TODO(anton2920): replace with minimum required size. */
 	cookie := w.Arena.NewSlice(128)

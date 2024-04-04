@@ -41,6 +41,8 @@ func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		switch path[len("/user"):] {
 		case "/signin":
 			return UserSigninHandler(w, r)
+		case "/signout":
+			return UserSignoutHandler(w, r)
 		}
 	}
 

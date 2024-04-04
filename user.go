@@ -131,3 +131,22 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }
+
+func UserSignoutHandler(w *HTTPResponse, r *HTTPRequest) error {
+	token := r.Cookie("Token")
+	if token == "" {
+		return UnauthorizedError
+	}
+
+	if _, err := GetSessionFromToken(token); err != nil {
+		return UnauthorizedError
+	}
+
+	SessionsLock.Lock()
+	delete(Sessions, token)
+	SessionsLock.Unlock()
+
+	w.DelCookie("Token")
+	w.Redirect("/", HTTPStatusSeeOther)
+	return nil
+}
