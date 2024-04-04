@@ -2,6 +2,9 @@ package main
 
 import (
 	"errors"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -97,6 +100,22 @@ func main() {
 	if DebugMode == "on" {
 		SetLogLevel(LevelDebug)
 	}
+
+	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
+		Warnf("Failed to restore sessions from file: %v", err)
+	}
+
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		signal := <-sigchan
+		Infof("Received %s, exitting...", signal)
+
+		if err := StoreSessionsToFile(SessionsFile); err != nil {
+			Warnf("Failed to store sessions to file: %v", err)
+		}
+		os.Exit(0)
+	}()
 
 	Infof("Listening on 0.0.0.0:7072...")
 
