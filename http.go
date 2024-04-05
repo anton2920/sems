@@ -50,6 +50,7 @@ const (
 	HTTPStatusSeeOther                         = 303
 	HTTPStatusBadRequest                       = 400
 	HTTPStatusUnauthorized                     = 401
+	HTTPStatusForbidden                        = 403
 	HTTPStatusNotFound                         = 404
 	HTTPStatusMethodNotAllowed                 = 405
 	HTTPStatusRequestTimeout                   = 408
@@ -63,6 +64,7 @@ var Status2String = [...]string{
 	HTTPStatusSeeOther:              "303",
 	HTTPStatusBadRequest:            "400",
 	HTTPStatusUnauthorized:          "401",
+	HTTPStatusForbidden:             "403",
 	HTTPStatusNotFound:              "404",
 	HTTPStatusMethodNotAllowed:      "405",
 	HTTPStatusRequestTimeout:        "408",
@@ -76,6 +78,7 @@ var Status2Reason = [...]string{
 	HTTPStatusSeeOther:              "See Other",
 	HTTPStatusBadRequest:            "Bad Request",
 	HTTPStatusUnauthorized:          "Unauthorized",
+	HTTPStatusForbidden:             "Forbidden",
 	HTTPStatusNotFound:              "Not Found",
 	HTTPStatusMethodNotAllowed:      "Method Not Allowed",
 	HTTPStatusRequestTimeout:        "Request Timeout",
@@ -177,8 +180,8 @@ forQuery:
 			l := len(r.Form)
 			r.Form = r.Form[:l+1]
 			r.Form[l].Key = key
-			r.Form[l].Values = r.Form[l].Values[:1]
-			r.Form[l].Values[0] = value
+			r.Form[l].Values = r.Form[l].Values[:0]
+			r.Form[l].Values = append(r.Form[l].Values, value)
 		} else {
 			r.Form = append(r.Form, URLValue{Key: key, Values: []string{value}})
 		}
@@ -345,8 +348,8 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 	r := &rp.Request
 
 	w.Arena = arena
-	w.Headers = make([]Iovec, 32)
-	w.Bodies = make([]Iovec, 128)
+	w.Headers = make([]Iovec, 0, 32)
+	w.Bodies = make([]Iovec, 0, 128)
 
 	for {
 		r.Headers = r.Headers[:0]

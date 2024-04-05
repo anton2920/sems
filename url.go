@@ -53,8 +53,8 @@ func (vs *URLValues) Set(key string, value string) {
 
 		v := &(*vs)[l]
 		v.Key = key
-		v.Values = v.Values[:1]
-		v.Values[0] = value
+		v.Values = v.Values[:0]
+		v.Values = append(v.Values, value)
 	} else {
 		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
 	}
