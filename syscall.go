@@ -12,6 +12,7 @@ const (
 	SYS_fcntl         = 92
 	SYS_fstat         = 551
 	SYS_ftruncate     = 480
+	SYS_getrandom     = 563
 	SYS_kevent        = 560
 	SYS_kqueue        = 362
 	SYS_listen        = 106
@@ -89,6 +90,11 @@ func Fstat(fd int32, sb *Stat) error {
 func Ftruncate(fd int32, length int64) error {
 	_, _, errno := Syscall(SYS_ftruncate, uintptr(fd), uintptr(length), 0)
 	return SyscallError("ftruncate failed with code", errno)
+}
+
+func Getrandom(buf []byte, flags uint32) (int64, error) {
+	r1, _, errno := Syscall(SYS_getrandom, uintptr(unsafe.Pointer(unsafe.SliceData(buf))), uintptr(len(buf)), uintptr(flags))
+	return int64(r1), SyscallError("getrandom failed with code", errno)
 }
 
 func Kevent(kq int32, changelist []Kevent_t, eventlist []Kevent_t, timeout *Timespec) (int, error) {

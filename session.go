@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/gob"
 	"errors"
 	"os"
@@ -51,7 +52,19 @@ func GetSessionFromRequest(r *HTTPRequest) (*Session, error) {
 }
 
 func GenerateSessionToken() (string, error) {
-	return "some-secret-string", nil
+	const n = 64
+	buffer := make([]byte, n)
+
+	/* NOTE(anton2920): see encoding/base64/base64.go:294. */
+	token := make([]byte, (n+2)/3*4)
+
+	if _, err := Getrandom(buffer, 0); err != nil {
+		return "", err
+	}
+
+	base64.StdEncoding.Encode(token, buffer)
+
+	return string(token), nil
 }
 
 func StoreSessionsToFile(filename string) error {

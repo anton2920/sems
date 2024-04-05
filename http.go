@@ -196,27 +196,33 @@ func (w *HTTPResponse) AppendString(s string) {
 }
 
 func (w *HTTPResponse) DelCookie(name string) {
-	/* TODO(anton2920): replace with minimum required size. */
-	cookie := w.Arena.NewSlice(128)
+	const finisher = "=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict"
+
+	cookie := w.Arena.NewSlice(len(name) + len(finisher))
 
 	var n int
 	n += copy(cookie[n:], name)
-	n += copy(cookie[n:], "=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict")
+	n += copy(cookie[n:], finisher)
 
 	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }
 
 func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
-	/* TODO(anton2920): replace with minimum required size. */
-	cookie := w.Arena.NewSlice(128)
+	const secure = "; HttpOnly; Secure; SameSite=Strict"
+	const expires = "; Expires="
+	const path = "; Path=/"
+	const eq = "="
+
+	cookie := w.Arena.NewSlice(len(name) + len(eq) + len(value) + len(path) + len(expires) + RFC822Len + len(secure))
 
 	var n int
 	n += copy(cookie[n:], name)
-	n += copy(cookie[n:], "=")
+	n += copy(cookie[n:], eq)
 	n += copy(cookie[n:], value)
-	n += copy(cookie[n:], "; Path=/; Expires=")
+	n += copy(cookie[n:], path)
+	n += copy(cookie[n:], expires)
 	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
-	n += copy(cookie[n:], "; HttpOnly; Secure; SameSite=Strict")
+	n += copy(cookie[n:], secure)
 
 	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }

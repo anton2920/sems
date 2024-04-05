@@ -1,16 +1,30 @@
+/* TODO(anton2920): this is all temporary! */
 package main
 
 import "time"
 
-/* TODO(anton2920): this is all temporary! */
-type UserEntry struct {
+type ID = int
+
+type User struct {
 	FirstName string
 	LastName  string
 	Email     string
 	Password  string
+	Role      UserRole
 	CreatedOn time.Time
 }
 
-var UsersDB = map[int]UserEntry{
-	1: {"Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", time.Now()},
+type Group struct {
+	Students []ID
+}
+
+var DB struct {
+	Users  map[ID]*User
+	Groups map[ID]*Group
+}
+
+func init() {
+	DB.Users = map[ID]*User{
+		1: &User{"Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", UserRoleAdmin, time.Now()},
+	}
 }

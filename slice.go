@@ -1,5 +1,7 @@
 package main
 
+const RFC822Len = 31
+
 func SlicePutInt(buf []byte, x int) int {
 	var ndigits int
 	var rx, i int

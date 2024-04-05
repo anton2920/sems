@@ -2,6 +2,15 @@ package main
 
 import "time"
 
+type UserRole int
+
+const (
+	UserRoleAdmin = iota
+	UserRoleTeacher
+	UserRoleStudent
+	UserRolePrestudent
+)
+
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	buffer := make([]byte, 20)
 
@@ -14,7 +23,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return err
 	}
 
-	user, ok := UsersDB[id]
+	user, ok := DB.Users[id]
 	if !ok {
 		return NotFoundError
 	}
@@ -96,7 +105,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	email := r.Form.Get("Email")
 	password := r.Form.Get("Password")
 
-	for i, user := range UsersDB {
+	for i, user := range DB.Users {
 		if email == user.Email {
 			if password != user.Password {
 				r.Form.Set("Error", "provided password is incorrect")
