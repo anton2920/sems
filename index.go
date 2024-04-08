@@ -1,5 +1,32 @@
 package main
 
+func IndexPageDisplayUsers(w *HTTPResponse, users []*User) {
+	if len(users) == 0 {
+		return
+	}
+
+	role := users[0].Role
+	w.AppendString(`<h2>`)
+	w.AppendString(UserRole2String[role])
+	w.AppendString(`s</h2>`)
+	w.AppendString(`<ul>`)
+	for _, user := range users {
+		w.AppendString(`<li>`)
+		w.AppendString(`<a href="/user/`)
+		w.WriteString(user.StringID)
+		w.AppendString(`">`)
+		w.WriteHTMLString(user.LastName)
+		w.AppendString(` `)
+		w.WriteHTMLString(user.FirstName)
+		w.AppendString(` (ID: `)
+		w.WriteString(user.StringID)
+		w.AppendString(`)`)
+		w.AppendString(`</a>`)
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ul>`)
+}
+
 func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Master's degree</title></head>`)
@@ -23,18 +50,28 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		default:
 			panic("unknown user role")
 		case UserRoleAdmin:
-			w.AppendString(`<h2>Teachers</h2>`)
+			admins := make([]*User, 0, 20)
+			teachers := make([]*User, 0, 200)
+			students := make([]*User, 0, 2000)
+			prestudents := make([]*User, 0, 20000)
 
-			/* TODO(anton2920): display existing teachers. */
+			for _, user := range DB.Users {
+				switch user.Role {
+				case UserRoleAdmin:
+					admins = append(admins, user)
+				case UserRoleTeacher:
+					teachers = append(teachers, user)
+				case UserRoleStudent:
+					students = append(students, user)
+				case UserRolePrestudent:
+					prestudents = append(prestudents, user)
+				}
+			}
 
-			w.AppendString(`<h2>Students</h2>`)
-
-			/* TODO(anton2920): display existing students. */
-
-			/* TODO(anton2920): check dictionary for correct terminology. */
-			w.AppendString(`<h2>Pre-students</h2>`)
-
-			/* TODO(anton2920): display existing pre-students. */
+			IndexPageDisplayUsers(w, admins)
+			IndexPageDisplayUsers(w, teachers)
+			IndexPageDisplayUsers(w, students)
+			IndexPageDisplayUsers(w, prestudents)
 
 			w.AppendString(`<form method="POST" action="/user/create">`)
 			w.AppendString(`<input type="submit" value="Create user">`)

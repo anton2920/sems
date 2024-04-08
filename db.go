@@ -6,6 +6,7 @@ import "time"
 type ID = int
 
 type User struct {
+	StringID  string
 	FirstName string
 	LastName  string
 	Email     string
@@ -25,8 +26,9 @@ var DB struct {
 
 func init() {
 	DB.Users = map[ID]*User{
-		1: &User{"Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", UserRoleAdmin, time.Now()},
-		2: &User{"Larisa", "Sidorova", "teacher@masters.com", "teacher", UserRoleTeacher, time.Now()},
-		3: &User{"Anatolii", "Ivanov", "student@masters.com", "student", UserRoleStudent, time.Now()},
+		1: &User{"1", "Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", UserRoleAdmin, time.Now()},
+		2: &User{"2", "Larisa", "Sidorova", "teacher@masters.com", "teacher", UserRoleTeacher, time.Now()},
+		3: &User{"3", "Anatolii", "Ivanov", "student@masters.com", "student", UserRoleStudent, time.Now()},
+		4: &User{"4", "Robert", "Martin", "prestudent@masters.com", "prestudent", UserRolePrestudent, time.Now()},
 	}
 }

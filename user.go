@@ -24,7 +24,7 @@ var UserRole2String = [...]string{
 	UserRoleAdmin:      "Admin",
 	UserRoleTeacher:    "Teacher",
 	UserRoleStudent:    "Student",
-	UserRolePrestudent: "Prestudent",
+	UserRolePrestudent: "Pre-student",
 }
 
 const (
@@ -94,8 +94,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	n := SlicePutInt(buffer, id)
-	w.Write(buffer[:n])
+	w.WriteString(user.StringID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Role: `)
@@ -365,7 +364,8 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 	}
 
-	DB.Users[len(DB.Users)+1] = &User{FirstName: firstName, LastName: lastName, Email: email, Password: password, Role: UserRole(roleID), CreatedOn: time.Now()}
+	id := len(DB.Users) + 1
+	DB.Users[id] = &User{StringID: strconv.Itoa(id), FirstName: firstName, LastName: lastName, Email: email, Password: password, Role: UserRole(roleID), CreatedOn: time.Now()}
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
