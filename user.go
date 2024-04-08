@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 type UserRole int
@@ -18,6 +19,13 @@ const (
 	UserRoleStudent
 	UserRolePrestudent
 )
+
+var UserRole2String = [...]string{
+	UserRoleAdmin:      "Admin",
+	UserRoleTeacher:    "Teacher",
+	UserRoleStudent:    "Student",
+	UserRolePrestudent: "Prestudent",
+}
 
 const (
 	MinUserNameLen = 1
@@ -51,7 +59,8 @@ func UserNameValid(name string) error {
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	buffer := make([]byte, 20)
 
-	if _, err := GetSessionFromRequest(r); err != nil {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
 		return UnauthorizedError
 	}
 
@@ -64,6 +73,8 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if !ok {
 		return NotFoundError
 	}
+
+	owner := session.ID == id
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -87,6 +98,10 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.Write(buffer[:n])
 	w.AppendString(`</p>`)
 
+	w.AppendString(`<p>Role: `)
+	w.AppendString(UserRole2String[user.Role])
+	w.AppendString(`</p>`)
+
 	w.AppendString(`<p>Email: `)
 	w.WriteHTMLString(user.Email)
 	w.AppendString(`</p>`)
@@ -95,25 +110,105 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.Write(user.CreatedOn.AppendFormat(buffer[:0], "2006/01/02 15:04:05"))
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<form method="POST" action="/user/edit">`)
+	if (owner) || (DB.Users[session.ID].Role == UserRoleAdmin) {
+		w.AppendString(`<form method="POST" action="/user/edit">`)
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteString(r.URL.Path[len("/user/"):])
-	w.AppendString(`">`)
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteString(r.URL.Path[len("/user/"):])
+		w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="FirstName" value="`)
-	w.WriteHTMLString(user.FirstName)
-	w.AppendString(`">`)
+		w.AppendString(`<input type="hidden" name="FirstName" value="`)
+		w.WriteHTMLString(user.FirstName)
+		w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="LastName" value="`)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(`">`)
+		w.AppendString(`<input type="hidden" name="LastName" value="`)
+		w.WriteHTMLString(user.LastName)
+		w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="Email" value="`)
-	w.WriteHTMLString(user.Email)
-	w.AppendString(`">`)
+		w.AppendString(`<input type="hidden" name="Email" value="`)
+		w.WriteHTMLString(user.Email)
+		w.AppendString(`">`)
 
-	w.AppendString(`<input type="submit" value="Edit">`)
+		w.AppendString(`<input type="submit" value="Edit">`)
+
+		w.AppendString(`</form>`)
+	}
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
+
+	return nil
+}
+
+func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>Create user</title></head>`)
+	w.AppendString(`<body>`)
+	w.AppendString(`<h1>User</h1>`)
+	w.AppendString(`<h2>Create user</h2>`)
+
+	ErrorDiv(w, r.Form.Get("Error"))
+
+	w.AppendString(`<form method="POST" action="/api/user/create">`)
+
+	/* TODO(anton2920): replace with dynamically inserted length checks. */
+	w.AppendString(`<label>First name:<br>`)
+	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="FirstName" value="`)
+	w.WriteHTMLString(r.Form.Get("FirstName"))
+	w.AppendString(`" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Last name:<br>`)
+	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="LastName" value="`)
+	w.WriteHTMLString(r.Form.Get("LastName"))
+	w.AppendString(`" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Email:<br>`)
+	w.AppendString(`<input type="email" name="Email" value="`)
+	w.WriteHTMLString(r.Form.Get("Email"))
+	w.AppendString(`" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Password:<br>`)
+	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="Password" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Repeat password:<br>`)
+	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="RepeatPassword" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Role: `)
+	w.AppendString(`<select name="RoleID">`)
+
+	/* TODO(anton2920): make once, reuse later. */
+	roleID := r.Form.Get("ID")
+	for id, name := range UserRole2String {
+		buffer := make([]byte, 20)
+		n := SlicePutInt(buffer, id)
+		sid := unsafe.String(unsafe.SliceData(buffer), n)
+
+		w.AppendString(`<option value="`)
+		w.WriteString(sid)
+		w.AppendString(`" `)
+		if sid == roleID {
+			w.AppendString(`selected`)
+		}
+		w.AppendString(`>`)
+		w.AppendString(name)
+		w.AppendString(`</option>`)
+	}
+
+	w.AppendString(`</select>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<input type="submit" value="Create">`)
 
 	w.AppendString(`</form>`)
 
@@ -219,6 +314,64 @@ func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
+func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
+	}
+
+	user := DB.Users[session.ID]
+	if user.Role != UserRoleAdmin {
+		return WritePage(w, r, UserCreatePageHandler, ForbiddenError)
+	}
+
+	firstName := r.Form.Get("FirstName")
+	if err := UserNameValid(firstName); err != nil {
+		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+	}
+
+	lastName := r.Form.Get("LastName")
+	if err := UserNameValid(lastName); err != nil {
+		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+	}
+
+	address, err := mail.ParseAddress(r.Form.Get("Email"))
+	if err != nil {
+		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, "provided email is not valid"))
+	}
+	email := address.Address
+
+	password := r.Form.Get("Password")
+	repeatPassword := r.Form.Get("RepeatPassword")
+	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
+		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+	}
+	if password != repeatPassword {
+		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
+	}
+
+	roleID, err := strconv.Atoi(r.Form.Get("RoleID"))
+	if err != nil {
+		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
+	}
+
+	for _, user := range DB.Users {
+		if email == user.Email {
+			return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusConflict, "user with this email already exists"))
+		}
+	}
+
+	DB.Users[len(DB.Users)+1] = &User{FirstName: firstName, LastName: lastName, Email: email, Password: password, Role: UserRole(roleID), CreatedOn: time.Now()}
+
+	w.RedirectString("/", HTTPStatusSeeOther)
+	return nil
+
+}
+
 func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -235,7 +388,8 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
 
-	if session.ID != userID {
+	owner := session.ID == userID
+	if (!owner) && (DB.Users[session.ID].Role != UserRoleAdmin) {
 		return WritePage(w, r, UserEditPageHandler, ForbiddenError)
 	}
 

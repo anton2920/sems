@@ -26,5 +26,7 @@ var DB struct {
 func init() {
 	DB.Users = map[ID]*User{
 		1: &User{"Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", UserRoleAdmin, time.Now()},
+		2: &User{"Larisa", "Sidorova", "teacher@masters.com", "teacher", UserRoleTeacher, time.Now()},
+		3: &User{"Anatolii", "Ivanov", "student@masters.com", "student", UserRoleStudent, time.Now()},
 	}
 }
