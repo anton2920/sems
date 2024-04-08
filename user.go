@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"net/mail"
 	"strconv"
 	"time"
-	"unsafe"
+	"unicode"
+	"unicode/utf8"
 )
 
 type UserRole int
@@ -15,6 +18,35 @@ const (
 	UserRoleStudent
 	UserRolePrestudent
 )
+
+const (
+	MinUserNameLen = 1
+	MaxUserNameLen = 45
+
+	MinPasswordLen = 5
+	MaxPasswordLen = 45
+)
+
+func UserNameValid(name string) error {
+	if !StringLengthInRange(name, MinUserNameLen, MaxUserNameLen) {
+		return fmt.Errorf("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen)
+	}
+
+	/* Fist character must be a letter. */
+	r, nbytes := utf8.DecodeRuneInString(name)
+	if !unicode.IsLetter(r) {
+		return errors.New("first character of the name must be a letter")
+	}
+
+	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
+	for _, r := range name[nbytes:] {
+		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
+			return errors.New("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
+		}
+	}
+
+	return nil
+}
 
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	buffer := make([]byte, 20)
@@ -66,7 +98,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<form method="POST" action="/user/edit">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.URL.Path[len("/user/"):])
+	w.WriteString(r.URL.Path[len("/user/"):])
 	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="FirstName" value="`)
@@ -114,15 +146,16 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
+	/* TODO(anton2920): replace with dynamically inserted length checks. */
 	w.AppendString(`<label>First name:<br>`)
-	w.AppendString(`<input type="text" name="FirstName" value="`)
+	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="FirstName" value="`)
 	w.WriteHTMLString(r.Form.Get("FirstName"))
 	w.AppendString(`" required>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Last name:<br>`)
-	w.AppendString(`<input type="text" name="LastName" value="`)
+	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="LastName" value="`)
 	w.WriteHTMLString(r.Form.Get("LastName"))
 	w.AppendString(`" required>`)
 	w.AppendString(`</label>`)
@@ -136,12 +169,12 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Password:<br>`)
-	w.AppendString(`<input type="password" name="Password" required>`)
+	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="Password" required>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Repeat password:<br>`)
-	w.AppendString(`<input type="password" name="RepeatPassword" required>`)
+	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="RepeatPassword" required>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -193,43 +226,51 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		r.Form.Set("Error", ReloadPageError.Message)
-		w.StatusCode = ReloadPageError.StatusCode
-		return UserEditPageHandler(w, r)
+		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
 
 	id := r.Form.Get("ID")
 	userID, err := strconv.Atoi(id)
 	if err != nil {
-		r.Form.Set("Error", ReloadPageError.Message)
-		w.StatusCode = ReloadPageError.StatusCode
-		return UserEditPageHandler(w, r)
+		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
 
 	if session.ID != userID {
-		r.Form.Set("Error", ForbiddenError.Message)
-		w.StatusCode = ForbiddenError.StatusCode
-		return UserEditPageHandler(w, r)
+		return WritePage(w, r, UserEditPageHandler, ForbiddenError)
 	}
+
+	firstName := r.Form.Get("FirstName")
+	if err := UserNameValid(firstName); err != nil {
+		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+	}
+
+	lastName := r.Form.Get("LastName")
+	if err := UserNameValid(lastName); err != nil {
+		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+	}
+
+	address, err := mail.ParseAddress(r.Form.Get("Email"))
+	if err != nil {
+		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, "provided email is not valid"))
+	}
+	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
-
+	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
+		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+	}
 	if password != repeatPassword {
-		r.Form.Set("Error", "passwords do not match each other")
-		w.StatusCode = HTTPStatusBadRequest
-		return UserEditPageHandler(w, r)
+		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
 	}
 
 	user := DB.Users[userID]
-	user.FirstName = r.Form.Get("FirstName")
-	user.LastName = r.Form.Get("LastName")
-	user.Email = r.Form.Get("Email")
+	user.FirstName = firstName
+	user.LastName = lastName
+	user.Email = email
 	user.Password = password
 
-	buffer := make([]byte, 0, 20)
-	buffer = fmt.Appendf(buffer, "/user/%s", id)
-	w.Redirect(unsafe.String(unsafe.SliceData(buffer), len(buffer)), HTTPStatusSeeOther)
+	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/user/%s", id), HTTPStatusSeeOther)
 	return nil
 }
 
@@ -275,7 +316,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	SessionsLock.Unlock()
 
 	w.SetCookie("Token", token, expiry)
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
 }
 
@@ -294,6 +335,6 @@ func UserSignoutHandler(w *HTTPResponse, r *HTTPRequest) error {
 	SessionsLock.Unlock()
 
 	w.DelCookie("Token")
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
 }

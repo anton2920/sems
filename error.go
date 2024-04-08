@@ -92,13 +92,12 @@ func (e PanicError) Error() string {
 func ErrorDiv(w *HTTPResponse, e string) {
 	if e != "" {
 		w.AppendString(`<div><p>Error: `)
-		w.WriteString(e)
+		w.WriteHTMLString(e)
 		w.AppendString(`.</p></div>`)
 	}
 }
 
-func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, statusCode HTTPStatus, err error) {
-	w.StatusCode = statusCode
+func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, err error) {
 	w.Bodies = w.Bodies[:0]
 
 	w.AppendString(`<!DOCTYPE html>`)

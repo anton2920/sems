@@ -75,7 +75,6 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 }
 
 func Router(w *HTTPResponse, r *HTTPRequest) {
-	statusCode := HTTPStatusOK
 	level := LevelDebug
 	start := time.Now()
 
@@ -84,10 +83,10 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 		var httpError HTTPError
 		displayError := err
 		if (errors.As(err, &httpError)) && (httpError.StatusCode != HTTPStatusInternalServerError) {
-			statusCode = httpError.StatusCode
+			w.StatusCode = httpError.StatusCode
 			level = LevelWarn
 		} else {
-			statusCode = HTTPStatusInternalServerError
+			w.StatusCode = HTTPStatusInternalServerError
 			if DebugMode != "on" {
 				displayError = TryAgainLaterError
 			}
@@ -98,10 +97,10 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 			}
 		}
 
-		ErrorPageHandler(w, r, statusCode, displayError)
+		ErrorPageHandler(w, r, displayError)
 	}
 
-	Logf(level, "%7s %s -> %d (%v), %v", r.Method, r.URL.Path, statusCode, err, time.Since(start))
+	Logf(level, "%7s %s -> %d (%v), %v", r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 }
 
 func main() {

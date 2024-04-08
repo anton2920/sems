@@ -242,7 +242,11 @@ func (w *HTTPResponse) SetHeader(header string, value string) {
 	w.Headers = append(w.Headers, IovecForByteSlice(buffer[:n]))
 }
 
-func (w *HTTPResponse) Redirect(path string, code HTTPStatus) {
+func (w *HTTPResponse) Redirect(path []byte, code HTTPStatus) {
+	w.RedirectString(unsafe.String(unsafe.SliceData(path), len(path)), code)
+}
+
+func (w *HTTPResponse) RedirectString(path string, code HTTPStatus) {
 	w.SetHeader("Location", path)
 	w.Bodies = w.Bodies[:0]
 	w.StatusCode = code
