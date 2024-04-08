@@ -136,8 +136,6 @@ func (r *HTTPRequest) ParseForm() error {
 	}
 
 	query := unsafe.String(unsafe.SliceData(r.Body), len(r.Body))
-
-forQuery:
 	for query != "" {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
@@ -170,21 +168,7 @@ forQuery:
 		}
 		value = unsafe.String(unsafe.SliceData(valueBuffer), n)
 
-		for i := 0; i < len(r.Form); i++ {
-			if key == r.Form[i].Key {
-				r.Form[i].Values = append(r.Form[i].Values, value)
-				continue forQuery
-			}
-		}
-		if len(r.Form) < cap(r.Form) {
-			l := len(r.Form)
-			r.Form = r.Form[:l+1]
-			r.Form[l].Key = key
-			r.Form[l].Values = r.Form[l].Values[:0]
-			r.Form[l].Values = append(r.Form[l].Values, value)
-		} else {
-			r.Form = append(r.Form, URLValue{Key: key, Values: []string{value}})
-		}
+		r.Form.Add(key, value)
 	}
 
 	return err

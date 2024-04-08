@@ -12,6 +12,32 @@ type URLValue struct {
 
 type URLValues []URLValue
 
+func (vs *URLValues) Add(key string, value string) {
+	if vs == nil {
+		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+		return
+	}
+
+	for i := 0; i < len(*vs); i++ {
+		v := &(*vs)[i]
+		if key == v.Key {
+			v.Values = append(v.Values, value)
+		}
+	}
+
+	if len(*vs) < cap(*vs) {
+		l := len(*vs)
+		*vs = (*vs)[:l+1]
+
+		v := &(*vs)[l]
+		v.Key = key
+		v.Values = v.Values[:0]
+		v.Values = append(v.Values, value)
+	} else {
+		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+	}
+}
+
 func (vs URLValues) Get(key string) string {
 	for i := 0; i < len(vs); i++ {
 		if key == vs[i].Key {
@@ -43,6 +69,7 @@ func (vs *URLValues) Set(key string, value string) {
 	for i := 0; i < len(*vs); i++ {
 		v := &(*vs)[i]
 		if key == v.Key {
+			v.Values = v.Values[:0]
 			v.Values = append(v.Values, value)
 		}
 	}
