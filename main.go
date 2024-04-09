@@ -23,6 +23,12 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/":
 			return IndexPageHandler(w, r)
 		}
+	case StringStartsWith(path, "/group"):
+		switch path[len("/group"):] {
+		default:
+		case "/create":
+			return GroupCreatePageHandler(w, r)
+		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		default:
@@ -41,6 +47,11 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 
 func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
+	case StringStartsWith(path, "/group"):
+		switch path[len("/group"):] {
+		case "/create":
+			return GroupCreateHandler(w, r)
+		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		case "/create":
@@ -115,6 +126,9 @@ func main() {
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		Warnf("Failed to restore sessions from file: %v", err)
 	}
+	if err := RestoreDBFromFile(DBFile); err != nil {
+		Warnf("Failed to restore DB from file: %v", err)
+	}
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -122,6 +136,9 @@ func main() {
 		signal := <-sigchan
 		Infof("Received %s, exitting...", signal)
 
+		if err := StoreDBToFile(DBFile); err != nil {
+			Warnf("Failed to store DB to file: %v", err)
+		}
 		if err := StoreSessionsToFile(SessionsFile); err != nil {
 			Warnf("Failed to store sessions to file: %v", err)
 		}

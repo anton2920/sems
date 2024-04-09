@@ -78,6 +78,20 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			w.AppendString(`</form>`)
 
 			w.AppendString(`<h2>Groups</h2>`)
+			w.AppendString(`<ul>`)
+			for _, group := range DB.Groups {
+				w.AppendString(`<li>`)
+				w.AppendString(`<a href="/group/`)
+				w.WriteString(group.StringID)
+				w.AppendString(`">`)
+				w.WriteHTMLString(group.Name)
+				w.AppendString(` (ID: `)
+				w.WriteString(group.StringID)
+				w.AppendString(`)`)
+				w.AppendString(`</a>`)
+				w.AppendString(`</li>`)
+			}
+			w.AppendString(`</ul>`)
 			w.AppendString(`<form method="POST" action="/group/create">`)
 			w.AppendString(`<input type="submit" value="Create group">`)
 			w.AppendString(`</form>`)
