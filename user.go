@@ -75,6 +75,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	owner := session.ID == id
+	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -98,7 +99,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Role: `)
-	w.AppendString(UserRole2String[user.Role])
+	w.AppendString(UserRole2String[user.RoleID])
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Email: `)
@@ -109,7 +110,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.Write(user.CreatedOn.AppendFormat(buffer[:0], "2006/01/02 15:04:05"))
 	w.AppendString(`</p>`)
 
-	if (owner) || (DB.Users[session.ID].Role == UserRoleAdmin) {
+	if (owner) || (admin) {
 		w.AppendString(`<form method="POST" action="/user/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
@@ -127,6 +128,14 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<input type="hidden" name="Email" value="`)
 		w.WriteHTMLString(user.Email)
 		w.AppendString(`">`)
+
+		if admin {
+			buffer := make([]byte, 20)
+			n := SlicePutInt(buffer, int(user.RoleID))
+			w.AppendString(`<input type="hidden" name="RoleID" value="`)
+			w.Write(buffer[:n])
+			w.AppendString(`">`)
+		}
 
 		w.AppendString(`<input type="submit" value="Edit">`)
 
@@ -186,7 +195,7 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<select name="RoleID">`)
 
 	/* TODO(anton2920): make once, reuse later. */
-	roleID := r.Form.Get("ID")
+	roleID := r.Form.Get("RoleID")
 	for id, name := range UserRole2String {
 		buffer := make([]byte, 20)
 		n := SlicePutInt(buffer, id)
@@ -218,7 +227,8 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	if _, err := GetSessionFromRequest(r); err != nil {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
 		return UnauthorizedError
 	}
 
@@ -272,6 +282,34 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
+	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
+	if admin {
+		w.AppendString(`<label>Role: `)
+		w.AppendString(`<select name="RoleID">`)
+
+		/* TODO(anton2920): make once, reuse later. */
+		roleID := r.Form.Get("RoleID")
+		for id, name := range UserRole2String {
+			buffer := make([]byte, 20)
+			n := SlicePutInt(buffer, id)
+			sid := unsafe.String(unsafe.SliceData(buffer), n)
+
+			w.AppendString(`<option value="`)
+			w.WriteString(sid)
+			w.AppendString(`" `)
+			if sid == roleID {
+				w.AppendString(`selected`)
+			}
+			w.AppendString(`>`)
+			w.AppendString(name)
+			w.AppendString(`</option>`)
+		}
+
+		w.AppendString(`</select>`)
+		w.AppendString(`</label>`)
+		w.AppendString(`<br><br>`)
+	}
+
 	w.AppendString(`<input type="submit" value="Save">`)
 
 	w.AppendString(`</form>`)
@@ -324,7 +362,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	user := DB.Users[session.ID]
-	if user.Role != UserRoleAdmin {
+	if user.RoleID != UserRoleAdmin {
 		return WritePage(w, r, UserCreatePageHandler, ForbiddenError)
 	}
 
@@ -354,7 +392,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	roleID, err := strconv.Atoi(r.Form.Get("RoleID"))
-	if err != nil {
+	if (err != nil) || (roleID < 0) || (roleID >= len(UserRole2String)) {
 		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
 	}
 
@@ -365,7 +403,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	id := len(DB.Users) + 1
-	DB.Users[id] = &User{StringID: strconv.Itoa(id), FirstName: firstName, LastName: lastName, Email: email, Password: password, Role: UserRole(roleID), CreatedOn: time.Now()}
+	DB.Users[id] = &User{StringID: strconv.Itoa(id), FirstName: firstName, LastName: lastName, Email: email, Password: password, RoleID: UserRole(roleID), CreatedOn: time.Now()}
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
@@ -389,7 +427,8 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	owner := session.ID == userID
-	if (!owner) && (DB.Users[session.ID].Role != UserRoleAdmin) {
+	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
+	if (!owner) && (!admin) {
 		return WritePage(w, r, UserEditPageHandler, ForbiddenError)
 	}
 
@@ -419,6 +458,13 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	user := DB.Users[userID]
+	if admin {
+		roleID, err := strconv.Atoi(r.Form.Get("RoleID"))
+		if (err != nil) || (roleID < 0) || (roleID >= len(UserRole2String)) {
+			return WritePage(w, r, UserEditPageHandler, ReloadPageError)
+		}
+		user.RoleID = UserRole(roleID)
+	}
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.Email = email

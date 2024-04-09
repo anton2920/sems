@@ -5,10 +5,10 @@ func IndexPageDisplayUsers(w *HTTPResponse, users []*User) {
 		return
 	}
 
-	role := users[0].Role
-	w.AppendString(`<h2>`)
+	role := users[0].RoleID
+	w.AppendString(`<h3>`)
 	w.AppendString(UserRole2String[role])
-	w.AppendString(`s</h2>`)
+	w.AppendString(`s</h3>`)
 	w.AppendString(`<ul>`)
 	for _, user := range users {
 		w.AppendString(`<li>`)
@@ -46,7 +46,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<br>`)
 
 		user := DB.Users[session.ID]
-		switch user.Role {
+		switch user.RoleID {
 		default:
 			panic("unknown user role")
 		case UserRoleAdmin:
@@ -56,7 +56,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			prestudents := make([]*User, 0, 20000)
 
 			for _, user := range DB.Users {
-				switch user.Role {
+				switch user.RoleID {
 				case UserRoleAdmin:
 					admins = append(admins, user)
 				case UserRoleTeacher:
@@ -68,13 +68,18 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 				}
 			}
 
+			w.AppendString(`<h2>Users</h2>`)
 			IndexPageDisplayUsers(w, admins)
 			IndexPageDisplayUsers(w, teachers)
 			IndexPageDisplayUsers(w, students)
 			IndexPageDisplayUsers(w, prestudents)
-
 			w.AppendString(`<form method="POST" action="/user/create">`)
 			w.AppendString(`<input type="submit" value="Create user">`)
+			w.AppendString(`</form>`)
+
+			w.AppendString(`<h2>Groups</h2>`)
+			w.AppendString(`<form method="POST" action="/group/create">`)
+			w.AppendString(`<input type="submit" value="Create group">`)
 			w.AppendString(`</form>`)
 		case UserRoleTeacher:
 		case UserRoleStudent:
