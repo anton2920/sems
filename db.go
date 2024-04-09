@@ -22,6 +22,7 @@ type User struct {
 type Group struct {
 	StringID string
 	Name     string
+	Teacher  *User
 	Students []*User
 }
 

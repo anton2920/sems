@@ -1,5 +1,6 @@
+*.gob
 .sam/
 masters*
 mc*
 r
-sessions.gob
+stop

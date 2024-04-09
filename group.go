@@ -30,10 +30,32 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<form method="POST" action="/api/group/create">`)
 
 	/* TODO(anton2920): insert length constraints parametrically. */
-	w.AppendString(`<label>Name:<br>`)
+	w.AppendString(`<label>Name: `)
 	w.AppendString(`<input type="text" minlength="5" maxlength="15" name="Name" value="`)
 	w.WriteHTMLString(r.Form.Get("Name"))
 	w.AppendString(`" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Teacher: `)
+	w.AppendString(`<select name="TeacherID">`)
+	id := r.Form.Get("TeacherID")
+	for _, user := range DB.Users {
+		if user.RoleID == UserRoleTeacher {
+			w.AppendString(`<option value="`)
+			w.WriteString(user.StringID)
+			w.AppendString(`"`)
+			if id == user.StringID {
+				w.AppendString(` selected`)
+			}
+			w.AppendString(`>`)
+			w.WriteHTMLString(user.LastName)
+			w.AppendString(` `)
+			w.WriteHTMLString(user.FirstName)
+			w.AppendString(`</option>`)
+		}
+	}
+	w.AppendString(`</select>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -90,6 +112,15 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, GroupCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("group name lenght must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
 	}
 
+	teacherID, err := strconv.Atoi(r.Form.Get("TeacherID"))
+	if err != nil {
+		return WritePage(w, r, GroupCreatePageHandler, ReloadPageError)
+	}
+	teacher, ok := DB.Users[teacherID]
+	if (!ok) || (teacher.RoleID != UserRoleTeacher) {
+		return WritePage(w, r, GroupCreatePageHandler, NewHTTPError(HTTPStatusNotFound, "user with this ID does not exist"))
+	}
+
 	sids := r.Form.GetMany("StudentID")
 	users := make([]*User, len(sids))
 	for _, sid := range sids {
@@ -99,15 +130,14 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 
 		user, ok := DB.Users[id]
-		if !ok {
-			return WritePage(w, r, GroupCreatePageHandler, NewHTTPError(HTTPStatusNotFound, "user with this ID does not exist"))
+		if (!ok) || (user.RoleID != UserRoleStudent) {
+			return WritePage(w, r, GroupCreatePageHandler, NewHTTPError(HTTPStatusNotFound, "student with this ID does not exist"))
 		}
-
 		users = append(users, user)
 	}
 
 	id := len(DB.Groups) + 1
-	DB.Groups[id] = &Group{StringID: strconv.Itoa(id), Name: name, Students: users}
+	DB.Groups[id] = &Group{StringID: strconv.Itoa(id), Name: name, Teacher: teacher, Students: users}
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
