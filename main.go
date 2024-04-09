@@ -26,6 +26,7 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		default:
+			return GroupPageHandler(w, r)
 		case "/create":
 			return GroupCreatePageHandler(w, r)
 		}

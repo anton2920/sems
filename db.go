@@ -20,10 +20,11 @@ type User struct {
 }
 
 type Group struct {
-	StringID string
-	Name     string
-	Teacher  *User
-	Students []*User
+	StringID  string
+	Name      string
+	Teacher   *User
+	Students  []*User
+	CreatedOn time.Time
 }
 
 const DBFile = "db.gob"
@@ -39,8 +40,11 @@ func init() {
 		2: &User{"2", "Larisa", "Sidorova", "teacher@masters.com", "teacher", UserRoleTeacher, time.Now()},
 		3: &User{"3", "Anatolii", "Ivanov", "student@masters.com", "student", UserRoleStudent, time.Now()},
 		4: &User{"4", "Robert", "Martin", "prestudent@masters.com", "prestudent", UserRolePrestudent, time.Now()},
+		5: &User{"5", "Sidor", "Sidorov", "student2@masters.com", "student2", UserRoleStudent, time.Now()},
 	}
-	DB.Groups = map[ID]*Group{}
+	DB.Groups = map[ID]*Group{
+		1: &Group{"1", "18-SWE", DB.Users[2], []*User{DB.Users[3], DB.Users[5]}, time.Now()},
+	}
 }
 
 func StoreDBToFile(filename string) error {

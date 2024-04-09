@@ -56,6 +56,37 @@ func UserNameValid(name string) error {
 	return nil
 }
 
+func UserDisplayList(w *HTTPResponse, hl string, users []*User) {
+	if len(users) == 0 {
+		return
+	}
+
+	role := users[0].RoleID
+	w.AppendString(`<`)
+	w.AppendString(hl)
+	w.AppendString(`>`)
+	w.AppendString(UserRole2String[role])
+	w.AppendString(`s</`)
+	w.AppendString(hl)
+	w.AppendString(`>`)
+	w.AppendString(`<ul>`)
+	for _, user := range users {
+		w.AppendString(`<li>`)
+		w.AppendString(`<a href="/user/`)
+		w.WriteString(user.StringID)
+		w.AppendString(`">`)
+		w.WriteHTMLString(user.LastName)
+		w.AppendString(` `)
+		w.WriteHTMLString(user.FirstName)
+		w.AppendString(` (ID: `)
+		w.WriteString(user.StringID)
+		w.AppendString(`)`)
+		w.AppendString(`</a>`)
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ul>`)
+}
+
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	buffer := make([]byte, 20)
 

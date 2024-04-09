@@ -1,31 +1,6 @@
 package main
 
-func IndexPageDisplayUsers(w *HTTPResponse, users []*User) {
-	if len(users) == 0 {
-		return
-	}
-
-	role := users[0].RoleID
-	w.AppendString(`<h3>`)
-	w.AppendString(UserRole2String[role])
-	w.AppendString(`s</h3>`)
-	w.AppendString(`<ul>`)
-	for _, user := range users {
-		w.AppendString(`<li>`)
-		w.AppendString(`<a href="/user/`)
-		w.WriteString(user.StringID)
-		w.AppendString(`">`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(` (ID: `)
-		w.WriteString(user.StringID)
-		w.AppendString(`)`)
-		w.AppendString(`</a>`)
-		w.AppendString(`</li>`)
-	}
-	w.AppendString(`</ul>`)
-}
+func IndexPageDisplayUsers(w *HTTPResponse, users []*User) {}
 
 func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
@@ -69,10 +44,10 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			}
 
 			w.AppendString(`<h2>Users</h2>`)
-			IndexPageDisplayUsers(w, admins)
-			IndexPageDisplayUsers(w, teachers)
-			IndexPageDisplayUsers(w, students)
-			IndexPageDisplayUsers(w, prestudents)
+			UserDisplayList(w, "h3", admins)
+			UserDisplayList(w, "h3", teachers)
+			UserDisplayList(w, "h3", students)
+			UserDisplayList(w, "h3", prestudents)
 			w.AppendString(`<form method="POST" action="/user/create">`)
 			w.AppendString(`<input type="submit" value="Create user">`)
 			w.AppendString(`</form>`)

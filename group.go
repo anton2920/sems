@@ -3,12 +3,77 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"time"
 )
 
 const (
 	MinGroupNameLen = 5
 	MaxGroupNameLen = 15
 )
+
+func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+	buffer := make([]byte, 20)
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+
+	id, err := GetIDFromURL(r.URL, "/group/")
+	if err != nil {
+		return err
+	}
+
+	group, ok := DB.Groups[id]
+	if !ok {
+		return NotFoundError
+	}
+
+	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>`)
+	w.WriteHTMLString(group.Name)
+	w.AppendString(`</title></head>`)
+
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.WriteHTMLString(group.Name)
+	w.AppendString(`</h1>`)
+
+	w.AppendString(`<h2>Info</h2>`)
+
+	w.AppendString(`<p>ID: `)
+	w.WriteString(group.StringID)
+	w.AppendString(`</p>`)
+
+	teacher := group.Teacher
+	w.AppendString(`<p>Teacher: `)
+	w.AppendString(`<a href="/user/`)
+	w.WriteString(teacher.StringID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(teacher.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(teacher.FirstName)
+	w.AppendString(` (ID: `)
+	w.WriteString(teacher.StringID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>Created on: `)
+	w.Write(group.CreatedOn.AppendFormat(buffer[:0], "2006/01/02 15:04:05"))
+	w.AppendString(`</p>`)
+
+	UserDisplayList(w, "h2", group.Students)
+
+	if admin {
+		/* TODO(anton2920): add edit button. */
+	}
+
+	return nil
+}
 
 func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if _, err := GetSessionFromRequest(r); err != nil {
@@ -137,7 +202,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	id := len(DB.Groups) + 1
-	DB.Groups[id] = &Group{StringID: strconv.Itoa(id), Name: name, Teacher: teacher, Students: users}
+	DB.Groups[id] = &Group{StringID: strconv.Itoa(id), Name: name, Teacher: teacher, Students: users, CreatedOn: time.Now()}
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
