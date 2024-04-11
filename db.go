@@ -4,10 +4,9 @@ package main
 import (
 	"encoding/gob"
 	"os"
+	"strconv"
 	"time"
 )
-
-type ID = int
 
 type User struct {
 	StringID  string
@@ -15,35 +14,43 @@ type User struct {
 	LastName  string
 	Email     string
 	Password  string
-	RoleID    UserRole
 	CreatedOn time.Time
 }
 
 type Group struct {
 	StringID  string
 	Name      string
-	Teacher   *User
-	Students  []*User
+	Users     []*User
 	CreatedOn time.Time
 }
+
+const AdminID = 0
 
 const DBFile = "db.gob"
 
 var DB struct {
-	Users  map[ID]*User
-	Groups map[ID]*Group
+	Users  []User
+	Groups []Group
 }
 
 func init() {
-	DB.Users = map[ID]*User{
-		1: &User{"1", "Anton", "Pavlovskii", "anton2920@gmail.com", "pass&word", UserRoleAdmin, time.Now()},
-		2: &User{"2", "Larisa", "Sidorova", "teacher@masters.com", "teacher", UserRoleTeacher, time.Now()},
-		3: &User{"3", "Anatolii", "Ivanov", "student@masters.com", "student", UserRoleStudent, time.Now()},
-		4: &User{"4", "Robert", "Martin", "prestudent@masters.com", "prestudent", UserRolePrestudent, time.Now()},
-		5: &User{"5", "Sidor", "Sidorov", "student2@masters.com", "student2", UserRoleStudent, time.Now()},
+	DB.Users = []User{
+		AdminID: {FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now()},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now()},
+		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
+		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
 	}
-	DB.Groups = map[ID]*Group{
-		1: &Group{"1", "18-SWE", DB.Users[2], []*User{DB.Users[3], DB.Users[5]}, time.Now()},
+	for id := 0; id < len(DB.Users); id++ {
+		user := &DB.Users[id]
+		user.StringID = strconv.Itoa(id)
+	}
+
+	DB.Groups = []Group{
+		{Name: "18-SWE", Users: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now()},
+	}
+	for id := 0; id < len(DB.Groups); id++ {
+		group := &DB.Groups[id]
+		group.StringID = strconv.Itoa(id)
 	}
 }
 

@@ -8,24 +8,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-	"unsafe"
 )
-
-type UserRole int
-
-const (
-	UserRoleAdmin = iota
-	UserRoleTeacher
-	UserRoleStudent
-	UserRolePrestudent
-)
-
-var UserRole2String = [...]string{
-	UserRoleAdmin:      "Admin",
-	UserRoleTeacher:    "Teacher",
-	UserRoleStudent:    "Student",
-	UserRolePrestudent: "Pre-student",
-}
 
 const (
 	MinUserNameLen = 1
@@ -56,37 +39,6 @@ func UserNameValid(name string) error {
 	return nil
 }
 
-func UserDisplayList(w *HTTPResponse, hl string, users []*User) {
-	if len(users) == 0 {
-		return
-	}
-
-	role := users[0].RoleID
-	w.AppendString(`<`)
-	w.AppendString(hl)
-	w.AppendString(`>`)
-	w.AppendString(UserRole2String[role])
-	w.AppendString(`s</`)
-	w.AppendString(hl)
-	w.AppendString(`>`)
-	w.AppendString(`<ul>`)
-	for _, user := range users {
-		w.AppendString(`<li>`)
-		w.AppendString(`<a href="/user/`)
-		w.WriteString(user.StringID)
-		w.AppendString(`">`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(` (ID: `)
-		w.WriteString(user.StringID)
-		w.AppendString(`)`)
-		w.AppendString(`</a>`)
-		w.AppendString(`</li>`)
-	}
-	w.AppendString(`</ul>`)
-}
-
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	buffer := make([]byte, 20)
 
@@ -99,14 +51,10 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return err
 	}
-
-	user, ok := DB.Users[id]
-	if !ok {
+	if (id < 0) || (id >= len(DB.Users)) {
 		return NotFoundError
 	}
-
-	owner := session.ID == id
-	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
+	user := DB.Users[id]
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -129,10 +77,6 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteString(user.StringID)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<p>Role: `)
-	w.AppendString(UserRole2String[user.RoleID])
-	w.AppendString(`</p>`)
-
 	w.AppendString(`<p>Email: `)
 	w.WriteHTMLString(user.Email)
 	w.AppendString(`</p>`)
@@ -141,7 +85,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.Write(user.CreatedOn.AppendFormat(buffer[:0], "2006/01/02 15:04:05"))
 	w.AppendString(`</p>`)
 
-	if (owner) || (admin) {
+	if (session.ID == id) || (session.ID == AdminID) {
 		w.AppendString(`<form method="POST" action="/user/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
@@ -159,14 +103,6 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<input type="hidden" name="Email" value="`)
 		w.WriteHTMLString(user.Email)
 		w.AppendString(`">`)
-
-		if admin {
-			buffer := make([]byte, 20)
-			n := SlicePutInt(buffer, int(user.RoleID))
-			w.AppendString(`<input type="hidden" name="RoleID" value="`)
-			w.Write(buffer[:n])
-			w.AppendString(`">`)
-		}
 
 		w.AppendString(`<input type="submit" value="Edit">`)
 
@@ -222,31 +158,6 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Role: `)
-	w.AppendString(`<select name="RoleID">`)
-
-	/* TODO(anton2920): make once, reuse later. */
-	roleID := r.Form.Get("RoleID")
-	for id, name := range UserRole2String {
-		buffer := make([]byte, 20)
-		n := SlicePutInt(buffer, id)
-		sid := unsafe.String(unsafe.SliceData(buffer), n)
-
-		w.AppendString(`<option value="`)
-		w.WriteString(sid)
-		w.AppendString(`" `)
-		if sid == roleID {
-			w.AppendString(`selected`)
-		}
-		w.AppendString(`>`)
-		w.AppendString(name)
-		w.AppendString(`</option>`)
-	}
-
-	w.AppendString(`</select>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
 	w.AppendString(`<input type="submit" value="Create">`)
 
 	w.AppendString(`</form>`)
@@ -258,8 +169,7 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
+	if _, err := GetSessionFromRequest(r); err != nil {
 		return UnauthorizedError
 	}
 
@@ -313,34 +223,6 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
-	if admin {
-		w.AppendString(`<label>Role: `)
-		w.AppendString(`<select name="RoleID">`)
-
-		/* TODO(anton2920): make once, reuse later. */
-		roleID := r.Form.Get("RoleID")
-		for id, name := range UserRole2String {
-			buffer := make([]byte, 20)
-			n := SlicePutInt(buffer, id)
-			sid := unsafe.String(unsafe.SliceData(buffer), n)
-
-			w.AppendString(`<option value="`)
-			w.WriteString(sid)
-			w.AppendString(`" `)
-			if sid == roleID {
-				w.AppendString(`selected`)
-			}
-			w.AppendString(`>`)
-			w.AppendString(name)
-			w.AppendString(`</option>`)
-		}
-
-		w.AppendString(`</select>`)
-		w.AppendString(`</label>`)
-		w.AppendString(`<br><br>`)
-	}
-
 	w.AppendString(`<input type="submit" value="Save">`)
 
 	w.AppendString(`</form>`)
@@ -392,8 +274,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
 	}
 
-	user := DB.Users[session.ID]
-	if user.RoleID != UserRoleAdmin {
+	if session.ID != AdminID {
 		return WritePage(w, r, UserCreatePageHandler, ForbiddenError)
 	}
 
@@ -422,19 +303,13 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
 	}
 
-	roleID, err := strconv.Atoi(r.Form.Get("RoleID"))
-	if (err != nil) || (roleID < 0) || (roleID >= len(UserRole2String)) {
-		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
-	}
-
-	for _, user := range DB.Users {
-		if email == user.Email {
+	for i := 0; i < len(DB.Users); i++ {
+		if email == DB.Users[i].Email {
 			return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusConflict, "user with this email already exists"))
 		}
 	}
 
-	id := len(DB.Users) + 1
-	DB.Users[id] = &User{StringID: strconv.Itoa(id), FirstName: firstName, LastName: lastName, Email: email, Password: password, RoleID: UserRole(roleID), CreatedOn: time.Now()}
+	DB.Users = append(DB.Users, User{StringID: strconv.Itoa(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
@@ -457,9 +332,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
 
-	owner := session.ID == userID
-	admin := DB.Users[session.ID].RoleID == UserRoleAdmin
-	if (!owner) && (!admin) {
+	if (session.ID != userID) && (session.ID != AdminID) {
 		return WritePage(w, r, UserEditPageHandler, ForbiddenError)
 	}
 
@@ -488,14 +361,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
 	}
 
-	user := DB.Users[userID]
-	if admin {
-		roleID, err := strconv.Atoi(r.Form.Get("RoleID"))
-		if (err != nil) || (roleID < 0) || (roleID >= len(UserRole2String)) {
-			return WritePage(w, r, UserEditPageHandler, ReloadPageError)
-		}
-		user.RoleID = UserRole(roleID)
-	}
+	user := &DB.Users[userID]
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.Email = email
@@ -512,25 +378,25 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	/* TODO(anton2920): replace with actual user checks. */
 	var id int
+	var ok bool
 	email := r.Form.Get("Email")
 	password := r.Form.Get("Password")
 
-	for i, user := range DB.Users {
+	for i := 0; i < len(DB.Users); i++ {
+		user := &DB.Users[i]
+
 		if email == user.Email {
 			if password != user.Password {
-				r.Form.Set("Error", "provided password is incorrect")
-				w.StatusCode = HTTPStatusConflict
-				return UserSigninPageHandler(w, r)
+				return WritePage(w, r, UserSigninPageHandler, NewHTTPError(HTTPStatusConflict, "provided password is incorrect"))
 			}
 
 			id = i
+			ok = true
 			break
 		}
 	}
-	if id == 0 {
-		r.Form.Set("Error", "user with this email does not exist")
-		w.StatusCode = HTTPStatusNotFound
-		return UserSigninPageHandler(w, r)
+	if !ok {
+		return WritePage(w, r, UserSigninPageHandler, NewHTTPError(HTTPStatusNotFound, "user with this email does not exist"))
 	}
 
 	token, err := GenerateSessionToken()
