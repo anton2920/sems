@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net/mail"
 	"strconv"
@@ -26,13 +25,13 @@ func UserNameValid(name string) error {
 	/* Fist character must be a letter. */
 	r, nbytes := utf8.DecodeRuneInString(name)
 	if !unicode.IsLetter(r) {
-		return errors.New("first character of the name must be a letter")
+		return Error("first character of the name must be a letter")
 	}
 
 	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
 	for _, r := range name[nbytes:] {
 		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
-			return errors.New("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
+			return Error("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
 		}
 	}
 

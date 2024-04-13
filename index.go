@@ -17,9 +17,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<a href="/api/user/signout">Sign out</a>`)
 		w.AppendString(`<br>`)
 
-		switch session.ID {
-		default:
-		case AdminID:
+		if session.ID == AdminID {
 			w.AppendString(`<h2>Users</h2>`)
 			w.AppendString(`<ul>`)
 			for _, user := range DB.Users[:min(len(DB.Users), 10)] {
@@ -60,6 +58,11 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			w.AppendString(`<input type="submit" value="Create group">`)
 			w.AppendString(`</form>`)
 		}
+
+		w.AppendString(`<h2>Courses</h2>`)
+		w.AppendString(`<form method="POST" action="/course/create">`)
+		w.AppendString(`<input type="submit" value="Create course">`)
+		w.AppendString(`</form>`)
 	} else {
 		w.AppendString(`<a href="/user/signin">Sign in</a>`)
 	}

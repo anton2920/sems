@@ -23,6 +23,11 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/":
 			return IndexPageHandler(w, r)
 		}
+	case StringStartsWith(path, "/course"):
+		switch path[len("/course"):] {
+		case "/create":
+			return CourseCreatePageHandler(w, r)
+		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		default:

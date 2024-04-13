@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"runtime"
 	"strconv"
 	"strings"
@@ -140,7 +139,7 @@ func (r *HTTPRequest) ParseForm() error {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
 		if strings.Contains(key, ";") {
-			err = errors.New("invalid semicolon separator in query")
+			err = Error("invalid semicolon separator in query")
 			continue
 		}
 		if key == "" {
@@ -152,7 +151,7 @@ func (r *HTTPRequest) ParseForm() error {
 		n, ok := URLDecode(keyBuffer, key)
 		if !ok {
 			if err == nil {
-				err = errors.New("invalid key")
+				err = Error("invalid key")
 			}
 			continue
 		}
@@ -162,7 +161,7 @@ func (r *HTTPRequest) ParseForm() error {
 		n, ok = URLDecode(valueBuffer, value)
 		if !ok {
 			if err == nil {
-				err = errors.New("invalid value")
+				err = Error("invalid value")
 			}
 			continue
 		}
@@ -445,12 +444,10 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 			}
 		}
 
+		w.StatusCode = HTTPStatusOK
 		w.Headers = w.Headers[:0]
 		w.Bodies = w.Bodies[:0]
 		router((*HTTPResponse)(Noescape(unsafe.Pointer(&w))), r)
-		if w.StatusCode == 0 {
-			w.StatusCode = HTTPStatusOK
-		}
 
 		var length int
 		for i := 0; i < len(w.Bodies); i++ {

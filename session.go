@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"encoding/gob"
-	"errors"
 	"os"
 	"sync"
 	"time"
@@ -13,6 +12,10 @@ type Session struct {
 	GobMutex
 	ID     int
 	Expiry time.Time
+
+	Draft struct {
+		Course Course
+	}
 }
 
 const OneWeek = time.Hour * 24 * 7
@@ -29,7 +32,7 @@ func GetSessionFromToken(token string) (*Session, error) {
 	session, ok := Sessions[token]
 	SessionsLock.RUnlock()
 	if !ok {
-		return nil, errors.New("session for this token does not exist")
+		return nil, Error("session for this token does not exist")
 	}
 
 	session.Lock()
@@ -40,7 +43,7 @@ func GetSessionFromToken(token string) (*Session, error) {
 		SessionsLock.Lock()
 		delete(Sessions, token)
 		SessionsLock.Unlock()
-		return nil, errors.New("session for this token has expired")
+		return nil, Error("session for this token has expired")
 	}
 
 	session.Expiry = now.Add(OneWeek)

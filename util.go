@@ -21,16 +21,21 @@ func GetIDFromURL(u URL, prefix string) (int, error) {
 	return id, nil
 }
 
+func RemoveAtIndex[T any](ts []T, i int) []T {
+	if len(ts) == 0 {
+		return ts
+	}
+
+	if i < len(ts)-1 {
+		copy(ts[i:], ts[i+1:])
+	}
+	return ts[:len(ts)-1]
+}
+
 func StringLengthInRange(s string, min, max int) bool {
 	return (utf8.RuneCountInString(s) >= min) && (utf8.RuneCountInString(s) <= max)
 }
 
 func StringStartsWith(s, prefix string) bool {
 	return (len(s) >= len(prefix)) && (s[:len(prefix)] == prefix)
-}
-
-func WritePage(w *HTTPResponse, r *HTTPRequest, handler func(*HTTPResponse, *HTTPRequest) error, err HTTPError) error {
-	r.Form.Set("Error", err.Message)
-	w.StatusCode = err.StatusCode
-	return handler(w, r)
 }
