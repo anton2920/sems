@@ -340,6 +340,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 
 	for {
 		r.Headers = r.Headers[:0]
+		r.Body = r.Body[:0]
 		r.Form = r.Form[:0]
 		rp.ContentLength = 0
 
