@@ -462,6 +462,9 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 		*wIovs = append(*wIovs, w.Headers...)
 		*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
 		*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+		if ContentTypeHTML(w.Bodies) {
+			*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
+		}
 		*wIovs = append(*wIovs, IovecForString("\r\n"))
 		*wIovs = append(*wIovs, w.Bodies...)
 
