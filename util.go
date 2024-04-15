@@ -21,6 +21,18 @@ func GetIDFromURL(u URL, prefix string) (int, error) {
 	return id, nil
 }
 
+func MoveDown[T any](vs []T, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveUp[T any](vs []T, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
 func RemoveAtIndex[T any](ts []T, i int) []T {
 	if len(ts) == 0 {
 		return ts

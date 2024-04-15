@@ -8,7 +8,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err == nil {
-		user := DB.Users[session.ID]
+		user := &DB.Users[session.ID]
 
 		w.AppendString(`<a href="/user/`)
 		w.WriteString(user.StringID)
@@ -60,6 +60,24 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 
 		w.AppendString(`<h2>Courses</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(user.Courses); i++ {
+			buffer := make([]byte, 20)
+			n := SlicePutInt(buffer, i)
+
+			course := user.Courses[i]
+			w.AppendString(`<li>`)
+			w.AppendString(`<a href="/course/`)
+			w.Write(buffer[:n])
+			w.AppendString(`">`)
+			w.WriteHTMLString(course.Name)
+			if course.Draft {
+				w.AppendString(` (draft)`)
+			}
+			w.AppendString(`</a>`)
+			w.AppendString(`</li>`)
+		}
+		w.AppendString(`</ul>`)
 		w.AppendString(`<form method="POST" action="/course/create">`)
 		w.AppendString(`<input type="submit" value="Create course">`)
 		w.AppendString(`</form>`)

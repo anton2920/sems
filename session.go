@@ -12,10 +12,6 @@ type Session struct {
 	GobMutex
 	ID     int
 	Expiry time.Time
-
-	Draft struct {
-		Course Course
-	}
 }
 
 const OneWeek = time.Hour * 24 * 7

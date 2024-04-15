@@ -25,7 +25,11 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	case StringStartsWith(path, "/course"):
 		switch path[len("/course"):] {
+		default:
+			return CoursePageHandler(w, r)
 		case "/create":
+			return CourseCreatePageHandler(w, r)
+		case "/edit":
 			return CourseCreatePageHandler(w, r)
 		}
 	case StringStartsWith(path, "/group"):
@@ -36,11 +40,6 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return GroupCreatePageHandler(w, r)
 		case "/edit":
 			return GroupEditPageHandler(w, r)
-		}
-	case StringStartsWith(path, "/subject"):
-		switch path[len("/subject"):] {
-		case "/create":
-			return SubjectCreatePageHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
@@ -60,17 +59,17 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 
 func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
+	case StringStartsWith(path, "/course"):
+		switch path[len("/course"):] {
+		case "/delete":
+			return CourseDeleteHandler(w, r)
+		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		case "/create":
 			return GroupCreateHandler(w, r)
 		case "/edit":
 			return GroupEditHandler(w, r)
-		}
-	case StringStartsWith(path, "/subject"):
-		switch path[len("/subject"):] {
-		case "/create":
-			return SubjectCreateHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {

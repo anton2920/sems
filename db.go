@@ -15,6 +15,8 @@ type User struct {
 	Email     string
 	Password  string
 	CreatedOn time.Time
+
+	Courses []*Course
 }
 
 type Group struct {
