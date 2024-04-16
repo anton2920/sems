@@ -286,7 +286,6 @@ func CourseCreateEditProgrammingVerifyRequest(vs URLValues, task *StepProgrammin
 		outputs := vs.GetMany(CheckKeys[i][CheckKeyOutput])
 
 		if len(inputs) != len(outputs) {
-			Infof("len(inputs) == %d, len(outputs) == %d", len(inputs), len(outputs))
 			return ReloadPageError
 		}
 
