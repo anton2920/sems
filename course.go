@@ -146,13 +146,10 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(course.Lessons); i++ {
 		lesson := course.Lessons[i]
 
-		buffer := make([]byte, 20)
-		n := SlicePutInt(buffer, i+1)
-
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Lesson #`)
-		w.Write(buffer[:n])
+		w.WriteInt(i + 1)
 		if lesson.Draft {
 			w.AppendString(` (draft)`)
 		}
@@ -355,12 +352,9 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 
-		buffer := make([]byte, 20)
-
 		w.AppendString(`<fieldset>`)
 		w.AppendString(`<legend>Question #`)
-		n := SlicePutInt(buffer, i+1)
-		w.Write(buffer[:n])
+		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
 		w.AppendString(`<label>Title: `)
 		w.AppendString(`<input type="text" minlength="1" maxlength="128" name="Question" value="`)
@@ -369,9 +363,6 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 		w.AppendString(`</label>`)
 		w.AppendString(`<br>`)
 
-		n = SlicePutInt(buffer, i)
-		si := unsafe.String(unsafe.SliceData(buffer), n)
-
 		w.AppendString(`<p>Answers (mark the correct ones):</p>`)
 		w.AppendString(`<ol>`)
 
@@ -379,10 +370,6 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 			question.Answers = append(question.Answers, "")
 		}
 		for j := 0; j < len(question.Answers); j++ {
-			buffer := make([]byte, 20)
-			n := SlicePutInt(buffer, j)
-			sj := unsafe.String(unsafe.SliceData(buffer), n)
-
 			answer := question.Answers[j]
 
 			if j > 0 {
@@ -392,9 +379,9 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 			w.AppendString(`<li>`)
 
 			w.AppendString(`<input type="checkbox" name="CorrectAnswer`)
-			w.WriteString(si)
+			w.WriteInt(i)
 			w.AppendString(`" value="`)
-			w.WriteString(sj)
+			w.WriteInt(j)
 			w.AppendString(`"`)
 			for k := 0; k < len(question.CorrectAnswers); k++ {
 				correctAnswer := question.CorrectAnswers[k]
@@ -407,7 +394,7 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 			w.AppendString("\r\n")
 
 			w.AppendString(`<input type="text" minlength="1" maxlength="128" name="Answer`)
-			w.WriteString(si)
+			w.WriteInt(i)
 			w.AppendString(`" value="`)
 			w.WriteHTMLString(answer)
 			w.AppendString(`" required>`)
@@ -415,24 +402,24 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 			if len(question.Answers) > 1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`.`)
-				w.WriteString(sj)
+				w.WriteInt(j)
 				w.AppendString(`" value="-" formnovalidate>`)
 				if j > 0 {
 					w.AppendString("\r\n")
 					w.AppendString(`<input type="submit" name="Command`)
-					w.WriteString(si)
+					w.WriteInt(i)
 					w.AppendString(`.`)
-					w.WriteString(sj)
+					w.WriteInt(j)
 					w.AppendString(`" value="↑" formnovalidate>`)
 				}
 				if j < len(question.Answers)-1 {
 					w.AppendString("\r\n")
 					w.AppendString(`<input type="submit" name="Command`)
-					w.WriteString(si)
+					w.WriteInt(i)
 					w.AppendString(`.`)
-					w.WriteString(sj)
+					w.WriteInt(j)
 					w.AppendString(`" value="↓" formnovalidate>`)
 				}
 			}
@@ -442,25 +429,25 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 		w.AppendString(`</ol>`)
 
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`" value="Add another answer" formnovalidate>`)
 
 		if len(test.Questions) > 1 {
 			w.AppendString(`<br><br>`)
 			w.AppendString("\r\n")
 			w.AppendString(`<input type="submit" name="Command`)
-			w.WriteString(si)
+			w.WriteInt(i)
 			w.AppendString(`" value="Delete" formnovalidate>`)
 			if i > 0 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`" value="↑" formnovalidate>`)
 			}
 			if i < len(test.Questions)-1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
@@ -483,11 +470,7 @@ func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *Step
 }
 
 func CourseCreateEditProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
-	buffer := make([]byte, 20)
-	n := SlicePutInt(buffer, int(checkType))
-
 	checks := task.Checks[checkType]
-	ssindex := unsafe.String(unsafe.SliceData(buffer), n)
 
 	w.AppendString(`<ol>`)
 	for i := 0; i < len(checks); i++ {
@@ -515,32 +498,28 @@ func CourseCreateEditProgrammingDisplayChecks(w *HTTPResponse, task *StepProgram
 
 		w.AppendString(`</label>`)
 
-		buffer := make([]byte, 20)
-		n := SlicePutInt(buffer, i)
-		si := unsafe.String(unsafe.SliceData(buffer), n)
-
 		w.AppendString("\r\n")
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`.`)
-		w.WriteString(ssindex)
+		w.WriteInt(int(checkType))
 		w.AppendString(`" value="-" formnovalidate>`)
 
 		if len(checks) > 1 {
 			if i > 0 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`.`)
-				w.WriteString(ssindex)
+				w.WriteInt(int(checkType))
 				w.AppendString(`" value="↑" formnovalidate>`)
 			}
 			if i < len(checks)-1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`.`)
-				w.WriteString(ssindex)
+				w.WriteInt(int(checkType))
 				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
@@ -669,13 +648,10 @@ func CourseCreateEditLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *
 			stepType = "Programming task"
 		}
 
-		buffer := make([]byte, 20)
-		n := SlicePutInt(buffer, i+1)
-
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Step #`)
-		w.Write(buffer[:n])
+		w.WriteInt(i + 1)
 		if draft {
 			w.AppendString(` (draft)`)
 		}
@@ -689,27 +665,24 @@ func CourseCreateEditLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *
 		w.AppendString(stepType)
 		w.AppendString(`</p>`)
 
-		n = SlicePutInt(buffer, i)
-		si := unsafe.String(unsafe.SliceData(buffer), n)
-
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`" value="Edit" formnovalidate>`)
 		w.AppendString("\r\n")
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`" value="Delete" formnovalidate>`)
 		if len(lesson.Steps) > 1 {
 			if i > 0 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
-				w.AppendString(`" value="↑", "^|" formnovalidate>`)
+				w.WriteInt(i)
+				w.AppendString(`" value="↑" formnovalidate>`)
 			}
 			if i < len(lesson.Steps)-1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
@@ -761,13 +734,10 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 	for i := 0; i < len(course.Lessons); i++ {
 		lesson := course.Lessons[i]
 
-		buffer := make([]byte, 20)
-		n := SlicePutInt(buffer, i+1)
-
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Lesson #`)
-		w.Write(buffer[:n])
+		w.WriteInt(i + 1)
 		if lesson.Draft {
 			w.AppendString(` (draft)`)
 		}
@@ -781,27 +751,24 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 		CourseLessonDisplayTheory(w, lesson.Theory)
 		w.AppendString(`</p>`)
 
-		n = SlicePutInt(buffer, i)
-		si := unsafe.String(unsafe.SliceData(buffer), n)
-
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`" value="Edit" formnovalidate>`)
 		w.AppendString("\r\n")
 		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteString(si)
+		w.WriteInt(i)
 		w.AppendString(`" value="Delete" formnovalidate>`)
 		if len(course.Lessons) > 1 {
 			if i > 0 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
-				w.AppendString(`" value="↑", "^|" formnovalidate>`)
+				w.WriteInt(i)
+				w.AppendString(`" value="↑" formnovalidate>`)
 			}
 			if i < len(course.Lessons)-1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteString(si)
+				w.WriteInt(i)
 				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}

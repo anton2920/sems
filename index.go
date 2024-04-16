@@ -64,13 +64,10 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<h2>Courses</h2>`)
 		w.AppendString(`<ul>`)
 		for i := 0; i < len(user.Courses); i++ {
-			buffer := make([]byte, 20)
-			n := SlicePutInt(buffer, i)
-
 			course := user.Courses[i]
 			w.AppendString(`<li>`)
 			w.AppendString(`<a href="/course/`)
-			w.Write(buffer[:n])
+			w.WriteInt(i)
 			w.AppendString(`">`)
 			w.WriteHTMLString(course.Name)
 			if course.Draft {

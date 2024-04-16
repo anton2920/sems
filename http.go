@@ -276,6 +276,14 @@ func (w *HTTPResponse) WriteHTML(b []byte) {
 	w.Write(b[last:])
 }
 
+func (w *HTTPResponse) WriteInt(i int) (int, error) {
+	buffer := w.Arena.NewSlice(20)
+	n := SlicePutInt(buffer, i)
+	w.Append(buffer[:n])
+
+	return n, nil
+}
+
 func (w *HTTPResponse) WriteString(s string) (int, error) {
 	return w.Write(unsafe.Slice(unsafe.StringData(s), len(s)))
 }

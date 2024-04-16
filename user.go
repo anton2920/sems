@@ -39,8 +39,6 @@ func UserNameValid(name string) error {
 }
 
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	buffer := make([]byte, 20)
-
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
@@ -81,7 +79,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
-	w.Write(user.CreatedOn.AppendFormat(buffer[:0], "2006/01/02 15:04:05"))
+	w.Write(user.CreatedOn.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 	w.AppendString(`</p>`)
 
 	if (session.ID == id) || (session.ID == AdminID) {
