@@ -1158,6 +1158,19 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 		lesson := course.Lessons[li]
+
+		for si := 0; si < len(lesson.Steps); si++ {
+			switch step := lesson.Steps[si].(type) {
+			case *StepTest:
+				if step.Draft {
+					return WritePageEx(w, r, CourseCreateLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
+				}
+			case *StepProgramming:
+				if step.Draft {
+					return WritePageEx(w, r, CourseCreateLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
+				}
+			}
+		}
 		lesson.Draft = false
 
 		return CourseCreateCoursePageHandler(w, r, course)
@@ -1195,6 +1208,7 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 		lesson := course.Lessons[li]
+		lesson.Draft = true
 
 		test := new(StepTest)
 		test.Draft = true
@@ -1208,6 +1222,7 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 		lesson := course.Lessons[li]
+		lesson.Draft = true
 
 		task := new(StepProgramming)
 		task.Draft = true
@@ -1215,7 +1230,38 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
 		return CourseCreateProgrammingPageHandler(w, r, task)
+	case "Create":
+		return CourseCreateHandler(w, r)
 	}
+}
+
+func CourseCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+	user := &DB.Users[session.ID]
+
+	if err := r.ParseForm(); err != nil {
+		return ReloadPageError
+	}
+
+	ci, err := strconv.Atoi(r.Form.Get("CourseIndex"))
+	if (err != nil) || (ci < 0) || (ci >= len(user.Courses)) {
+		return ReloadPageError
+	}
+	course := user.Courses[ci]
+
+	for li := 0; li < len(course.Lessons); li++ {
+		lesson := course.Lessons[li]
+		if lesson.Draft {
+			return WritePageEx(w, r, CourseCreateCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
+		}
+	}
+	course.Draft = false
+
+	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/course/%d", ci), HTTPStatusSeeOther)
+	return nil
 }
 
 func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
