@@ -20,7 +20,9 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		if session.ID == AdminID {
 			w.AppendString(`<h2>Users</h2>`)
 			w.AppendString(`<ul>`)
-			for _, user := range DB.Users[:min(len(DB.Users), 10)] {
+			for i := 0; i < min(len(DB.Users), 10); i++ {
+				user := &DB.Users[i]
+
 				w.AppendString(`<li>`)
 				w.AppendString(`<a href="/user/`)
 				w.WriteString(user.StringID)

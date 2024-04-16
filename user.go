@@ -53,7 +53,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if (id < 0) || (id >= len(DB.Users)) {
 		return NotFoundError
 	}
-	user := DB.Users[id]
+	user := &DB.Users[id]
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)

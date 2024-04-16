@@ -27,10 +27,8 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		switch path[len("/course"):] {
 		default:
 			return CoursePageHandler(w, r)
-		case "/create":
-			return CourseCreatePageHandler(w, r)
-		case "/edit":
-			return CourseCreatePageHandler(w, r)
+		case "/create", "/edit":
+			return CourseCreateEditPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {

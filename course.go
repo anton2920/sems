@@ -194,7 +194,7 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func CourseCreateCourseVerifyRequest(vs URLValues, course *Course) error {
+func CourseCreateEditCourseVerifyRequest(vs URLValues, course *Course) error {
 	course.Name = vs.Get("Name")
 	if !StringLengthInRange(course.Name, MinNameLen, MaxNameLen) {
 		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
@@ -203,7 +203,7 @@ func CourseCreateCourseVerifyRequest(vs URLValues, course *Course) error {
 	return nil
 }
 
-func CourseCreateLessonVerifyRequest(vs URLValues, lesson *Lesson) error {
+func CourseCreateEditLessonVerifyRequest(vs URLValues, lesson *Lesson) error {
 	lesson.Name = vs.Get("Name")
 	if !StringLengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
 		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
@@ -217,7 +217,7 @@ func CourseCreateLessonVerifyRequest(vs URLValues, lesson *Lesson) error {
 	return nil
 }
 
-func CourseCreateTestVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
+func CourseCreateEditTestVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
 	test.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen)) {
 		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
@@ -271,7 +271,7 @@ func CourseCreateTestVerifyRequest(vs URLValues, test *StepTest, shouldCheck boo
 	return nil
 }
 
-func CourseCreateProgrammingVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
+func CourseCreateEditProgrammingVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
 	task.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen)) {
 		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
@@ -315,7 +315,7 @@ func CourseCreateProgrammingVerifyRequest(vs URLValues, task *StepProgramming, s
 	return nil
 }
 
-func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
+func CourseCreateEditTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Test</title></head>`)
 	w.AppendString(`<body>`)
@@ -324,7 +324,9 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 
 	ErrorDiv(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(r.URL.Path)
+	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Test">`)
 
@@ -480,7 +482,7 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 	return nil
 }
 
-func CourseCreateProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
+func CourseCreateEditProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
 	buffer := make([]byte, 20)
 	n := SlicePutInt(buffer, int(checkType))
 
@@ -548,7 +550,7 @@ func CourseCreateProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming
 	w.AppendString(`</ol>`)
 }
 
-func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
+func CourseCreateEditProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Programming task</title></head>`)
 	w.AppendString(`<body>`)
@@ -557,7 +559,9 @@ func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *S
 
 	ErrorDiv(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(r.URL.Path)
+	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Programming">`)
 
@@ -588,11 +592,11 @@ func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *S
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<h3>Examples</h3>`)
-	CourseCreateProgrammingDisplayChecks(w, task, CheckTypeExample)
+	CourseCreateEditProgrammingDisplayChecks(w, task, CheckTypeExample)
 	w.AppendString(`<input type="submit" name="Command" value="Add example">`)
 
 	w.AppendString(`<h3>Tests</h3>`)
-	CourseCreateProgrammingDisplayChecks(w, task, CheckTypeTest)
+	CourseCreateEditProgrammingDisplayChecks(w, task, CheckTypeTest)
 	w.AppendString(`<input type="submit" name="Command" value="Add test">`)
 
 	w.AppendString(`<br><br>`)
@@ -610,7 +614,7 @@ func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *S
 	return nil
 }
 
-func CourseCreateLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
+func CourseCreateEditLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create lesson</title></head>`)
 	w.AppendString(`<body>`)
@@ -619,7 +623,9 @@ func CourseCreateLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 
 	ErrorDiv(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(r.URL.Path)
+	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Lesson">`)
 
@@ -727,16 +733,17 @@ func CourseCreateLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 	return nil
 }
 
-func CourseCreateCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Course) error {
+func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Course) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create course</title></head>`)
 	w.AppendString(`<body>`)
 	w.AppendString(`<h1>Course</h1>`)
-	w.AppendString(`<h2>Create</h2>`)
 
 	ErrorDiv(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(r.URL.Path)
+	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Course">`)
 
@@ -806,7 +813,7 @@ func CourseCreateCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Cour
 	w.AppendString(`<input type="submit" name="NextPage" value="Add lesson">`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Create">`)
+	w.AppendString(`<input type="submit" name="NextPage" value="Save">`)
 
 	w.AppendString(`</form>`)
 
@@ -816,7 +823,7 @@ func CourseCreateCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Cour
 	return nil
 }
 
-func CourseCreateGetIndicies(indicies string) (pindex int, spindex string, sindex int, ssindex string, err error) {
+func CourseCreateEditGetIndicies(indicies string) (pindex int, spindex string, sindex int, ssindex string, err error) {
 	if len(indicies) == 0 {
 		return
 	}
@@ -834,8 +841,8 @@ func CourseCreateGetIndicies(indicies string) (pindex int, spindex string, sinde
 	return
 }
 
-func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, currentPage, k, command string) error {
-	pindex, spindex, sindex, ssindex, err := CourseCreateGetIndicies(k[len("Command"):])
+func CourseCreateEditHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, currentPage, k, command string) error {
+	pindex, spindex, sindex, ssindex, err := CourseCreateEditGetIndicies(k[len("Command"):])
 	if err != nil {
 		return ReloadPageError
 	}
@@ -855,14 +862,14 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			lesson.Draft = true
 
 			r.Form.Set("LessonIndex", spindex)
-			return CourseCreateLessonPageHandler(w, r, lesson)
+			return CourseCreateEditLessonPageHandler(w, r, lesson)
 		case "↑", "^|":
 			MoveUp(course.Lessons, pindex)
 		case "↓", "|v":
 			MoveDown(course.Lessons, pindex)
 		}
 
-		return CourseCreateCoursePageHandler(w, r, course)
+		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Lesson":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -885,10 +892,10 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 				panic("invalid step type")
 			case *StepTest:
 				step.Draft = true
-				return CourseCreateTestPageHandler(w, r, step)
+				return CourseCreateEditTestPageHandler(w, r, step)
 			case *StepProgramming:
 				step.Draft = true
-				return CourseCreateProgrammingPageHandler(w, r, step)
+				return CourseCreateEditProgrammingPageHandler(w, r, step)
 			}
 		case "↑", "^|":
 			MoveUp(lesson.Steps, pindex)
@@ -896,7 +903,7 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			MoveDown(lesson.Steps, pindex)
 		}
 
-		return CourseCreateLessonPageHandler(w, r, lesson)
+		return CourseCreateEditLessonPageHandler(w, r, lesson)
 	case "Test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -913,7 +920,7 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			return ReloadPageError
 		}
 
-		if err := CourseCreateTestVerifyRequest(r.Form, test, false); err != nil {
+		if err := CourseCreateEditTestVerifyRequest(r.Form, test, false); err != nil {
 			return err
 		}
 
@@ -1001,7 +1008,7 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			}
 		}
 
-		return CourseCreateTestPageHandler(w, r, test)
+		return CourseCreateEditTestPageHandler(w, r, test)
 
 	case "Programming":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -1019,7 +1026,7 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			return ReloadPageError
 		}
 
-		if err := CourseCreateProgrammingVerifyRequest(r.Form, task, false); err != nil {
+		if err := CourseCreateEditProgrammingVerifyRequest(r.Form, task, false); err != nil {
 			return err
 		}
 
@@ -1045,12 +1052,12 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 			MoveDown(task.Checks[sindex], pindex)
 		}
 
-		return CourseCreateProgrammingPageHandler(w, r, task)
+		return CourseCreateEditProgrammingPageHandler(w, r, task)
 	}
 	return nil
 }
 
-func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
@@ -1089,15 +1096,15 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if StringStartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return CourseCreateHandleCommand(w, r, course, currentPage, k, v)
+			return CourseCreateEditHandleCommand(w, r, course, currentPage, k, v)
 		}
 	}
 
 	/* 'currentPage' is the page to check before leaving it. */
 	switch currentPage {
 	case "Course":
-		if err := CourseCreateCourseVerifyRequest(r.Form, course); err != nil {
-			return WritePageEx(w, r, CourseCreateCoursePageHandler, course, err)
+		if err := CourseCreateEditCourseVerifyRequest(r.Form, course); err != nil {
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
 		}
 	case "Lesson":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -1106,8 +1113,8 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson := course.Lessons[li]
 
-		if err := CourseCreateLessonVerifyRequest(r.Form, lesson); err != nil {
-			return WritePageEx(w, r, CourseCreateLessonPageHandler, lesson, err)
+		if err := CourseCreateEditLessonVerifyRequest(r.Form, lesson); err != nil {
+			return WritePageEx(w, r, CourseCreateEditLessonPageHandler, lesson, err)
 		}
 	case "Test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -1125,8 +1132,8 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := CourseCreateTestVerifyRequest(r.Form, test, true); err != nil {
-			return WritePageEx(w, r, CourseCreateTestPageHandler, test, err)
+		if err := CourseCreateEditTestVerifyRequest(r.Form, test, true); err != nil {
+			return WritePageEx(w, r, CourseCreateEditTestPageHandler, test, err)
 		}
 	case "Programming":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -1144,14 +1151,14 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := CourseCreateProgrammingVerifyRequest(r.Form, task, true); err != nil {
-			return WritePageEx(w, r, CourseCreateProgrammingPageHandler, task, err)
+		if err := CourseCreateEditProgrammingVerifyRequest(r.Form, task, true); err != nil {
+			return WritePageEx(w, r, CourseCreateEditProgrammingPageHandler, task, err)
 		}
 	}
 
 	switch nextPage {
 	default:
-		return CourseCreateCoursePageHandler(w, r, course)
+		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Next":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -1163,24 +1170,24 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, CourseCreateLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, CourseCreateEditLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, CourseCreateLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, CourseCreateEditLessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
 				}
 			}
 		}
 		lesson.Draft = false
 
-		return CourseCreateCoursePageHandler(w, r, course)
+		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Add lesson":
 		lesson := new(Lesson)
 		lesson.Draft = true
 		course.Lessons = append(course.Lessons, lesson)
 
 		r.Form.Set("LessonIndex", strconv.Itoa(len(course.Lessons)-1))
-		return CourseCreateLessonPageHandler(w, r, lesson)
+		return CourseCreateEditLessonPageHandler(w, r, lesson)
 	case "Continue":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -1201,7 +1208,7 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			step.Draft = false
 		}
 
-		return CourseCreateLessonPageHandler(w, r, lesson)
+		return CourseCreateEditLessonPageHandler(w, r, lesson)
 	case "Add test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -1215,7 +1222,7 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, test)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return CourseCreateTestPageHandler(w, r, test)
+		return CourseCreateEditTestPageHandler(w, r, test)
 	case "Add programming task":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -1229,13 +1236,13 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, task)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return CourseCreateProgrammingPageHandler(w, r, task)
-	case "Create":
-		return CourseCreateHandler(w, r)
+		return CourseCreateEditProgrammingPageHandler(w, r, task)
+	case "Save":
+		return CourseCreateEditHandler(w, r)
 	}
 }
 
-func CourseCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
@@ -1252,10 +1259,13 @@ func CourseCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	course := user.Courses[ci]
 
+	if len(course.Lessons) == 0 {
+		return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, "create at least one lesson"))
+	}
 	for li := 0; li < len(course.Lessons); li++ {
 		lesson := course.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, CourseCreateCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
 		}
 	}
 	course.Draft = false

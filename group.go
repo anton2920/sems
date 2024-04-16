@@ -122,7 +122,9 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<label>Users:<br>`)
 	w.AppendString(`<select name="UserID" multiple>`)
 	ids := r.Form.GetMany("UserID")
-	for _, user := range DB.Users[AdminID+1:] {
+	for i := AdminID + 1; i < len(DB.Users); i++ {
+		user := &DB.Users[i]
+
 		w.AppendString(`<option value="`)
 		w.WriteString(user.StringID)
 		w.AppendString(`"`)
@@ -185,7 +187,9 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<label>Users:<br>`)
 	w.AppendString(`<select name="UserID" multiple>`)
 	ids := r.Form.GetMany("UserID")
-	for _, user := range DB.Users[AdminID+1:] {
+	for i := AdminID + 1; i < len(DB.Users); i++ {
+		user := &DB.Users[i]
+
 		w.AppendString(`<option value="`)
 		w.WriteString(user.StringID)
 		w.AppendString(`"`)
