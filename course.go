@@ -8,11 +8,28 @@ import (
 	"unsafe"
 )
 
+type CheckType int
+
+const (
+	CheckTypeExample CheckType = iota
+	CheckTypeTest
+)
+
+const (
+	CheckKeyDisplay = iota
+	CheckKeyInput
+	CheckKeyOutput
+)
+
 type (
 	Question struct {
 		Name           string
 		Answers        []string
 		CorrectAnswers []int
+	}
+	Check struct {
+		Input  string
+		Output string
 	}
 
 	StepTest struct {
@@ -25,8 +42,7 @@ type (
 	StepProgramming struct {
 		Name        string
 		Description string
-		Inputs      []string
-		Outputs     []string
+		Checks      [2][]Check
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
@@ -58,13 +74,23 @@ const (
 	MinTheoryLen = 1
 	MaxTheoryLen = 1024
 
-	MinTestNameLen = 1
-	MaxTestNameLen = 128
+	MinStepNameLen = 1
+	MaxStepNameLen = 128
 	MinQuestionLen = 1
 	MaxQuestionLen = 128
 	MinAnswerLen   = 1
 	MaxAnswerLen   = 128
+
+	MinDescriptionLen = 1
+	MaxDescriptionLen = 1024
+	MinCheckLen       = 1
+	MaxCheckLen       = 512
 )
+
+var CheckKeys = [2][3]string{
+	CheckTypeExample: {CheckKeyDisplay: "example", CheckKeyInput: "ExampleInput", CheckKeyOutput: "ExampleOutput"},
+	CheckTypeTest:    {CheckKeyDisplay: "test", CheckKeyInput: "TestInput", CheckKeyOutput: "TestOutput"},
+}
 
 func init() {
 	gob.Register(&StepTest{})
@@ -193,8 +219,8 @@ func CourseCreateLessonVerifyRequest(vs URLValues, lesson *Lesson) error {
 
 func CourseCreateTestVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
 	test.Name = vs.Get("Name")
-	if (shouldCheck) && (!StringLengthInRange(test.Name, MinTestNameLen, MaxTestNameLen)) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
+	if (shouldCheck) && (!StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen)) {
+		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
 	}
 
 	questions := vs.GetMany("Question")
@@ -241,6 +267,50 @@ func CourseCreateTestVerifyRequest(vs URLValues, test *StepTest, shouldCheck boo
 		question.CorrectAnswers = question.CorrectAnswers[:len(correctAnswers)]
 	}
 	test.Questions = test.Questions[:len(questions)]
+
+	return nil
+}
+
+func CourseCreateProgrammingVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
+	task.Name = vs.Get("Name")
+	if (shouldCheck) && (!StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen)) {
+		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
+	}
+
+	task.Description = vs.Get("Description")
+	if (shouldCheck) && (!StringLengthInRange(task.Name, MinDescriptionLen, MaxDescriptionLen)) {
+		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen))
+	}
+
+	for i := 0; i < len(CheckKeys); i++ {
+		checks := &task.Checks[i]
+
+		inputs := vs.GetMany(CheckKeys[i][CheckKeyInput])
+		outputs := vs.GetMany(CheckKeys[i][CheckKeyOutput])
+
+		if len(inputs) != len(outputs) {
+			Infof("len(inputs) == %d, len(outputs) == %d", len(inputs), len(outputs))
+			return ReloadPageError
+		}
+
+		for j := 0; j < len(inputs); j++ {
+			if j >= len(*checks) {
+				*checks = append(*checks, Check{})
+			}
+			check := &(*checks)[j]
+
+			check.Input = inputs[j]
+			check.Output = outputs[j]
+
+			if (shouldCheck) && (!StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen)) {
+				return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+			}
+
+			if (shouldCheck) && (!StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen)) {
+				return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+			}
+		}
+	}
 
 	return nil
 }
@@ -353,7 +423,7 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 					w.WriteString(si)
 					w.AppendString(`.`)
 					w.WriteString(sj)
-					w.AppendString(`" value="↑", "^|" formnovalidate>`)
+					w.AppendString(`" value="↑" formnovalidate>`)
 				}
 				if j < len(question.Answers)-1 {
 					w.AppendString("\r\n")
@@ -361,7 +431,7 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 					w.WriteString(si)
 					w.AppendString(`.`)
 					w.WriteString(sj)
-					w.AppendString(`" value="↓", "|v" formnovalidate>`)
+					w.AppendString(`" value="↓" formnovalidate>`)
 				}
 			}
 
@@ -383,13 +453,13 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
 				w.WriteString(si)
-				w.AppendString(`" value="↑", "^|" formnovalidate>`)
+				w.AppendString(`" value="↑" formnovalidate>`)
 			}
 			if i < len(test.Questions)-1 {
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
 				w.WriteString(si)
-				w.AppendString(`" value="↓", "|v" formnovalidate>`)
+				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
 
@@ -408,6 +478,74 @@ func CourseCreateTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest
 	w.AppendString(`</html>`)
 
 	return nil
+}
+
+func CourseCreateProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
+	buffer := make([]byte, 20)
+	n := SlicePutInt(buffer, int(checkType))
+
+	checks := task.Checks[checkType]
+	ssindex := unsafe.String(unsafe.SliceData(buffer), n)
+
+	w.AppendString(`<ol>`)
+	for i := 0; i < len(checks); i++ {
+		check := &checks[i]
+
+		w.AppendString(`<li>`)
+
+		w.AppendString(`<label>Input: `)
+
+		w.AppendString(`<textarea rows="1" minlength ="1" maxlength="512" name="`)
+		w.AppendString(CheckKeys[checkType][CheckKeyInput])
+		w.AppendString(`">`)
+		w.WriteHTMLString(check.Input)
+		w.AppendString(`</textarea>`)
+
+		w.AppendString(`</label>`)
+		w.AppendString("\r\n")
+		w.AppendString(`<label>output: `)
+
+		w.AppendString(`<textarea rows="1" minlength ="1" maxlength="512" name="`)
+		w.AppendString(CheckKeys[checkType][CheckKeyOutput])
+		w.AppendString(`">`)
+		w.WriteHTMLString(check.Output)
+		w.AppendString(`</textarea>`)
+
+		w.AppendString(`</label>`)
+
+		buffer := make([]byte, 20)
+		n := SlicePutInt(buffer, i)
+		si := unsafe.String(unsafe.SliceData(buffer), n)
+
+		w.AppendString("\r\n")
+		w.AppendString(`<input type="submit" name="Command`)
+		w.WriteString(si)
+		w.AppendString(`.`)
+		w.WriteString(ssindex)
+		w.AppendString(`" value="-" formnovalidate>`)
+
+		if len(checks) > 1 {
+			if i > 0 {
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Command`)
+				w.WriteString(si)
+				w.AppendString(`.`)
+				w.WriteString(ssindex)
+				w.AppendString(`" value="↑" formnovalidate>`)
+			}
+			if i < len(checks)-1 {
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Command`)
+				w.WriteString(si)
+				w.AppendString(`.`)
+				w.WriteString(ssindex)
+				w.AppendString(`" value="↓" formnovalidate>`)
+			}
+		}
+
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ol>`)
 }
 
 func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
@@ -450,9 +588,14 @@ func CourseCreateProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *S
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<h3>Examples</h3>`)
+	CourseCreateProgrammingDisplayChecks(w, task, CheckTypeExample)
+	w.AppendString(`<input type="submit" name="Command" value="Add example">`)
 
 	w.AppendString(`<h3>Tests</h3>`)
+	CourseCreateProgrammingDisplayChecks(w, task, CheckTypeTest)
+	w.AppendString(`<input type="submit" name="Command" value="Add test">`)
 
+	w.AppendString(`<br><br>`)
 	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
 
 	w.AppendString(`</form>`)
@@ -561,7 +704,7 @@ func CourseCreateLessonPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
 				w.WriteString(si)
-				w.AppendString(`" value="↓", "|v" formnovalidate>`)
+				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
 
@@ -652,7 +795,7 @@ func CourseCreateCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Cour
 				w.AppendString("\r\n")
 				w.AppendString(`<input type="submit" name="Command`)
 				w.WriteString(si)
-				w.AppendString(`" value="↓", "|v" formnovalidate>`)
+				w.AppendString(`" value="↓" formnovalidate>`)
 			}
 		}
 
@@ -859,6 +1002,50 @@ func CourseCreateHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, 
 		}
 
 		return CourseCreateTestPageHandler(w, r, test)
+
+	case "Programming":
+		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
+		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
+			return ReloadPageError
+		}
+		lesson := course.Lessons[li]
+
+		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
+		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
+			return ReloadPageError
+		}
+		task, ok := lesson.Steps[si].(*StepProgramming)
+		if !ok {
+			return ReloadPageError
+		}
+
+		if err := CourseCreateProgrammingVerifyRequest(r.Form, task, false); err != nil {
+			return err
+		}
+
+		switch command {
+		case "Add example":
+			task.Checks[CheckTypeExample] = append(task.Checks[CheckTypeExample], Check{})
+		case "Add test":
+			task.Checks[CheckTypeTest] = append(task.Checks[CheckTypeTest], Check{})
+		case "-":
+			if (sindex < 0) || (sindex >= len(task.Checks)) {
+				return ReloadPageError
+			}
+			task.Checks[sindex] = RemoveAtIndex(task.Checks[sindex], pindex)
+		case "↑", "^|":
+			if (sindex < 0) || (sindex >= len(task.Checks)) {
+				return ReloadPageError
+			}
+			MoveUp(task.Checks[sindex], pindex)
+		case "↓", "|v":
+			if (sindex < 0) || (sindex >= len(task.Checks)) {
+				return ReloadPageError
+			}
+			MoveDown(task.Checks[sindex], pindex)
+		}
+
+		return CourseCreateProgrammingPageHandler(w, r, task)
 	}
 	return nil
 }
@@ -942,6 +1129,24 @@ func CourseCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, CourseCreateTestPageHandler, test, err)
 		}
 	case "Programming":
+		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
+		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
+			return ReloadPageError
+		}
+		lesson := course.Lessons[li]
+
+		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
+		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
+			return ReloadPageError
+		}
+		task, ok := lesson.Steps[si].(*StepProgramming)
+		if !ok {
+			return ReloadPageError
+		}
+
+		if err := CourseCreateProgrammingVerifyRequest(r.Form, task, true); err != nil {
+			return WritePageEx(w, r, CourseCreateProgrammingPageHandler, task, err)
+		}
 	}
 
 	switch nextPage {
@@ -1028,6 +1233,8 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if (err != nil) || (id < 0) || (id > len(user.Courses)) {
 		return ReloadPageError
 	}
+
+	/* TODO(anton2920): this will screw up indicies for courses that are being edited. */
 	user.Courses = RemoveAtIndex(user.Courses, id)
 
 	w.RedirectString("/", HTTPStatusSeeOther)

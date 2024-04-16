@@ -344,6 +344,7 @@ func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *
 		r.Form = r.Form[:0]
 		rp.ContentLength = 0
 
+		/* BUG(anton2920): (*CircularBuffer).Consume allows parts of the request to be overwritten. */
 		for rp.State != HTTPStateDone {
 			switch rp.State {
 			default:
