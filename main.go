@@ -100,7 +100,7 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 		return HandleAPIRequest(w, r, path[len(APIPrefix):])
 
 	case path == "/error":
-		return TryAgainLaterError
+		return WrapErrorWithTrace(WrapErrorWithTrace(TryAgainLaterError))
 	case path == "/panic":
 		panic("test panic")
 	}

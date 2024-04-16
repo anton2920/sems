@@ -58,7 +58,7 @@ func GenerateSessionToken() (string, error) {
 	token := make([]byte, (n+2)/3*4)
 
 	if _, err := Getrandom(buffer, 0); err != nil {
-		return "", err
+		return "", WrapErrorWithTrace(err)
 	}
 
 	base64.StdEncoding.Encode(token, buffer)
@@ -69,7 +69,7 @@ func GenerateSessionToken() (string, error) {
 func StoreSessionsToFile(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 	defer f.Close()
 
@@ -78,7 +78,7 @@ func StoreSessionsToFile(filename string) error {
 	defer SessionsLock.Unlock()
 
 	if err := enc.Encode(Sessions); err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 
 	return nil
@@ -87,13 +87,13 @@ func StoreSessionsToFile(filename string) error {
 func RestoreSessionsFromFile(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 	defer f.Close()
 
 	dec := gob.NewDecoder(f)
 	if err := dec.Decode(&Sessions); err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 
 	return nil

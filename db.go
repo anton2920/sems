@@ -59,12 +59,12 @@ func init() {
 func StoreDBToFile(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 	defer f.Close()
 
 	if err := gob.NewEncoder(f).Encode(DB); err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 
 	return nil
@@ -73,12 +73,12 @@ func StoreDBToFile(filename string) error {
 func RestoreDBFromFile(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 	defer f.Close()
 
 	if err := gob.NewDecoder(f).Decode(&DB); err != nil {
-		return err
+		return WrapErrorWithTrace(err)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"runtime/debug"
 )
 
@@ -87,6 +88,14 @@ func (e PanicError) Error() string {
 	buffer = fmt.Appendf(buffer, "%v\n", e.Value)
 	buffer = append(buffer, e.Trace...)
 	return string(buffer)
+}
+
+func WrapErrorWithTrace(err error) error {
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		return err
+	}
+	return fmt.Errorf("%s:%d: %w", file, line, err)
 }
 
 func ErrorDiv(w *HTTPResponse, e string) {
