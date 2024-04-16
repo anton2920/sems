@@ -39,6 +39,11 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/edit":
 			return GroupEditPageHandler(w, r)
 		}
+	case StringStartsWith(path, "/subject"):
+		switch path[len("/subject"):] {
+		case "/create":
+			return SubjectCreatePageHandler(w, r)
+		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		default:
@@ -68,6 +73,11 @@ func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return GroupCreateHandler(w, r)
 		case "/edit":
 			return GroupEditHandler(w, r)
+		}
+	case StringStartsWith(path, "/subject"):
+		switch path[len("/subject"):] {
+		case "/create":
+			return SubjectCreateHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {

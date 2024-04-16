@@ -8,31 +8,42 @@ import (
 	"time"
 )
 
-type User struct {
-	StringID  string
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
-	CreatedOn time.Time
+type (
+	Group struct {
+		StringID  string
+		Name      string
+		Users     []*User
+		CreatedOn time.Time
+	}
 
-	Courses []*Course
-}
+	Subject struct {
+		StringID  string
+		Name      string
+		Teacher   *User
+		Group     *Group
+		CreatedOn time.Time
+	}
 
-type Group struct {
-	StringID  string
-	Name      string
-	Users     []*User
-	CreatedOn time.Time
-}
+	User struct {
+		StringID  string
+		FirstName string
+		LastName  string
+		Email     string
+		Password  string
+		CreatedOn time.Time
+
+		Courses []*Course
+	}
+)
 
 const AdminID = 0
 
 const DBFile = "db.gob"
 
 var DB struct {
-	Users  []User
-	Groups []Group
+	Users    []User
+	Groups   []Group
+	Subjects []Subject
 }
 
 func init() {

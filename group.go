@@ -11,6 +11,7 @@ const (
 	MaxGroupNameLen = 15
 )
 
+/* TODO(anton2920): display group only to its members. */
 func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -92,8 +93,12 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	if _, err := GetSessionFromRequest(r); err != nil {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
 		return UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
@@ -153,8 +158,12 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	if _, err := GetSessionFromRequest(r); err != nil {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
 		return UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
