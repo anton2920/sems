@@ -16,6 +16,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return UnauthorizedError
 	}
+	_ = session
 
 	id, err := GetIDFromURL(r.URL, "/subject/")
 	if err != nil {
@@ -44,29 +45,29 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteString(subject.StringID)
+	w.WriteInt(subject.ID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Teacher: `)
 	w.AppendString(`<a href="/user/`)
-	w.WriteString(subject.Teacher.StringID)
+	w.WriteInt(subject.Teacher.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(subject.Teacher.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(subject.Teacher.FirstName)
 	w.AppendString(` (ID: `)
-	w.WriteString(subject.Teacher.StringID)
+	w.WriteInt(subject.Teacher.ID)
 	w.AppendString(`)`)
 	w.AppendString(`</a>`)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Group: `)
 	w.AppendString(`<a href="/group/`)
-	w.WriteString(subject.Group.StringID)
+	w.WriteInt(subject.Group.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(subject.Group.Name)
 	w.AppendString(` (ID: `)
-	w.WriteString(subject.Group.StringID)
+	w.WriteInt(subject.Group.ID)
 	w.AppendString(`)`)
 	w.AppendString(`</a>`)
 	w.AppendString(`</p>`)
@@ -116,10 +117,14 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		user := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteString(user.StringID)
+		w.WriteInt(user.ID)
 		w.AppendString(`"`)
-		for _, id := range ids {
-			if id == user.StringID {
+		for j := 0; j < len(ids); j++ {
+			id, err := strconv.Atoi(ids[j])
+			if err != nil {
+				return ReloadPageError
+			}
+			if id == user.ID {
 				w.AppendString(` selected`)
 			}
 		}
@@ -140,10 +145,14 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		group := &DB.Groups[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteString(group.StringID)
+		w.WriteInt(group.ID)
 		w.AppendString(`"`)
-		for _, id := range ids {
-			if id == group.StringID {
+		for j := 0; j < len(ids); j++ {
+			id, err := strconv.Atoi(ids[j])
+			if err != nil {
+				return ReloadPageError
+			}
+			if id == group.ID {
 				w.AppendString(` selected`)
 			}
 		}
@@ -194,7 +203,7 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	group := &DB.Groups[groupID]
 
-	DB.Subjects = append(DB.Subjects, Subject{StringID: strconv.Itoa(len(DB.Subjects)), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now()})
+	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now()})
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil

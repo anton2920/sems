@@ -41,7 +41,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteString(group.StringID)
+	w.WriteInt(group.ID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
@@ -53,13 +53,13 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for _, user := range group.Users {
 		w.AppendString(`<li>`)
 		w.AppendString(`<a href="/user/`)
-		w.WriteString(user.StringID)
+		w.WriteInt(user.ID)
 		w.AppendString(`">`)
 		w.WriteHTMLString(user.LastName)
 		w.AppendString(` `)
 		w.WriteHTMLString(user.FirstName)
 		w.AppendString(` (ID: `)
-		w.WriteString(user.StringID)
+		w.WriteInt(user.ID)
 		w.AppendString(`)`)
 		w.AppendString(`</a>`)
 		w.AppendString(`</li>`)
@@ -80,7 +80,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for i := 0; i < len(group.Users); i++ {
 			user := group.Users[i]
 			w.AppendString(`<input type="hidden" name="UserID" value="`)
-			w.WriteString(user.StringID)
+			w.WriteInt(user.ID)
 			w.AppendString(`">`)
 		}
 
@@ -131,10 +131,14 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		user := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteString(user.StringID)
+		w.WriteInt(user.ID)
 		w.AppendString(`"`)
-		for _, id := range ids {
-			if id == user.StringID {
+		for j := 0; j < len(ids); j++ {
+			id, err := strconv.Atoi(ids[j])
+			if err != nil {
+				return ReloadPageError
+			}
+			if id == user.ID {
 				w.AppendString(` selected`)
 			}
 		}
@@ -200,10 +204,14 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		user := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteString(user.StringID)
+		w.WriteInt(user.ID)
 		w.AppendString(`"`)
-		for _, id := range ids {
-			if id == user.StringID {
+		for j := 0; j < len(ids); j++ {
+			id, err := strconv.Atoi(ids[j])
+			if err != nil {
+				return ReloadPageError
+			}
+			if id == user.ID {
 				w.AppendString(` selected`)
 			}
 		}
@@ -253,7 +261,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		users[i] = &DB.Users[id]
 	}
-	DB.Groups = append(DB.Groups, Group{StringID: strconv.Itoa(len(DB.Groups)), Name: name, Users: users, CreatedOn: time.Now()})
+	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Users: users, CreatedOn: time.Now()})
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil

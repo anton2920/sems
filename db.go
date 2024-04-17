@@ -4,20 +4,19 @@ package main
 import (
 	"encoding/gob"
 	"os"
-	"strconv"
 	"time"
 )
 
 type (
 	Group struct {
-		StringID  string
+		ID        int
 		Name      string
 		Users     []*User
 		CreatedOn time.Time
 	}
 
 	Subject struct {
-		StringID  string
+		ID        int
 		Name      string
 		Teacher   *User
 		Group     *Group
@@ -25,7 +24,7 @@ type (
 	}
 
 	User struct {
-		StringID  string
+		ID        int
 		FirstName string
 		LastName  string
 		Email     string
@@ -48,22 +47,20 @@ var DB struct {
 
 func init() {
 	DB.Users = []User{
-		AdminID: {FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now()},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now()},
 		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now()},
 		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
 	}
-	for id := 0; id < len(DB.Users); id++ {
-		user := &DB.Users[id]
-		user.StringID = strconv.Itoa(id)
+	for id := AdminID + 1; id < len(DB.Users); id++ {
+		DB.Users[id].ID = id
 	}
 
 	DB.Groups = []Group{
 		{Name: "18-SWE", Users: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now()},
 	}
 	for id := 0; id < len(DB.Groups); id++ {
-		group := &DB.Groups[id]
-		group.StringID = strconv.Itoa(id)
+		DB.Groups[id].ID = id
 	}
 }
 

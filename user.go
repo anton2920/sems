@@ -71,7 +71,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteString(user.StringID)
+	w.WriteInt(user.ID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Email: `)
@@ -306,7 +306,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 	}
 
-	DB.Users = append(DB.Users, User{StringID: strconv.Itoa(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
+	DB.Users = append(DB.Users, User{ID: len(DB.Users), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
 
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
