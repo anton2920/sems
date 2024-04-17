@@ -95,7 +95,7 @@ case $1 in
 		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover
 		;;
 	vet)
-		run go vet $VERBOSITYFLAGS
+		run go vet $VERBOSITYFLAGS -asmdecl -assign -atomic -bools -buildtag -cgocall -composites -copylocks -directive -errorsas -framepointer -httpresponse -ifaceassert -loopclosure -lostcancel -nilfunc -printf -shift -sigchanyzer -slog -stdmethods -stringintconv -structtag -testinggoroutine -tests -timeformat -unmarshal -unreachable -unusedresult
 		;;
 	*)
 		echo "Target $1 is not supported"

@@ -21,6 +21,8 @@ type (
 		Teacher   *User
 		Group     *Group
 		CreatedOn time.Time
+
+		Lessons []*Lesson
 	}
 
 	User struct {
@@ -45,7 +47,7 @@ var DB struct {
 	Subjects []Subject
 }
 
-func init() {
+func CreateInitialDB() {
 	DB.Users = []User{
 		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now(), Courses: []*Course{
 			&Course{

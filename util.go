@@ -21,6 +21,24 @@ func GetIDFromURL(u URL, prefix string) (int, error) {
 	return id, nil
 }
 
+func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssindex string, err error) {
+	if len(indicies) == 0 {
+		return
+	}
+
+	spindex = indicies
+	if i := FindChar(indicies, '.'); i != -1 {
+		ssindex = indicies[i+1:]
+		sindex, err = strconv.Atoi(ssindex)
+		if err != nil {
+			return
+		}
+		spindex = indicies[:i]
+	}
+	pindex, err = strconv.Atoi(spindex)
+	return
+}
+
 func MoveDown[T any](vs []T, i int) {
 	if (i >= 0) && (i < len(vs)-1) {
 		vs[i], vs[i+1] = vs[i+1], vs[i]
