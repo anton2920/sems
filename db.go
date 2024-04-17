@@ -47,7 +47,65 @@ var DB struct {
 
 func init() {
 	DB.Users = []User{
-		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now()},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now(), Courses: []*Course{
+			&Course{
+				Name: "Programming basics",
+				Lessons: []*Lesson{
+					&Lesson{
+						Name:   "Introduction",
+						Theory: "This is an introduction.",
+						Steps: []interface{}{
+							&StepTest{
+								Name: "Back-end development basics",
+								Questions: []Question{
+									Question{
+										Name: "What is an API?",
+										Answers: []string{
+											"One",
+											"Two",
+											"Three",
+											"Four",
+										},
+										CorrectAnswers: []int{2},
+									},
+									Question{
+										Name: "To be or not to be?",
+										Answers: []string{
+											"To be",
+											"Not to be",
+										},
+										CorrectAnswers: []int{0, 1},
+									},
+									Question{
+										Name: "Third question",
+										Answers: []string{
+											"What?",
+											"Where?",
+											"When?",
+											"Correct",
+										},
+										CorrectAnswers: []int{3},
+									},
+								},
+							},
+							&StepProgramming{
+								Name:        "Hello, world",
+								Description: "Print 'hello, world' in your favorite language",
+								Checks: [2][]Check{
+									CheckTypeExample: []Check{
+										Check{Input: "aaa", Output: "bbb"},
+										Check{Input: "ccc", Output: "ddd"},
+									},
+									CheckTypeTest: []Check{
+										Check{Input: "fff", Output: "eee"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}},
 		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now()},
 		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
@@ -61,6 +119,13 @@ func init() {
 	}
 	for id := 0; id < len(DB.Groups); id++ {
 		DB.Groups[id].ID = id
+	}
+
+	DB.Subjects = []Subject{
+		{Name: "Programming", Teacher: &DB.Users[AdminID], Group: &DB.Groups[0], CreatedOn: time.Now()},
+	}
+	for id := 0; id < len(DB.Subjects); id++ {
+		DB.Subjects[id].ID = id
 	}
 }
 
