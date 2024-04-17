@@ -11,6 +11,73 @@ const (
 	MaxSubjectNameLen = 45
 )
 
+func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+
+	id, err := GetIDFromURL(r.URL, "/subject/")
+	if err != nil {
+		return err
+	}
+	if (id < 0) || (id >= len(DB.Subjects)) {
+		return NotFoundError
+	}
+	subject := &DB.Subjects[id]
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>`)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(` with `)
+	w.WriteHTMLString(subject.Teacher.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.AppendString(`</title></head>`)
+	w.AppendString(`<body>`)
+	w.AppendString(`<h1>`)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(` with `)
+	w.WriteHTMLString(subject.Teacher.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.AppendString(`</h1>`)
+
+	w.AppendString(`<p>ID: `)
+	w.WriteString(subject.StringID)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>Teacher: `)
+	w.AppendString(`<a href="/user/`)
+	w.WriteString(subject.Teacher.StringID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(subject.Teacher.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.AppendString(` (ID: `)
+	w.WriteString(subject.Teacher.StringID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>Group: `)
+	w.AppendString(`<a href="/group/`)
+	w.WriteString(subject.Group.StringID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(subject.Group.Name)
+	w.AppendString(` (ID: `)
+	w.WriteString(subject.Group.StringID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>Created on: `)
+	w.Write(subject.CreatedOn.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+	w.AppendString(`</p>`)
+
+	return nil
+}
+
 func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {

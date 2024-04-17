@@ -41,6 +41,8 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	case StringStartsWith(path, "/subject"):
 		switch path[len("/subject"):] {
+		default:
+			return SubjectPageHandler(w, r)
 		case "/create":
 			return SubjectCreatePageHandler(w, r)
 		}
