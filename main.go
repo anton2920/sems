@@ -45,6 +45,8 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return SubjectPageHandler(w, r)
 		case "/create":
 			return SubjectCreatePageHandler(w, r)
+		case "/edit":
+			return SubjectEditPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
@@ -80,6 +82,8 @@ func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		switch path[len("/subject"):] {
 		case "/create":
 			return SubjectCreateHandler(w, r)
+		case "/edit":
+			return SubjectEditHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
