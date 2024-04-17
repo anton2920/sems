@@ -16,7 +16,6 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return UnauthorizedError
 	}
-	_ = session
 
 	id, err := GetIDFromURL(r.URL, "/subject/")
 	if err != nil {
@@ -26,6 +25,22 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return NotFoundError
 	}
 	subject := &DB.Subjects[id]
+
+	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
+		var allowed bool
+
+		for i := 0; i < len(subject.Group.Users); i++ {
+			student := subject.Group.Users[i]
+			if session.ID == student.ID {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			return ForbiddenError
+		}
+	}
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
