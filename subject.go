@@ -521,16 +521,14 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		/* TODO(anton2920): I NEED DEEP! COPY */
-		subject.Lessons = user.Courses[courseID].Lessons
+		LessonsDeepCopy(&subject.Lessons, user.Courses[courseID].Lessons)
 	case "give as is":
 		courseID, err := strconv.Atoi(r.Form.Get("CourseID"))
 		if (err != nil) || (courseID < 0) || (courseID >= len(user.Courses)) {
 			return ReloadPageError
 		}
 
-		/* TODO(anton2920): I NEED DEEP! COPY */
-		subject.Lessons = user.Courses[courseID].Lessons
+		LessonsDeepCopy(&subject.Lessons, user.Courses[courseID].Lessons)
 
 		w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
 		return nil
