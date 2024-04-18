@@ -83,12 +83,13 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`<input type="submit" value="Create course">`)
 		w.AppendString(`</form>`)
 
-		if session.ID == AdminID {
-			w.AppendString(`<h2>Subjects</h2>`)
-			w.AppendString(`<ul>`)
-			for i := 0; i < len(DB.Subjects); i++ {
-				subject := &DB.Subjects[i]
+		/* TODO(anton2920): don't display header if no subjects available. */
+		w.AppendString(`<h2>Subjects</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(DB.Subjects); i++ {
+			subject := &DB.Subjects[i]
 
+			if WhoIsUserInSubject(session.ID, subject) != SubjectUserNone {
 				w.AppendString(`<li>`)
 				w.AppendString(`<a href="/subject/`)
 				w.WriteInt(subject.ID)
@@ -104,7 +105,10 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 				w.AppendString(`</a>`)
 				w.AppendString(`</li>`)
 			}
-			w.AppendString(`</ul>`)
+		}
+		w.AppendString(`</ul>`)
+
+		if session.ID == AdminID {
 			w.AppendString(`<form method="POST" action="/subject/create">`)
 			w.AppendString(`<input type="submit" value="Create subject">`)
 			w.AppendString(`</form>`)

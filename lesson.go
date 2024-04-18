@@ -142,18 +142,9 @@ func LessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	lesson := subject.Lessons[li]
 
-	var student bool
-	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
-		for i := 0; i < len(subject.Group.Users); i++ {
-			if session.ID == subject.Group.Users[i].ID {
-				student = true
-				break
-			}
-		}
-
-		if !student {
-			return ForbiddenError
-		}
+	who := WhoIsUserInSubject(session.ID, subject)
+	if who == SubjectUserNone {
+		return ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -206,7 +197,7 @@ func LessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(stepType)
 		w.AppendString(`</p>`)
 
-		if student {
+		if who == SubjectUserStudent {
 			w.AppendString(`<form method="POST" action="/lesson/pass">`)
 
 			w.AppendString(`<input type="hidden" name="StepIndex" value="`)

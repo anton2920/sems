@@ -6,10 +6,38 @@ import (
 	"time"
 )
 
+type SubjectUserType int
+
+const (
+	SubjectUserNone SubjectUserType = iota
+	SubjectUserAdmin
+	SubjectUserTeacher
+	SubjectUserStudent
+)
+
 const (
 	MinSubjectNameLen = 1
 	MaxSubjectNameLen = 45
 )
+
+func WhoIsUserInSubject(userID int, subject *Subject) SubjectUserType {
+	if userID == AdminID {
+		return SubjectUserAdmin
+	}
+
+	if userID == subject.Teacher.ID {
+		return SubjectUserTeacher
+	}
+
+	for i := 0; i < len(subject.Group.Users); i++ {
+		student := subject.Group.Users[i]
+		if userID == student.ID {
+			return SubjectUserStudent
+		}
+	}
+
+	return SubjectUserNone
+}
 
 func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
@@ -26,20 +54,8 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	subject := &DB.Subjects[id]
 
-	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
-		var allowed bool
-
-		for i := 0; i < len(subject.Group.Users); i++ {
-			student := subject.Group.Users[i]
-			if session.ID == student.ID {
-				allowed = true
-				break
-			}
-		}
-
-		if !allowed {
-			return ForbiddenError
-		}
+	if WhoIsUserInSubject(session.ID, subject) == SubjectUserNone {
+		return ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
