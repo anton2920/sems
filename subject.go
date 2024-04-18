@@ -137,6 +137,28 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		LessonDisplayTheory(w, lesson.Theory)
 		w.AppendString(`</p>`)
 
+		/*
+			w.AppendString(`<a href="/subject/`)
+			w.WriteString(r.URL.Path[len("/subject/"):])
+			w.AppendString(`/lesson/`)
+			w.WriteInt(i)
+			w.AppendString(`">Open</a>`)
+		*/
+
+		w.AppendString(`<form method="POST" action="/subject/lesson">`)
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteString(r.URL.Path[len("/subject/"):])
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
+		w.WriteInt(i)
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="submit" value="Open">`)
+
+		w.AppendString(`</form>`)
+
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)
 	}
@@ -466,7 +488,7 @@ func SubjectLessonsEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *S
 
 	switch currentPage {
 	default:
-		return LessonHandleCommand(w, r, subject.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, r, subject.Lessons, currentPage, k, command)
 	case "Main":
 		switch command {
 		case "Delete":
@@ -479,7 +501,7 @@ func SubjectLessonsEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *S
 			lesson.Draft = true
 
 			r.Form.Set("LessonIndex", spindex)
-			return LessonPageHandler(w, r, lesson)
+			return LessonAddPageHandler(w, r, lesson)
 		case "↑", "^|":
 			MoveUp(subject.Lessons, pindex)
 		case "↓", "|v":
@@ -554,8 +576,8 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson := subject.Lessons[li]
 
-		if err := LessonVerifyRequest(r.Form, lesson); err != nil {
-			return WritePageEx(w, r, LessonPageHandler, lesson, err)
+		if err := LessonAddVerifyRequest(r.Form, lesson); err != nil {
+			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
 	case "Test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -573,8 +595,8 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := TestVerifyRequest(r.Form, test, true); err != nil {
-			return WritePageEx(w, r, TestPageHandler, test, err)
+		if err := LessonTestAddVerifyRequest(r.Form, test, true); err != nil {
+			return WritePageEx(w, r, LessonTestAddPageHandler, test, err)
 		}
 	case "Programming":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -592,8 +614,8 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := ProgrammingVerifyRequest(r.Form, task, true); err != nil {
-			return WritePageEx(w, r, ProgrammingPageHandler, task, err)
+		if err := LessonProgrammingAddVerifyRequest(r.Form, task, true); err != nil {
+			return WritePageEx(w, r, LessonProgrammingAddPageHandler, task, err)
 		}
 	}
 
@@ -611,11 +633,11 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, LessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, LessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
 				}
 			}
 		}
@@ -628,7 +650,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		subject.Lessons = append(subject.Lessons, lesson)
 
 		r.Form.Set("LessonIndex", strconv.Itoa(len(subject.Lessons)-1))
-		return LessonPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
@@ -649,7 +671,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			step.Draft = false
 		}
 
-		return LessonPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, lesson)
 	case "Add test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
@@ -663,7 +685,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, test)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return TestPageHandler(w, r, test)
+		return LessonTestAddPageHandler(w, r, test)
 	case "Add programming task":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
@@ -677,7 +699,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, task)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return ProgrammingPageHandler(w, r, task)
+		return LessonProgrammingAddPageHandler(w, r, task)
 	case "Save":
 		return SubjectLessonsEditHandler(w, r)
 	}
@@ -769,11 +791,31 @@ func SubjectLessonsEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return UnauthorizedError
 	}
-	_ = session
 
 	if err := r.ParseForm(); err != nil {
 		return ReloadPageError
 	}
 
+	id := r.Form.Get("ID")
+	subjectID, err := strconv.Atoi(id)
+	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
+		return ReloadPageError
+	}
+	subject := &DB.Subjects[subjectID]
+	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
+		return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, ForbiddenError)
+	}
+
+	if len(subject.Lessons) == 0 {
+		return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, "create at least one lesson"))
+	}
+	for li := 0; li < len(subject.Lessons); li++ {
+		lesson := subject.Lessons[li]
+		if lesson.Draft {
+			return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
+		}
+	}
+
+	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
 	return nil
 }

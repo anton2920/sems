@@ -198,7 +198,7 @@ func CourseCreateEditHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Cour
 
 	switch currentPage {
 	default:
-		return LessonHandleCommand(w, r, course.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, r, course.Lessons, currentPage, k, command)
 	case "Course":
 		switch command {
 		case "Delete":
@@ -211,7 +211,7 @@ func CourseCreateEditHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Cour
 			lesson.Draft = true
 
 			r.Form.Set("LessonIndex", spindex)
-			return LessonPageHandler(w, r, lesson)
+			return LessonAddPageHandler(w, r, lesson)
 		case "↑", "^|":
 			MoveUp(course.Lessons, pindex)
 		case "↓", "|v":
@@ -278,8 +278,8 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson := course.Lessons[li]
 
-		if err := LessonVerifyRequest(r.Form, lesson); err != nil {
-			return WritePageEx(w, r, LessonPageHandler, lesson, err)
+		if err := LessonAddVerifyRequest(r.Form, lesson); err != nil {
+			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
 	case "Test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -297,8 +297,8 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := TestVerifyRequest(r.Form, test, true); err != nil {
-			return WritePageEx(w, r, TestPageHandler, test, err)
+		if err := LessonTestAddVerifyRequest(r.Form, test, true); err != nil {
+			return WritePageEx(w, r, LessonTestAddPageHandler, test, err)
 		}
 	case "Programming":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
@@ -316,8 +316,8 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ReloadPageError
 		}
 
-		if err := ProgrammingVerifyRequest(r.Form, task, true); err != nil {
-			return WritePageEx(w, r, ProgrammingPageHandler, task, err)
+		if err := LessonProgrammingAddVerifyRequest(r.Form, task, true); err != nil {
+			return WritePageEx(w, r, LessonProgrammingAddPageHandler, task, err)
 		}
 	}
 
@@ -335,11 +335,11 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, LessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, LessonPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
 				}
 			}
 		}
@@ -352,7 +352,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		course.Lessons = append(course.Lessons, lesson)
 
 		r.Form.Set("LessonIndex", strconv.Itoa(len(course.Lessons)-1))
-		return LessonPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -373,7 +373,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			step.Draft = false
 		}
 
-		return LessonPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, lesson)
 	case "Add test":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -387,7 +387,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, test)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return TestPageHandler(w, r, test)
+		return LessonTestAddPageHandler(w, r, test)
 	case "Add programming task":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
@@ -401,7 +401,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, task)
 
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
-		return ProgrammingPageHandler(w, r, task)
+		return LessonProgrammingAddPageHandler(w, r, task)
 	case "Save":
 		return CourseCreateEditHandler(w, r)
 	}

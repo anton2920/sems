@@ -47,6 +47,8 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return SubjectCreatePageHandler(w, r)
 		case "/edit":
 			return SubjectEditPageHandler(w, r)
+		case "/lesson":
+			return LessonPageHandler(w, r)
 		case "/lessons/edit":
 			return SubjectLessonsEditPageHandler(w, r)
 		}
