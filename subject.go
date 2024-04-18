@@ -153,14 +153,6 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		LessonDisplayTheory(w, lesson.Theory)
 		w.AppendString(`</p>`)
 
-		/*
-			w.AppendString(`<a href="/subject/`)
-			w.WriteString(r.URL.Path[len("/subject/"):])
-			w.AppendString(`/lesson/`)
-			w.WriteInt(i)
-			w.AppendString(`">Open</a>`)
-		*/
-
 		w.AppendString(`<form method="POST" action="/subject/lesson">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
@@ -180,7 +172,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if (session.ID == AdminID) || (session.ID == subject.Teacher.ID) {
-		w.AppendString(`<form method="POST" action="/subject/lessons/edit">`)
+		w.AppendString(`<form method="POST" action="/subject/lesson/edit">`)
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteString(r.URL.Path[len("/subject/"):])
 		w.AppendString(`">`)
@@ -418,7 +410,112 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectLessonsEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *Subject) error {
+func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return ReloadPageError
+	}
+
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
+	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
+		return ReloadPageError
+	}
+	subject := &DB.Subjects[subjectID]
+
+	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
+	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
+		return ReloadPageError
+	}
+	lesson := subject.Lessons[li]
+
+	who := WhoIsUserInSubject(session.ID, subject)
+	if who == SubjectUserNone {
+		return ForbiddenError
+	}
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>`)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</title></head>`)
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</h1>`)
+
+	w.AppendString(`<h2>Theory</h2>`)
+	w.AppendString(`<p>`)
+	w.WriteHTMLString(lesson.Theory)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<h2>Evaluation</h2>`)
+
+	w.AppendString(`<div style="max-width: max-content">`)
+	for i := 0; i < len(lesson.Steps); i++ {
+		var name, stepType string
+
+		step := lesson.Steps[i]
+		switch step := step.(type) {
+		default:
+			panic("invalid step type")
+		case *StepTest:
+			name = step.Name
+			stepType = "Test"
+		case *StepProgramming:
+			name = step.Name
+			stepType = "Programming task"
+		}
+
+		w.AppendString(`<fieldset>`)
+
+		w.AppendString(`<legend>Step #`)
+		w.WriteInt(i + 1)
+		w.AppendString(`</legend>`)
+
+		w.AppendString(`<p>Name: `)
+		w.WriteHTMLString(name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>Type: `)
+		w.AppendString(stepType)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`</fieldset>`)
+		w.AppendString(`<br>`)
+	}
+	w.AppendString(`</div>`)
+
+	if who == SubjectUserStudent {
+		w.AppendString(`<form method="POST" action="/evaluation/pass">`)
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteHTMLString(r.Form.Get("ID"))
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
+		w.WriteHTMLString(r.Form.Get("LessonIndex"))
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="submit" value="Pass">`)
+
+		w.AppendString(`</form>`)
+	}
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
+
+	return nil
+}
+
+func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *Subject) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Edit subject lessons</title></head>`)
 	w.AppendString(`<body>`)
@@ -496,7 +593,7 @@ func SubjectLessonsEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject 
 	return nil
 }
 
-func SubjectLessonsEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Subject, currentPage, k, command string) error {
+func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Subject, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return ReloadPageError
@@ -524,11 +621,11 @@ func SubjectLessonsEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *S
 			MoveDown(subject.Lessons, pindex)
 		}
 
-		return SubjectLessonsEditMainPageHandler(w, r, subject)
+		return SubjectLessonEditMainPageHandler(w, r, subject)
 	}
 }
 
-func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
@@ -579,7 +676,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if StringStartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubjectLessonsEditHandleCommand(w, r, subject, currentPage, k, v)
+			return SubjectLessonEditHandleCommand(w, r, subject, currentPage, k, v)
 		}
 	}
 
@@ -637,7 +734,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	switch nextPage {
 	default:
-		return SubjectLessonsEditMainPageHandler(w, r, subject)
+		return SubjectLessonEditMainPageHandler(w, r, subject)
 	case "Next":
 		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
 		if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
@@ -659,7 +756,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson.Draft = false
 
-		return SubjectLessonsEditMainPageHandler(w, r, subject)
+		return SubjectLessonEditMainPageHandler(w, r, subject)
 	case "Add lesson":
 		lesson := new(Lesson)
 		lesson.Draft = true
@@ -717,7 +814,7 @@ func SubjectLessonsEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
 		return LessonProgrammingAddPageHandler(w, r, task)
 	case "Save":
-		return SubjectLessonsEditHandler(w, r)
+		return SubjectLessonEditHandler(w, r)
 	}
 }
 
@@ -802,7 +899,7 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectLessonsEditHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
@@ -819,16 +916,16 @@ func SubjectLessonsEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	subject := &DB.Subjects[subjectID]
 	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
-		return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, ForbiddenError)
+		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, ForbiddenError)
 	}
 
 	if len(subject.Lessons) == 0 {
-		return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, "create at least one lesson"))
+		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, "create at least one lesson"))
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
 		lesson := subject.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, SubjectLessonsEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
+			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
 		}
 	}
 

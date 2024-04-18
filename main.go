@@ -30,6 +30,11 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/create", "/edit":
 			return CourseCreateEditPageHandler(w, r)
 		}
+	case StringStartsWith(path, "/evaluation"):
+		switch path[len("/evaluation"):] {
+		case "/pass":
+			return EvaluationPassPageHandler(w, r)
+		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		default:
@@ -48,9 +53,9 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/edit":
 			return SubjectEditPageHandler(w, r)
 		case "/lesson":
-			return LessonPageHandler(w, r)
-		case "/lessons/edit":
-			return SubjectLessonsEditPageHandler(w, r)
+			return SubjectLessonPageHandler(w, r)
+		case "/lesson/edit":
+			return SubjectLessonEditPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
@@ -181,14 +186,10 @@ func main() {
 			Warnf("Failed to store sessions to file: %v", err)
 		}
 
-		Infof("User[0] = %#v, User[1] = %#v", DB.Users[0], DB.Users[1])
-
 		os.Exit(0)
 	}()
 
 	Infof("Listening on 0.0.0.0:7072...")
-
-	Infof("User[0] = %#v, User[1] = %#v", DB.Users[0], DB.Users[1])
 
 	if err := ListenAndServe(7072, Router); err != nil {
 		Fatalf("Failed to listen on port: %v", err)

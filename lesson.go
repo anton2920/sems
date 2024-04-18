@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/gob"
-	"strconv"
 	"unicode/utf8"
 )
 
@@ -118,103 +117,4 @@ func LessonDisplayTheory(w *HTTPResponse, theory string) {
 		}
 		w.AppendString(`...`)
 	}
-}
-
-func LessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
-	}
-
-	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
-	}
-	subject := &DB.Subjects[subjectID]
-
-	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
-		return ReloadPageError
-	}
-	lesson := subject.Lessons[li]
-
-	who := WhoIsUserInSubject(session.ID, subject)
-	if who == SubjectUserNone {
-		return ForbiddenError
-	}
-
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<h2>Theory</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<h2>Evaluation steps</h2>`)
-
-	for i := 0; i < len(lesson.Steps); i++ {
-		var name, stepType string
-
-		step := lesson.Steps[i]
-		switch step := step.(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
-			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
-			stepType = "Programming task"
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
-		w.AppendString(`</p>`)
-
-		if who == SubjectUserStudent {
-			w.AppendString(`<form method="POST" action="/lesson/pass">`)
-
-			w.AppendString(`<input type="hidden" name="StepIndex" value="`)
-			w.WriteInt(i)
-			w.AppendString(`">`)
-
-			w.AppendString(`<input type="submit" value="Pass">`)
-
-			w.AppendString(`</form>`)
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
 }
