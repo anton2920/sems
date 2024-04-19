@@ -4,6 +4,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Master's degree</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Master's degree</h1>`)
 
 	session, err := GetSessionFromRequest(r)

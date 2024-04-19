@@ -39,6 +39,8 @@ type (
 		/* TODO(anton2920): using 'interface{}' so 'encoding/gob' does what it supposed to do. */
 		Steps []interface{}
 
+		Submissions []*Submission
+
 		Draft bool
 	}
 )
@@ -55,6 +57,44 @@ func init() {
 	gob.Register(&StepProgramming{})
 }
 
+func StepsDeepCopy(dst *[]interface{}, src []interface{}) {
+	*dst = make([]interface{}, len(src))
+
+	for s := 0; s < len(src); s++ {
+		switch ss := src[s].(type) {
+		default:
+			panic("invalid step type")
+		case *StepTest:
+			ds := new(StepTest)
+			(*dst)[s] = ds
+
+			ds.Name = ss.Name
+			ds.Questions = make([]Question, len(ss.Questions))
+
+			for q := 0; q < len(ss.Questions); q++ {
+				sq := &ss.Questions[q]
+
+				dq := &ds.Questions[q]
+				dq.Name = sq.Name
+				dq.Answers = make([]string, len(sq.Answers))
+				copy(dq.Answers, sq.Answers)
+				dq.CorrectAnswers = make([]int, len(sq.CorrectAnswers))
+				copy(dq.CorrectAnswers, sq.CorrectAnswers)
+			}
+		case *StepProgramming:
+			ds := new(StepProgramming)
+			(*dst)[s] = ds
+
+			ds.Name = ss.Name
+			ds.Description = ss.Description
+			ds.Checks[CheckTypeExample] = make([]Check, len(ss.Checks[CheckTypeExample]))
+			copy(ds.Checks[CheckTypeExample], ss.Checks[CheckTypeExample])
+			ds.Checks[CheckTypeTest] = make([]Check, len(ss.Checks[CheckTypeTest]))
+			copy(ds.Checks[CheckTypeTest], ss.Checks[CheckTypeTest])
+		}
+	}
+}
+
 func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 	*dst = make([]*Lesson, len(src))
 
@@ -66,41 +106,7 @@ func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 
 		dl.Name = sl.Name
 		dl.Theory = sl.Theory
-		dl.Steps = make([]interface{}, len(sl.Steps))
-
-		for s := 0; s < len(sl.Steps); s++ {
-			switch ss := sl.Steps[s].(type) {
-			default:
-				panic("invalid step type")
-			case *StepTest:
-				ds := new(StepTest)
-				dl.Steps[s] = ds
-
-				ds.Name = ss.Name
-				ds.Questions = make([]Question, len(ss.Questions))
-
-				for q := 0; q < len(ss.Questions); q++ {
-					sq := &ss.Questions[q]
-
-					dq := &ds.Questions[q]
-					dq.Name = sq.Name
-					dq.Answers = make([]string, len(sq.Answers))
-					copy(dq.Answers, sq.Answers)
-					dq.CorrectAnswers = make([]int, len(sq.CorrectAnswers))
-					copy(dq.CorrectAnswers, sq.CorrectAnswers)
-				}
-			case *StepProgramming:
-				ds := new(StepProgramming)
-				dl.Steps[s] = ds
-
-				ds.Name = ss.Name
-				ds.Description = ss.Description
-				ds.Checks[CheckTypeExample] = make([]Check, len(ss.Checks[CheckTypeExample]))
-				copy(ds.Checks[CheckTypeExample], ss.Checks[CheckTypeExample])
-				ds.Checks[CheckTypeTest] = make([]Check, len(ss.Checks[CheckTypeTest]))
-				copy(ds.Checks[CheckTypeTest], ss.Checks[CheckTypeTest])
-			}
-		}
+		StepsDeepCopy(&dl.Steps, sl.Steps)
 	}
 }
 

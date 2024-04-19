@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/gob"
+	"fmt"
 	"strconv"
 	"time"
+	"unsafe"
 )
 
 type (
@@ -10,31 +13,95 @@ type (
 		SelectedAnswers []int
 	}
 	PassedTest struct {
+		Test            *StepTest
 		PassedQuestions []PassedQuestion
 	}
 
 	PassedProgramming struct {
+		Task       *StepProgramming
 		LanguageID int
 		Solution   string
 	}
 
-	PassContext struct {
-		StartedAt, FinishedAt time.Time
-		PassedSteps           []interface{}
+	Submission struct {
+		Name        string
+		User        *User
+		Steps       []interface{}
+		StartedAt   time.Time
+		PassedSteps []interface{}
+		FinishedAt  time.Time
 	}
 )
 
-func EvaluationPassMainPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
+const (
+	MinSolutionLen = 1
+	MaxSolutionLen = 1024
+)
+
+func init() {
+	gob.Register(&PassedTest{})
+	gob.Register(&PassedProgramming{})
+}
+
+func EvaluationPassTestVerifyRequest(vs URLValues, passedTest *PassedTest) error {
+	test := passedTest.Test
+
+	for i := 0; i < len(test.Questions); i++ {
+		question := &test.Questions[i]
+		passedQuestion := &passedTest.PassedQuestions[i]
+
+		buffer := fmt.Appendf(make([]byte, 0, 30), "SelectedAnswer%d", i)
+		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(buffer), len(buffer)))
+		if len(selectedAnswers) == 0 {
+			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: select at least one answer", i+1))
+		}
+		if (len(question.CorrectAnswers) == 1) && (len(selectedAnswers) > 1) {
+			return ReloadPageError
+		}
+		for j := 0; j < len(selectedAnswers); j++ {
+			if j >= len(passedQuestion.SelectedAnswers) {
+				passedQuestion.SelectedAnswers = append(passedQuestion.SelectedAnswers, 0)
+			}
+
+			var err error
+			passedQuestion.SelectedAnswers[j], err = strconv.Atoi(selectedAnswers[j])
+			if (err != nil) || (passedQuestion.SelectedAnswers[j] < 0) || (passedQuestion.SelectedAnswers[j] >= len(question.Answers)) {
+				return ReloadPageError
+			}
+		}
+	}
+
+	return nil
+}
+
+func EvaluationPassProgrammingVerifyRequest(vs URLValues, passedTask *PassedProgramming) error {
+	var err error
+
+	passedTask.LanguageID, err = strconv.Atoi(vs.Get("LanguageID"))
+	/* TODO(anton2920): replace with actual check for programming language. */
+	if (err != nil) || (passedTask.LanguageID < 0) || (passedTask.LanguageID >= 2) {
+		return ReloadPageError
+	}
+
+	passedTask.Solution = vs.Get("Solution")
+	if !StringLengthInRange(passedTask.Solution, MinSolutionLen, MaxSolutionLen) {
+		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen))
+	}
+
+	return nil
+}
+
+func EvaluationPassMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Submission) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(lesson.Name)
+	w.WriteHTMLString(submission.Name)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(lesson.Name)
+	w.WriteHTMLString(submission.Name)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
@@ -51,10 +118,14 @@ func EvaluationPassMainPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 	w.WriteHTMLString(r.Form.Get("LessonIndex"))
 	w.AppendString(`">`)
 
-	for i := 0; i < len(lesson.Steps); i++ {
+	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
+	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
+	w.AppendString(`">`)
+
+	for i := 0; i < len(submission.Steps); i++ {
 		var name, stepType string
 
-		step := lesson.Steps[i]
+		step := submission.Steps[i]
 		switch step := step.(type) {
 		default:
 			panic("invalid step type")
@@ -83,7 +154,11 @@ func EvaluationPassMainPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 		w.AppendString(`<input type="submit" name="Command`)
 		w.WriteInt(i)
 		w.AppendString(`" value="`)
-		w.AppendString(`Pass`)
+		if submission.PassedSteps[i] == nil {
+			w.AppendString(`Pass`)
+		} else {
+			w.AppendString(`Edit`)
+		}
 		w.AppendString(`">`)
 
 		w.AppendString(`</fieldset>`)
@@ -101,7 +176,9 @@ func EvaluationPassMainPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Less
 
 }
 
-func EvaluationPassTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
+func EvaluationPassTestPageHandler(w *HTTPResponse, r *HTTPRequest, passedTest *PassedTest) error {
+	test := passedTest.Test
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Test: `)
@@ -130,10 +207,17 @@ func EvaluationPassTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTe
 	w.WriteHTMLString(r.Form.Get("LessonIndex"))
 	w.AppendString(`">`)
 
+	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
+	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
+	w.AppendString(`">`)
+
 	w.AppendString(`<input type="hidden" name="StepIndex" value="`)
 	w.WriteHTMLString(r.Form.Get("StepIndex"))
 	w.AppendString(`">`)
 
+	if passedTest.PassedQuestions == nil {
+		passedTest.PassedQuestions = make([]PassedQuestion, len(test.Questions))
+	}
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 
@@ -167,15 +251,13 @@ func EvaluationPassTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTe
 			w.WriteInt(j)
 			w.AppendString(`"`)
 
-			/*
-				for k := 0; k < len(SelectedAnswers); k++ {
-					selectedAnswer := SelectedAnswers[k]
-					if j == selectedAnswer {
-						w.AppendString(` checked`)
-						break
-					}
+			for k := 0; k < len(passedTest.PassedQuestions[i].SelectedAnswers); k++ {
+				selectedAnswer := passedTest.PassedQuestions[i].SelectedAnswers[k]
+				if j == selectedAnswer {
+					w.AppendString(` checked`)
+					break
 				}
-			*/
+			}
 
 			w.AppendString(`>`)
 			w.AppendString("\r\n")
@@ -204,7 +286,9 @@ func EvaluationPassTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTe
 	return nil
 }
 
-func EvaluationPassProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
+func EvaluationPassProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, passedTask *PassedProgramming) error {
+	task := passedTask.Task
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Programming task: `)
@@ -267,6 +351,10 @@ func EvaluationPassProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task 
 	w.WriteHTMLString(r.Form.Get("LessonIndex"))
 	w.AppendString(`">`)
 
+	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
+	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
+	w.AppendString(`">`)
+
 	w.AppendString(`<input type="hidden" name="StepIndex" value="`)
 	w.WriteHTMLString(r.Form.Get("StepIndex"))
 	w.AppendString(`">`)
@@ -274,12 +362,13 @@ func EvaluationPassProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task 
 	w.AppendString(`<h2>Solution</h2>`)
 
 	w.AppendString(`<label>Programming language: `)
-	w.AppendString(`<select name="LanguageID"><option>C</option><option>Go</option></select>`)
+	/* TODO(anton2920): add list of programming languages. */
+	w.AppendString(`<select name="LanguageID"><option value="0">C</option><option value="1">Go</option></select>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<textarea cols="80" rows="24" name="Solution">`)
-	// w.WriteHTMLString(Solution)
+	w.WriteHTMLString(passedTask.Solution)
 	w.AppendString(`</textarea>`)
 
 	w.AppendString(`<br><br>`)
@@ -294,8 +383,8 @@ func EvaluationPassProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task 
 	return nil
 }
 
-func EvaluationPassHandleCommand(w *HTTPResponse, r *HTTPRequest, lesson *Lesson, currentPage, k, command string) error {
-	pindex, _, _, _, err := GetIndicies(k[len("Command"):])
+func EvaluationPassHandleCommand(w *HTTPResponse, r *HTTPRequest, submission *Submission, currentPage, k, command string) error {
+	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return ReloadPageError
 	}
@@ -308,16 +397,33 @@ func EvaluationPassHandleCommand(w *HTTPResponse, r *HTTPRequest, lesson *Lesson
 		default:
 			return ReloadPageError
 		case "Pass", "Edit":
-			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
+			if (pindex < 0) || (pindex >= len(submission.Steps)) {
 				return ReloadPageError
 			}
-			switch step := lesson.Steps[pindex].(type) {
+
+			switch step := submission.Steps[pindex].(type) {
 			default:
 				panic("invalid step type")
 			case *StepTest:
-				return EvaluationPassTestPageHandler(w, r, step)
+				passedStep, ok := submission.PassedSteps[pindex].(*PassedTest)
+				if !ok {
+					passedStep = new(PassedTest)
+					passedStep.Test = step
+					submission.PassedSteps[pindex] = passedStep
+				}
+
+				r.Form.Set("StepIndex", spindex)
+				return EvaluationPassTestPageHandler(w, r, passedStep)
 			case *StepProgramming:
-				return EvaluationPassProgrammingPageHandler(w, r, step)
+				passedStep, ok := submission.PassedSteps[pindex].(*PassedProgramming)
+				if !ok {
+					passedStep = new(PassedProgramming)
+					passedStep.Task = step
+					submission.PassedSteps[pindex] = passedStep
+				}
+
+				r.Form.Set("StepIndex", spindex)
+				return EvaluationPassProgrammingPageHandler(w, r, passedStep)
 			}
 		}
 	}
@@ -349,6 +455,26 @@ func EvaluationPassPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ForbiddenError
 	}
 
+	var submission *Submission
+	submissionIndex := r.Form.Get("SubmissionIndex")
+	if submissionIndex == "" {
+		submission = new(Submission)
+		submission.Name = lesson.Name
+		submission.StartedAt = time.Now()
+		submission.User = &DB.Users[session.ID]
+		StepsDeepCopy(&submission.Steps, lesson.Steps)
+		submission.PassedSteps = make([]interface{}, len(lesson.Steps))
+
+		lesson.Submissions = append(lesson.Submissions, submission)
+		r.Form.Set("SubmissionIndex", strconv.Itoa(len(lesson.Submissions)-1))
+	} else {
+		si, err := strconv.Atoi(submissionIndex)
+		if (err != nil) || (si < 0) || (si >= len(lesson.Submissions)) {
+			return ReloadPageError
+		}
+		submission = lesson.Submissions[si]
+	}
+
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
@@ -359,19 +485,47 @@ func EvaluationPassPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if StringStartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return EvaluationPassHandleCommand(w, r, lesson, currentPage, k, v)
+			return EvaluationPassHandleCommand(w, r, submission, currentPage, k, v)
 		}
 	}
 
-	switch currentPage {
-	case "Test":
-	case "Programming":
+	stepIndex := r.Form.Get("StepIndex")
+	if stepIndex != "" {
+		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
+		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
+			return ReloadPageError
+		}
+		if nextPage != "Discard" {
+			switch currentPage {
+			case "Test":
+				passedTest, ok := submission.PassedSteps[si].(*PassedTest)
+				if !ok {
+					return ReloadPageError
+				}
+
+				if err := EvaluationPassTestVerifyRequest(r.Form, passedTest); err != nil {
+					return WritePageEx(w, r, EvaluationPassTestPageHandler, passedTest, err)
+				}
+			case "Programming":
+				passedProgramming, ok := submission.PassedSteps[si].(*PassedProgramming)
+				if !ok {
+					return ReloadPageError
+				}
+
+				if err := EvaluationPassProgrammingVerifyRequest(r.Form, passedProgramming); err != nil {
+					return WritePageEx(w, r, EvaluationPassProgrammingPageHandler, passedProgramming, err)
+				}
+			}
+		} else {
+			submission.PassedSteps[si] = nil
+		}
 	}
 
 	switch nextPage {
 	default:
-		return EvaluationPassMainPageHandler(w, r, lesson)
+		return EvaluationPassMainPageHandler(w, r, submission)
 	case "Finish":
+		submission.FinishedAt = time.Now()
 		return EvaluationPassHandler(w, r)
 	}
 
@@ -379,15 +533,7 @@ func EvaluationPassPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func EvaluationPassHandler(w *HTTPResponse, r *HTTPRequest) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return UnauthorizedError
-	}
-	_ = session
-
-	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
-	}
-
+	id := r.Form.Get("ID")
+	w.Redirect(fmt.Appendf(make([]byte, 0, 30), "/subject/%s", id), HTTPStatusSeeOther)
 	return nil
 }

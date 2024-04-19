@@ -153,6 +153,35 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		LessonDisplayTheory(w, lesson.Theory)
 		w.AppendString(`</p>`)
 
+		if ((session.ID == AdminID) || (session.ID == subject.Teacher.ID)) && (len(lesson.Submissions) > 0) {
+			w.AppendString(`<form method="POST" action="/subject/lesson/submission">`)
+
+			w.AppendString(`<label>Submissions: `)
+			w.AppendString(`<select name="SubmissionIndex">`)
+			for j := 0; j < len(lesson.Submissions); j++ {
+				submission := lesson.Submissions[j]
+
+				w.AppendString(`<option value="`)
+				w.WriteInt(j)
+				w.AppendString(`">`)
+				w.WriteHTMLString(submission.User.LastName)
+				w.AppendString(` `)
+				w.WriteHTMLString(submission.User.FirstName)
+				w.AppendString(`</option>`)
+			}
+			w.AppendString(`</select>`)
+			w.AppendString(`</label>`)
+
+			w.AppendString("\r\n")
+			w.AppendString(`<input type="submit" value="See results">`)
+			w.AppendString("\r\n")
+			w.AppendString(`<input type="submit" value="Discard">`)
+
+			w.AppendString(`</form>`)
+
+			w.AppendString(`<br>`)
+		}
+
 		w.AppendString(`<form method="POST" action="/subject/lesson">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
@@ -504,7 +533,18 @@ func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteHTMLString(r.Form.Get("LessonIndex"))
 		w.AppendString(`">`)
 
-		w.AppendString(`<input type="submit" value="Pass">`)
+		var submitted bool
+		for i := 0; i < len(lesson.Submissions); i++ {
+			if session.ID == lesson.Submissions[i].User.ID {
+				submitted = true
+				break
+			}
+		}
+		if !submitted {
+			w.AppendString(`<input type="submit" value="Pass">`)
+		} else {
+			w.AppendString(`<p>Your answers have been submitted.</p>`)
+		}
 
 		w.AppendString(`</form>`)
 	}
