@@ -940,6 +940,6 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 	submission.Draft = false
 	submission.FinishedAt = time.Now()
 
-	w.RedirectString("/subject/lesson", HTTPStatusTemporaryRedirect)
+	w.Redirect(fmt.Appendf(make([]byte, 0, 30), "/subject/%s", id), HTTPStatusSeeOther)
 	return nil
 }

@@ -47,7 +47,6 @@ type HTTPStatus int
 const (
 	HTTPStatusOK                    HTTPStatus = 200
 	HTTPStatusSeeOther                         = 303
-	HTTPStatusTemporaryRedirect                = 307
 	HTTPStatusBadRequest                       = 400
 	HTTPStatusUnauthorized                     = 401
 	HTTPStatusForbidden                        = 403
@@ -62,7 +61,6 @@ const (
 var Status2String = [...]string{
 	HTTPStatusOK:                    "200",
 	HTTPStatusSeeOther:              "303",
-	HTTPStatusTemporaryRedirect:     "307",
 	HTTPStatusBadRequest:            "400",
 	HTTPStatusUnauthorized:          "401",
 	HTTPStatusForbidden:             "403",
@@ -77,7 +75,6 @@ var Status2String = [...]string{
 var Status2Reason = [...]string{
 	HTTPStatusOK:                    "OK",
 	HTTPStatusSeeOther:              "See Other",
-	HTTPStatusTemporaryRedirect:     "Temporary Redirect",
 	HTTPStatusBadRequest:            "Bad Request",
 	HTTPStatusUnauthorized:          "Unauthorized",
 	HTTPStatusForbidden:             "Forbidden",
@@ -212,6 +209,25 @@ func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
 	n += copy(cookie[n:], expires)
 	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
 	n += copy(cookie[n:], secure)
+
+	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+}
+
+/* SetCookieUnsafe is useful for debugging purposes. It's also more compatible with older browsers. */
+func (w *HTTPResponse) SetCookieUnsafe(name, value string, expiry time.Time) {
+	const expires = "; Expires="
+	const path = "; Path=/"
+	const eq = "="
+
+	cookie := w.Arena.NewSlice(len(name) + len(eq) + len(value) + len(path) + len(expires) + RFC822Len)
+
+	var n int
+	n += copy(cookie[n:], name)
+	n += copy(cookie[n:], eq)
+	n += copy(cookie[n:], value)
+	n += copy(cookie[n:], path)
+	n += copy(cookie[n:], expires)
+	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
 
 	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }

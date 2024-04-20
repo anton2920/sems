@@ -409,7 +409,11 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	SessionsLock.Unlock()
 
-	w.SetCookie("Token", token, expiry)
+	if DebugMode == "on" {
+		w.SetCookieUnsafe("Token", token, expiry)
+	} else {
+		w.SetCookie("Token", token, expiry)
+	}
 	w.RedirectString("/", HTTPStatusSeeOther)
 	return nil
 }
