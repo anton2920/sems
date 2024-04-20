@@ -30,11 +30,6 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/create", "/edit":
 			return CourseCreateEditPageHandler(w, r)
 		}
-	case StringStartsWith(path, "/evaluation"):
-		switch path[len("/evaluation"):] {
-		case "/pass":
-			return EvaluationPassPageHandler(w, r)
-		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		default:
@@ -45,17 +40,32 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return GroupEditPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/subject"):
-		switch path[len("/subject"):] {
+		path = path[len("/subject"):]
+
+		switch {
 		default:
-			return SubjectPageHandler(w, r)
-		case "/create":
-			return SubjectCreatePageHandler(w, r)
-		case "/edit":
-			return SubjectEditPageHandler(w, r)
-		case "/lesson":
-			return SubjectLessonPageHandler(w, r)
-		case "/lesson/edit":
-			return SubjectLessonEditPageHandler(w, r)
+			switch path {
+			default:
+				return SubjectPageHandler(w, r)
+			case "/create":
+				return SubjectCreatePageHandler(w, r)
+			case "/edit":
+				return SubjectEditPageHandler(w, r)
+			}
+		case StringStartsWith(path, "/lesson"):
+			switch path[len("/lesson"):] {
+			default:
+				return SubjectLessonPageHandler(w, r)
+			case "/edit":
+				return SubjectLessonEditPageHandler(w, r)
+			}
+		}
+	case StringStartsWith(path, "/submission"):
+		switch path[len("/submission"):] {
+		default:
+			return SubmissionPageHandler(w, r)
+		case "/new":
+			return SubmissionNewPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/user"):
 		switch path[len("/user"):] {
