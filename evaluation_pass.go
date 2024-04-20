@@ -533,7 +533,6 @@ func EvaluationPassPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func EvaluationPassHandler(w *HTTPResponse, r *HTTPRequest) error {
-	id := r.Form.Get("ID")
-	w.Redirect(fmt.Appendf(make([]byte, 0, 30), "/subject/%s", id), HTTPStatusSeeOther)
+	w.RedirectString("/subject/lesson", HTTPStatusTemporaryRedirect)
 	return nil
 }

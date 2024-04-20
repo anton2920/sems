@@ -47,6 +47,7 @@ type HTTPStatus int
 const (
 	HTTPStatusOK                    HTTPStatus = 200
 	HTTPStatusSeeOther                         = 303
+	HTTPStatusTemporaryRedirect                = 307
 	HTTPStatusBadRequest                       = 400
 	HTTPStatusUnauthorized                     = 401
 	HTTPStatusForbidden                        = 403
@@ -61,6 +62,7 @@ const (
 var Status2String = [...]string{
 	HTTPStatusOK:                    "200",
 	HTTPStatusSeeOther:              "303",
+	HTTPStatusTemporaryRedirect:     "307",
 	HTTPStatusBadRequest:            "400",
 	HTTPStatusUnauthorized:          "401",
 	HTTPStatusForbidden:             "403",
@@ -75,6 +77,7 @@ var Status2String = [...]string{
 var Status2Reason = [...]string{
 	HTTPStatusOK:                    "OK",
 	HTTPStatusSeeOther:              "See Other",
+	HTTPStatusTemporaryRedirect:     "Temporary Redirect",
 	HTTPStatusBadRequest:            "Bad Request",
 	HTTPStatusUnauthorized:          "Unauthorized",
 	HTTPStatusForbidden:             "Forbidden",

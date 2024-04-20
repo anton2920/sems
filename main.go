@@ -124,6 +124,9 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 	case StringStartsWith(path, APIPrefix):
 		return HandleAPIRequest(w, r, path[len(APIPrefix):])
 
+	case path == "/plaintext":
+		w.AppendString("Hello, world!\n")
+		return nil
 	case path == "/error":
 		return WrapErrorWithTrace(WrapErrorWithTrace(TryAgainLaterError))
 	case path == "/panic":
