@@ -56,7 +56,7 @@ func (vs URLValues) Get(key string) string {
 }
 
 func (vs URLValues) GetInt(key string) (int, error) {
-	return strconv.Atoi(r.Form.Get(key))
+	return strconv.Atoi(vs.Get(key))
 }
 
 func (vs URLValues) GetMany(key string) []string {

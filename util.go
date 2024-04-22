@@ -39,6 +39,19 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 	return
 }
 
+func GetValidIndex[T any](vs URLValues, key string, ts []T) (int, error) {
+	i, err := vs.GetInt(key)
+	if err != nil {
+		return 0, err
+	}
+
+	if (i < 0) || (i >= len(ts)) {
+		return 0, Error("slice index out of range")
+	}
+
+	return i, nil
+}
+
 func MoveDown[T any](vs []T, i int) {
 	if (i >= 0) && (i < len(vs)-1) {
 		vs[i], vs[i+1] = vs[i+1], vs[i]
@@ -52,7 +65,7 @@ func MoveUp[T any](vs []T, i int) {
 }
 
 func RemoveAtIndex[T any](ts []T, i int) []T {
-	if len(ts) == 0 {
+	if (len(ts) == 0) || (i < 0) || (i >= len(ts)) {
 		return ts
 	}
 

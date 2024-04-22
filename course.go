@@ -272,9 +272,9 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
 		}
 	case "Lesson":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 
