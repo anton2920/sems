@@ -282,15 +282,15 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
 	case "Test":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
@@ -301,15 +301,15 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, LessonTestAddPageHandler, test, err)
 		}
 	case "Programming":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
@@ -325,9 +325,9 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	default:
 		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Next":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 
@@ -354,15 +354,15 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		r.Form.Set("LessonIndex", strconv.Itoa(len(course.Lessons)-1))
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		switch step := lesson.Steps[si].(type) {
 		default:
@@ -375,9 +375,9 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Add test":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 		lesson.Draft = true
@@ -389,9 +389,9 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
 		return LessonTestAddPageHandler(w, r, test)
 	case "Add programming task":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(course.Lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		if err != nil {
+			return err
 		}
 		lesson := course.Lessons[li]
 		lesson.Draft = true
@@ -418,9 +418,9 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	courseID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (courseID < 0) || (courseID >= len(user.Courses)) {
-		return ReloadPageError
+	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
+	if err != nil {
+		return err
 	}
 	course := user.Courses[courseID]
 
@@ -450,9 +450,9 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	courseID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (courseID < 0) || (courseID > len(user.Courses)) {
-		return ReloadPageError
+	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
+	if err != nil {
+		return err
 	}
 
 	/* TODO(anton2920): this will screw up indicies for courses that are being edited. */

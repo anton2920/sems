@@ -465,15 +465,15 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, SubjectCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
-	teacherID, err := strconv.Atoi(r.Form.Get("TeacherID"))
-	if (err != nil) || (teacherID < 0) || (teacherID >= len(DB.Users)) {
-		return ReloadPageError
+	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
+	if err != nil {
+		return err
 	}
 	teacher := &DB.Users[teacherID]
 
-	groupID, err := strconv.Atoi(r.Form.Get("GroupID"))
-	if (err != nil) || (groupID < 0) || (groupID >= len(DB.Groups)) {
-		return ReloadPageError
+	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
+	if err != nil {
+		return err
 	}
 	group := &DB.Groups[groupID]
 
@@ -496,9 +496,9 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
+	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	if err != nil {
+		return err
 	}
 	subject := &DB.Subjects[subjectID]
 
@@ -507,15 +507,15 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, SubjectCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
-	teacherID, err := strconv.Atoi(r.Form.Get("TeacherID"))
-	if (err != nil) || (teacherID < 0) || (teacherID >= len(DB.Users)) {
-		return ReloadPageError
+	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
+	if err != nil {
+		return err
 	}
 	teacher := &DB.Users[teacherID]
 
-	groupID, err := strconv.Atoi(r.Form.Get("GroupID"))
-	if (err != nil) || (groupID < 0) || (groupID >= len(DB.Groups)) {
-		return ReloadPageError
+	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
+	if err != nil {
+		return err
 	}
 	group := &DB.Groups[groupID]
 

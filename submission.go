@@ -330,15 +330,15 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		r.Form.Set("Teacher", "yay")
 	}
 
-	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
-		return ReloadPageError
+	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	if err != nil {
+		return err
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := strconv.Atoi(r.Form.Get("SubmissionIndex"))
-	if (err != nil) || (si < 0) || (si >= len(lesson.Submissions)) {
-		return ReloadPageError
+	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	if err != nil {
+		return err
 	}
 	submission := lesson.Submissions[si]
 
@@ -770,15 +770,15 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
+	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	if err != nil {
+		return err
 	}
 	subject := &DB.Subjects[subjectID]
 
-	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
-		return ReloadPageError
+	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	if err != nil {
+		return err
 	}
 	lesson := subject.Lessons[li]
 
@@ -823,9 +823,9 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	stepIndex := r.Form.Get("StepIndex")
 	if stepIndex != "" {
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		if nextPage != "Discard" {
 			switch currentPage {
@@ -871,24 +871,24 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
+	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	if err != nil {
+		return err
 	}
 	subject := &DB.Subjects[subjectID]
 	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
 		return ForbiddenError
 	}
 
-	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
-		return ReloadPageError
+	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	if err != nil {
+		return err
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := strconv.Atoi(r.Form.Get("SubmissionIndex"))
-	if (err != nil) || (si < 0) || (si >= len(lesson.Submissions)) {
-		return ReloadPageError
+	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	if err != nil {
+		return err
 	}
 	lesson.Submissions = RemoveAtIndex(lesson.Submissions, si)
 
@@ -906,24 +906,24 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
+	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	if err != nil {
+		return err
 	}
 	subject := &DB.Subjects[subjectID]
 	if WhoIsUserInSubject(session.ID, subject) != SubjectUserStudent {
 		return ForbiddenError
 	}
 
-	li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-	if (err != nil) || (li < 0) || (li >= len(subject.Lessons)) {
-		return ReloadPageError
+	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	if err != nil {
+		return err
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := strconv.Atoi(r.Form.Get("SubmissionIndex"))
-	if (err != nil) || (si < 0) || (si >= len(lesson.Submissions)) {
-		return ReloadPageError
+	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	if err != nil {
+		return err
 	}
 	submission := lesson.Submissions[si]
 

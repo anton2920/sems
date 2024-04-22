@@ -556,9 +556,9 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	default:
 		return ReloadPageError
 	case "Lesson":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		if err != nil {
+			return err
 		}
 		lesson := lessons[li]
 
@@ -590,15 +590,15 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Test":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		if err != nil {
+			return err
 		}
 		lesson := lessons[li]
 
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
@@ -696,15 +696,15 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		return LessonTestAddPageHandler(w, r, test)
 
 	case "Programming":
-		li, err := strconv.Atoi(r.Form.Get("LessonIndex"))
-		if (err != nil) || (li < 0) || (li >= len(lessons)) {
-			return ReloadPageError
+		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		if err != nil {
+			return err
 		}
 		lesson := lessons[li]
 
-		si, err := strconv.Atoi(r.Form.Get("StepIndex"))
-		if (err != nil) || (si < 0) || (si >= len(lesson.Steps)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		if err != nil {
+			return err
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
