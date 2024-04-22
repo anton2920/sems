@@ -55,6 +55,13 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 	}
 
 	questions := vs.GetMany("Question")
+
+	answerKey := make([]byte, 30)
+	copy(answerKey, "Answer")
+
+	correctAnswerKey := make([]byte, 30)
+	copy(correctAnswerKey, "CorrectAnswer")
+
 	for i := 0; i < len(questions); i++ {
 		if i >= len(test.Questions) {
 			test.Questions = append(test.Questions, Question{})
@@ -65,8 +72,8 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen))
 		}
 
-		buffer := fmt.Appendf(make([]byte, 0, 30), "Answer%d", i)
-		answers := vs.GetMany(unsafe.String(unsafe.SliceData(buffer), len(buffer)))
+		n := SlicePutInt(answerKey[len("Answer"):], i)
+		answers := vs.GetMany(unsafe.String(unsafe.SliceData(answerKey), len("Answer")+n))
 		for j := 0; j < len(answers); j++ {
 			if j >= len(question.Answers) {
 				question.Answers = append(question.Answers, "")
@@ -79,8 +86,8 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 		}
 		question.Answers = question.Answers[:len(answers)]
 
-		buffer = fmt.Appendf(make([]byte, 0, 30), "CorrectAnswer%d", i)
-		correctAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(buffer), len(buffer)))
+		n = SlicePutInt(correctAnswerKey[len("CorrectAnswer"):], i)
+		correctAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(correctAnswerKey), len("CorrectAnswer")+n))
 		for j := 0; j < len(correctAnswers); j++ {
 			if j >= len(question.CorrectAnswers) {
 				question.CorrectAnswers = append(question.CorrectAnswers, 0)

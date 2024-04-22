@@ -369,12 +369,15 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) error {
 	test := submittedTest.Test
 
+	selectedAnswerKey := make([]byte, 30)
+	copy(selectedAnswerKey, "SelectedAnswer")
+
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 		passedQuestion := &submittedTest.SubmittedQuestions[i]
 
-		buffer := fmt.Appendf(make([]byte, 0, 30), "SelectedAnswer%d", i)
-		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(buffer), len(buffer)))
+		n := SlicePutInt(selectedAnswerKey[len("SelectedAnswer"):], i)
+		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(selectedAnswerKey), len("SelectedAnswer")+n))
 		if len(selectedAnswers) == 0 {
 			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: select at least one answer", i+1))
 		}

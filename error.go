@@ -112,6 +112,7 @@ func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, err error) {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Error</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Master's degree</h1>`)
 	w.AppendString(`<h2>Error</h2>`)
 
