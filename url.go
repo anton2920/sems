@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 type URL struct {
 	Path  string
 	Query string
@@ -51,6 +53,10 @@ func (vs URLValues) Get(key string) string {
 		}
 	}
 	return ""
+}
+
+func (vs URLValues) GetInt(key string) (int, error) {
+	return strconv.Atoi(r.Form.Get(key))
 }
 
 func (vs URLValues) GetMany(key string) []string {
