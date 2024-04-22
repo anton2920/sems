@@ -160,7 +160,7 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 		if errors.As(err, &httpError) {
 			w.StatusCode = httpError.StatusCode
 			message = httpError.DisplayMessage
-			if (w.StatusCode >= 400) && (w.StatusCode < 500) {
+			if (w.StatusCode >= HTTPStatusBadRequest) && (w.StatusCode < HTTPStatusInternalServerError) {
 				level = LevelWarn
 			} else {
 				level = LevelError
