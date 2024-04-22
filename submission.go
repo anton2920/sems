@@ -868,8 +868,7 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
 		return ReloadPageError
 	}
@@ -890,7 +889,7 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	lesson.Submissions = RemoveAtIndex(lesson.Submissions, si)
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil
 }
 
@@ -904,8 +903,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
 		return ReloadPageError
 	}
@@ -940,6 +938,6 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 	submission.Draft = false
 	submission.FinishedAt = time.Now()
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 30), "/subject/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil
 }

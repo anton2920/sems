@@ -263,7 +263,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Users: users, CreatedOn: time.Now()})
 
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }
 
@@ -280,8 +280,7 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	groupID, err := strconv.Atoi(id)
+	groupID, err := strconv.Atoi(r.Form.Get("ID"))
 	if err != nil {
 		return ReloadPageError
 	}
@@ -307,6 +306,6 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	group.Name = name
 	group.Users = users
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/group/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/group/", groupID, HTTPStatusSeeOther)
 	return nil
 }

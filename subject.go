@@ -479,7 +479,7 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now()})
 
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }
 
@@ -496,8 +496,7 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
 		return ReloadPageError
 	}
@@ -524,6 +523,6 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	subject.Teacher = teacher
 	subject.Group = group
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil
 }

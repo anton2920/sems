@@ -418,8 +418,7 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	courseID, err := strconv.Atoi(id)
+	courseID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (courseID < 0) || (courseID >= len(user.Courses)) {
 		return ReloadPageError
 	}
@@ -436,7 +435,7 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	course.Draft = false
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/course/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/course/", courseID, HTTPStatusSeeOther)
 	return nil
 }
 
@@ -459,6 +458,6 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 	/* TODO(anton2920): this will screw up indicies for courses that are being edited. */
 	user.Courses = RemoveAtIndex(user.Courses, courseID)
 
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }

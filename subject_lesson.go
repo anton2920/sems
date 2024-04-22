@@ -260,8 +260,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
 		return ReloadPageError
 	}
@@ -286,7 +285,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		LessonsDeepCopy(&subject.Lessons, user.Courses[courseID].Lessons)
 
-		w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
+		w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 		return nil
 	}
 
@@ -449,8 +448,7 @@ func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ReloadPageError
 	}
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
+	subjectID, err := strconv.Atoi(r.Form.Get("ID"))
 	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
 		return ReloadPageError
 	}
@@ -469,6 +467,6 @@ func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 	}
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/subject/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil
 }

@@ -308,7 +308,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	DB.Users = append(DB.Users, User{ID: len(DB.Users), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
 
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 
 }
@@ -323,8 +323,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
 
-	id := r.Form.Get("ID")
-	userID, err := strconv.Atoi(id)
+	userID, err := strconv.Atoi(r.Form.Get("ID"))
 	if err != nil {
 		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
 	}
@@ -364,7 +363,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user.Email = email
 	user.Password = password
 
-	w.Redirect(fmt.Appendf(make([]byte, 0, 20), "/user/%s", id), HTTPStatusSeeOther)
+	w.RedirectID("/user/", userID, HTTPStatusSeeOther)
 	return nil
 }
 
@@ -414,7 +413,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	} else {
 		w.SetCookie("Token", token, expiry)
 	}
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }
 
@@ -433,6 +432,6 @@ func UserSignoutHandler(w *HTTPResponse, r *HTTPRequest) error {
 	SessionsLock.Unlock()
 
 	w.DelCookie("Token")
-	w.RedirectString("/", HTTPStatusSeeOther)
+	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
 }
