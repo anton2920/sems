@@ -331,13 +331,13 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
 	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	submission := lesson.Submissions[si]
 
@@ -361,8 +361,6 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Discard":
 		return SubmissionDiscardHandler(w, r)
 	}
-
-	return nil
 }
 
 func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) error {
@@ -378,7 +376,7 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 		n := SlicePutInt(selectedAnswerKey[len("SelectedAnswer"):], i)
 		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(selectedAnswerKey), len("SelectedAnswer")+n))
 		if len(selectedAnswers) == 0 {
-			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: select at least one answer", i+1))
+			return BadRequest(fmt.Sprintf("question %d: select at least one answer", i+1))
 		}
 		if (len(question.CorrectAnswers) == 1) && (len(selectedAnswers) > 1) {
 			return ClientError(nil)
@@ -410,7 +408,7 @@ func SubmissionNewProgrammingVerifyRequest(vs URLValues, submittedTask *Submitte
 
 	submittedTask.Solution = vs.Get("Solution")
 	if !StringLengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
-		return fmt.Errorf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
+		return BadRequest(fmt.Sprintf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen))
 	}
 
 	return nil
@@ -771,13 +769,13 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 
 	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
@@ -823,7 +821,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if stepIndex != "" {
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		if nextPage != "Discard" {
 			switch currentPage {
@@ -871,7 +869,7 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
@@ -880,13 +878,13 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
 	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	lesson.Submissions = RemoveAtIndex(lesson.Submissions, si)
 
@@ -906,7 +904,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 	if WhoIsUserInSubject(session.ID, subject) != SubjectUserStudent {
@@ -915,13 +913,13 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
 	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	submission := lesson.Submissions[si]
 
@@ -933,7 +931,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 	}
 	if empty {
-		return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, NewHTTPError(HTTPStatusBadRequest, "you have to pass at least one step"))
+		return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, BadRequest("you have to pass at least one step"))
 	}
 
 	submission.Draft = false

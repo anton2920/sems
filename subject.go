@@ -50,7 +50,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Subjects)) {
-		return NotFoundError
+		return NotFound("subject with this ID does not exist")
 	}
 	subject := &DB.Subjects[id]
 
@@ -462,18 +462,18 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
+		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
 	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
 	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
@@ -498,24 +498,24 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
+		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
 	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
 	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 

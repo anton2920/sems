@@ -37,12 +37,12 @@ var CheckKeys = [2][3]string{
 func LessonAddVerifyRequest(vs URLValues, lesson *Lesson) error {
 	lesson.Name = vs.Get("Name")
 	if !StringLengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
+		return BadRequest(fmt.Sprintf("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
 	}
 
 	lesson.Theory = vs.Get("Theory")
 	if !StringLengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen))
+		return BadRequest(fmt.Sprintf("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen))
 	}
 
 	return nil
@@ -51,7 +51,7 @@ func LessonAddVerifyRequest(vs URLValues, lesson *Lesson) error {
 func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
 	test.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen)) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
+		return BadRequest(fmt.Sprintf("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
 	}
 
 	questions := vs.GetMany("Question")
@@ -69,7 +69,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 		question := &test.Questions[i]
 		question.Name = questions[i]
 		if (shouldCheck) && (!StringLengthInRange(question.Name, MinQuestionLen, MaxQuestionLen)) {
-			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen))
+			return BadRequest(fmt.Sprintf("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen))
 		}
 
 		n := SlicePutInt(answerKey[len("Answer"):], i)
@@ -81,7 +81,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			question.Answers[j] = answers[j]
 
 			if (shouldCheck) && (!StringLengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen)) {
-				return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen))
+				return BadRequest(fmt.Sprintf("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen))
 			}
 		}
 		question.Answers = question.Answers[:len(answers)]
@@ -100,7 +100,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			}
 		}
 		if (shouldCheck) && (len(correctAnswers) == 0) {
-			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: select at least one correct answer", i+1))
+			return BadRequest(fmt.Sprintf("question %d: select at least one correct answer", i+1))
 		}
 		question.CorrectAnswers = question.CorrectAnswers[:len(correctAnswers)]
 	}
@@ -112,12 +112,12 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
 	task.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen)) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
+		return BadRequest(fmt.Sprintf("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
 	}
 
 	task.Description = vs.Get("Description")
 	if (shouldCheck) && (!StringLengthInRange(task.Name, MinDescriptionLen, MaxDescriptionLen)) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen))
+		return BadRequest(fmt.Sprintf("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen))
 	}
 
 	for i := 0; i < len(CheckKeys); i++ {
@@ -140,11 +140,11 @@ func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shou
 			check.Output = outputs[j]
 
 			if (shouldCheck) && (!StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen)) {
-				return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+				return BadRequest(fmt.Sprintf("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
 			}
 
 			if (shouldCheck) && (!StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen)) {
-				return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+				return BadRequest(fmt.Sprintf("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
 			}
 		}
 	}
@@ -320,7 +320,7 @@ func LessonProgrammingAddDisplayChecks(w *HTTPResponse, task *StepProgramming, c
 
 		w.AppendString(`<label>Input: `)
 
-		w.AppendString(`<textarea rows="1" minlength ="1" maxlength="512" name="`)
+		w.AppendString(`<textarea rows="1" minlength="1" maxlength="512" name="`)
 		w.AppendString(CheckKeys[checkType][CheckKeyInput])
 		w.AppendString(`">`)
 		w.WriteHTMLString(check.Input)
@@ -330,7 +330,7 @@ func LessonProgrammingAddDisplayChecks(w *HTTPResponse, task *StepProgramming, c
 		w.AppendString("\r\n")
 		w.AppendString(`<label>output: `)
 
-		w.AppendString(`<textarea rows="1" minlength ="1" maxlength="512" name="`)
+		w.AppendString(`<textarea rows="1" minlength="1" maxlength="512" name="`)
 		w.AppendString(CheckKeys[checkType][CheckKeyOutput])
 		w.AppendString(`">`)
 		w.WriteHTMLString(check.Output)
@@ -558,7 +558,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	case "Lesson":
 		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := lessons[li]
 
@@ -592,13 +592,13 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	case "Test":
 		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := lessons[li]
 
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
@@ -606,7 +606,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		}
 
 		if err := LessonTestAddVerifyRequest(r.Form, test, false); err != nil {
-			return err
+			return ClientError(err)
 		}
 
 		switch command {
@@ -698,13 +698,13 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	case "Programming":
 		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := lessons[li]
 
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
@@ -712,7 +712,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		}
 
 		if err := LessonProgrammingAddVerifyRequest(r.Form, task, false); err != nil {
-			return err
+			return ClientError(err)
 		}
 
 		switch command {

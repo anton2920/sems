@@ -18,19 +18,19 @@ const (
 
 func UserNameValid(name string) error {
 	if !StringLengthInRange(name, MinUserNameLen, MaxUserNameLen) {
-		return fmt.Errorf("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen)
+		return BadRequest(fmt.Sprintf("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen))
 	}
 
 	/* Fist character must be a letter. */
 	r, nbytes := utf8.DecodeRuneInString(name)
 	if !unicode.IsLetter(r) {
-		return NewError("first character of the name must be a letter")
+		return BadRequest("first character of the name must be a letter")
 	}
 
 	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
 	for _, r := range name[nbytes:] {
 		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
-			return NewError("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
+			return BadRequest("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
 		}
 	}
 
@@ -45,10 +45,10 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	id, err := GetIDFromURL(r.URL, "/user/")
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Users)) {
-		return NotFoundError
+		return NotFound("user with this ID does not exist")
 	}
 	user := &DB.Users[id]
 
@@ -115,6 +115,7 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create user</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Create user</h2>`)
 
@@ -276,32 +277,32 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	firstName := r.Form.Get("FirstName")
 	if err := UserNameValid(firstName); err != nil {
-		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+		return WritePage(w, r, UserCreatePageHandler, err)
 	}
 
 	lastName := r.Form.Get("LastName")
 	if err := UserNameValid(lastName); err != nil {
-		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+		return WritePage(w, r, UserCreatePageHandler, err)
 	}
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, "provided email is not valid"))
+		return WritePage(w, r, UserCreatePageHandler, BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+		return WritePage(w, r, UserCreatePageHandler, BadRequest(fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
+		return WritePage(w, r, UserCreatePageHandler, BadRequest("passwords do not match each other"))
 	}
 
 	for i := 0; i < len(DB.Users); i++ {
 		if email == DB.Users[i].Email {
-			return WritePage(w, r, UserCreatePageHandler, NewHTTPError(HTTPStatusConflict, "user with this email already exists"))
+			return WritePage(w, r, UserCreatePageHandler, Conflict("user with this email already exists"))
 		}
 	}
 
@@ -333,27 +334,27 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	firstName := r.Form.Get("FirstName")
 	if err := UserNameValid(firstName); err != nil {
-		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+		return WritePage(w, r, UserEditPageHandler, err)
 	}
 
 	lastName := r.Form.Get("LastName")
 	if err := UserNameValid(lastName); err != nil {
-		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, err.Error()))
+		return WritePage(w, r, UserEditPageHandler, err)
 	}
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, "provided email is not valid"))
+		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+		return WritePage(w, r, UserEditPageHandler, BadRequest(fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserEditPageHandler, NewHTTPError(HTTPStatusBadRequest, "passwords do not match each other"))
+		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))
 	}
 
 	user := &DB.Users[userID]
@@ -372,8 +373,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	/* TODO(anton2920): replace with actual user checks. */
-	var id int
-	var ok bool
+	id := -1
 	email := r.Form.Get("Email")
 	password := r.Form.Get("Password")
 
@@ -382,21 +382,20 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		if email == user.Email {
 			if password != user.Password {
-				return WritePage(w, r, UserSigninPageHandler, NewHTTPError(HTTPStatusConflict, "provided password is incorrect"))
+				return WritePage(w, r, UserSigninPageHandler, Conflict("provided password is incorrect"))
 			}
 
 			id = i
-			ok = true
 			break
 		}
 	}
-	if !ok {
-		return WritePage(w, r, UserSigninPageHandler, NewHTTPError(HTTPStatusNotFound, "user with this email does not exist"))
+	if id == -1 {
+		return WritePage(w, r, UserSigninPageHandler, NotFound("user with this email does not exist"))
 	}
 
 	token, err := GenerateSessionToken()
 	if err != nil {
-		return err
+		return ServerError(err)
 	}
 	expiry := time.Now().Add(OneWeek)
 

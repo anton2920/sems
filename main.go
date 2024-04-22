@@ -83,7 +83,7 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	}
 
-	return NotFoundError
+	return NotFound("requested page does not exist")
 }
 
 func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
@@ -120,7 +120,7 @@ func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	}
 
-	return NotFoundError
+	return NotFound("requested API endpoint does not exist")
 }
 
 func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
@@ -185,8 +185,6 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 func main() {
 	if DebugMode == "on" {
 		Debug = true
-	}
-	if Debug {
 		SetLogLevel(LevelDebug)
 	}
 

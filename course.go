@@ -27,10 +27,10 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	id, err := GetIDFromURL(r.URL, "/course/")
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	if (id < 0) || (id > len(user.Courses)) {
-		return NotFoundError
+		return NotFound("course with this ID does not exist")
 	}
 	course := user.Courses[id]
 
@@ -100,7 +100,7 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 func CourseCreateEditCourseVerifyRequest(vs URLValues, course *Course) error {
 	course.Name = vs.Get("Name")
 	if !StringLengthInRange(course.Name, MinNameLen, MaxNameLen) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
+		return BadRequest(fmt.Sprintf("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
 	}
 
 	return nil
@@ -110,6 +110,7 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create course</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Course</h1>`)
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
@@ -273,7 +274,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Lesson":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
@@ -283,13 +284,13 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Test":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
@@ -302,13 +303,13 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Programming":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
@@ -326,7 +327,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Next":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
@@ -334,11 +335,11 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("test %d is a draft", si+1)))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("programming task %d is a draft", si+1)))
 				}
 			}
 		}
@@ -355,13 +356,13 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Continue":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
 		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		switch step := lesson.Steps[si].(type) {
 		default:
@@ -376,7 +377,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Add test":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 		lesson.Draft = true
@@ -390,7 +391,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Add programming task":
 		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
 		if err != nil {
-			return err
+			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 		lesson.Draft = true
@@ -419,17 +420,17 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	course := user.Courses[courseID]
 
 	if len(course.Lessons) == 0 {
-		return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, "create at least one lesson"))
+		return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, BadRequest("create at least one lesson"))
 	}
 	for li := 0; li < len(course.Lessons); li++ {
 		lesson := course.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("lesson %d is a draft", li+1)))
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, BadRequest(fmt.Sprintf("lesson %d is a draft", li+1)))
 		}
 	}
 	course.Draft = false
@@ -451,7 +452,7 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 
 	/* TODO(anton2920): this will screw up indicies for courses that are being edited. */

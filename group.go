@@ -20,10 +20,10 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	id, err := GetIDFromURL(r.URL, "/group/")
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Groups)) {
-		return NotFoundError
+		return NotFound("group with this ID does not exist")
 	}
 	group := DB.Groups[id]
 
@@ -249,7 +249,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupCreatePageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
+		return WritePage(w, r, GroupCreatePageHandler, BadRequest(fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
 	}
 
 	sids := r.Form.GetMany("UserID")
@@ -257,7 +257,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := strconv.Atoi(sids[i])
 		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
-			return WritePage(w, r, GroupEditPageHandler, ClientError(err))
+			return ClientError(err)
 		}
 		users[i] = &DB.Users[id]
 	}
@@ -285,13 +285,13 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 	if (groupID < 0) || (groupID >= len(DB.Groups)) {
-		return NotFoundError
+		return NotFound("group with this ID does not exist")
 	}
 	group := &DB.Groups[groupID]
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupEditPageHandler, NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
+		return WritePage(w, r, GroupEditPageHandler, BadRequest(fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
 	}
 
 	sids := r.Form.GetMany("UserID")
@@ -299,7 +299,7 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := strconv.Atoi(sids[i])
 		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
-			return WritePage(w, r, GroupEditPageHandler, ClientError(err))
+			return ClientError(err)
 		}
 		users[i] = &DB.Users[id]
 	}

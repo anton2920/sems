@@ -117,7 +117,6 @@ type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 var (
 	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page"}
 	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient"}
-	NotFoundError     = HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: "whoops... Requested page not found"}
 )
 
 func (r *HTTPRequest) Cookie(name string) string {
@@ -329,6 +328,18 @@ func (w *HTTPResponse) WriteHTMLString(s string) {
 	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
+func BadRequest(message string) HTTPError {
+	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+}
+
+func NotFound(message string) HTTPError {
+	return HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+}
+
+func Conflict(message string) HTTPError {
+	return HTTPError{StatusCode: HTTPStatusConflict, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+}
+
 func ClientError(err error) HTTPError {
 	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: "whoops... Something went wrong. Please reload this page or try again later", LogError: WrapErrorWithTraceEx(err, 2)}
 }
@@ -337,9 +348,11 @@ func ServerError(err error) HTTPError {
 	return HTTPError{StatusCode: HTTPStatusInternalServerError, DisplayMessage: "whoops... Something went wrong. Please try again later", LogError: WrapErrorWithTraceEx(err, 2)}
 }
 
+/*
 func NewHTTPError(statusCode HTTPStatus, message string) HTTPError {
 	return HTTPError{StatusCode: statusCode, DisplayMessage: message, LogError: NewError(message)}
 }
+*/
 
 func (e HTTPError) Error() string {
 	if e.LogError == nil {
