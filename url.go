@@ -22,20 +22,22 @@ func (vs *URLValues) Add(key string, value string) {
 		v := &(*vs)[i]
 		if key == v.Key {
 			v.Values = append(v.Values, value)
+			return
 		}
 	}
 
-	if len(*vs) < cap(*vs) {
-		l := len(*vs)
-		*vs = (*vs)[:l+1]
-
-		v := &(*vs)[l]
-		v.Key = key
-		v.Values = v.Values[:0]
-		v.Values = append(v.Values, value)
-	} else {
+	if len(*vs) >= cap(*vs) {
 		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+		return
 	}
+
+	l := len(*vs)
+	*vs = (*vs)[:l+1]
+
+	v := &(*vs)[l]
+	v.Key = key
+	v.Values = v.Values[:0]
+	v.Values = append(v.Values, value)
 }
 
 func (vs URLValues) Get(key string) string {
@@ -71,20 +73,22 @@ func (vs *URLValues) Set(key string, value string) {
 		if key == v.Key {
 			v.Values = v.Values[:0]
 			v.Values = append(v.Values, value)
+			return
 		}
 	}
 
-	if len(*vs) < cap(*vs) {
-		l := len(*vs)
-		*vs = (*vs)[:l+1]
-
-		v := &(*vs)[l]
-		v.Key = key
-		v.Values = v.Values[:0]
-		v.Values = append(v.Values, value)
-	} else {
+	if len(*vs) >= cap(*vs) {
 		*vs = append(*vs, URLValue{Key: key, Values: []string{value}})
+		return
 	}
+
+	l := len(*vs)
+	*vs = (*vs)[:l+1]
+
+	v := &(*vs)[l]
+	v.Key = key
+	v.Values = v.Values[:0]
+	v.Values = append(v.Values, value)
 }
 
 /* CharToByte returns ASCII-decoded character. For example, 'A' yields '\x0A'. */
