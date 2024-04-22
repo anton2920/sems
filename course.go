@@ -112,7 +112,7 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 	w.AppendString(`<body>`)
 	w.AppendString(`<h1>Course</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -193,7 +193,7 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 func CourseCreateEditHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Course, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	switch currentPage {
@@ -205,7 +205,7 @@ func CourseCreateEditHandleCommand(w *HTTPResponse, r *HTTPRequest, course *Cour
 			course.Lessons = RemoveAtIndex(course.Lessons, pindex)
 		case "Edit":
 			if (pindex < 0) || (pindex >= len(course.Lessons)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			lesson := course.Lessons[pindex]
 			lesson.Draft = true
@@ -233,22 +233,21 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
 	var course *Course
-	id := r.Form.Get("ID")
-	if id == "" {
+	if r.Form.Get("ID") == "" {
 		course = new(Course)
 		user.Courses = append(user.Courses, course)
 		r.Form.Set("ID", strconv.Itoa(len(user.Courses)-1))
 	} else {
-		ci, err := strconv.Atoi(id)
-		if (err != nil) || (ci < 0) || (ci >= len(user.Courses)) {
-			return ReloadPageError
+		ci, err := GetValidIndex(r.Form, "ID", user.Courses)
+		if err != nil {
+			return ClientError(err)
 		}
 		course = user.Courses[ci]
 	}
@@ -294,7 +293,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonTestAddVerifyRequest(r.Form, test, true); err != nil {
@@ -313,7 +312,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonProgrammingAddVerifyRequest(r.Form, task, true); err != nil {
@@ -415,7 +414,7 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
@@ -447,7 +446,7 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)

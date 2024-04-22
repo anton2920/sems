@@ -44,7 +44,7 @@ func KqueueMonitor(eventlist []Kevent_t, cb KqueueCb) error {
 	var event Kevent_t
 	for {
 		if _, err := Kevent(kq, nil, unsafe.Slice(&event, 1), nil); err != nil {
-			code := err.(E).Code
+			code := err.(ErrorWithCode).Code
 			if code != EINTR {
 				return err
 			}

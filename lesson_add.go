@@ -96,7 +96,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			var err error
 			question.CorrectAnswers[j], err = strconv.Atoi(correctAnswers[j])
 			if (err != nil) || (question.CorrectAnswers[j] < 0) || (question.CorrectAnswers[j] >= len(question.Answers)) {
-				return ReloadPageError
+				return ClientError(err)
 			}
 		}
 		if (shouldCheck) && (len(correctAnswers) == 0) {
@@ -127,7 +127,7 @@ func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shou
 		outputs := vs.GetMany(CheckKeys[i][CheckKeyOutput])
 
 		if len(inputs) != len(outputs) {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		for j := 0; j < len(inputs); j++ {
@@ -159,7 +159,7 @@ func LessonTestAddPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 	w.AppendString(`<h1>Lesson</h1>`)
 	w.AppendString(`<h2>Test</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -376,7 +376,7 @@ func LessonProgrammingAddPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	w.AppendString(`<h1>Lesson</h1>`)
 	w.AppendString(`<h2>Programming task</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -439,7 +439,7 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 	w.AppendString(`<body>`)
 	w.AppendString(`<h1>Lesson</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -549,12 +549,12 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	/* TODO(anton2920): pass as params. */
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	switch currentPage {
 	default:
-		return ReloadPageError
+		return ClientError(nil)
 	case "Lesson":
 		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
 		if err != nil {
@@ -567,7 +567,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			lesson.Steps = RemoveAtIndex(lesson.Steps, pindex)
 		case "Edit":
 			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			step := lesson.Steps[pindex]
 
@@ -602,7 +602,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonTestAddVerifyRequest(r.Form, test, false); err != nil {
@@ -612,18 +612,18 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		switch command {
 		case "Add another answer":
 			if (pindex < 0) || (pindex >= len(test.Questions)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			question := &test.Questions[pindex]
 			question.Answers = append(question.Answers, "")
 		case "-": /* remove answer */
 			if (pindex < 0) || (pindex >= len(test.Questions)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			question := &test.Questions[pindex]
 
 			if (sindex < 0) || (sindex >= len(question.Answers)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			question.Answers = RemoveAtIndex(question.Answers, sindex)
 
@@ -644,7 +644,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 				MoveUp(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
-					return ReloadPageError
+					return ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
@@ -670,7 +670,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 				MoveDown(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
-					return ReloadPageError
+					return ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
@@ -708,7 +708,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonProgrammingAddVerifyRequest(r.Form, task, false); err != nil {
@@ -722,17 +722,17 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			task.Checks[CheckTypeTest] = append(task.Checks[CheckTypeTest], Check{})
 		case "-":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			task.Checks[sindex] = RemoveAtIndex(task.Checks[sindex], pindex)
 		case "↑", "^|":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			MoveUp(task.Checks[sindex], pindex)
 		case "↓", "|v":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			MoveDown(task.Checks[sindex], pindex)
 		}

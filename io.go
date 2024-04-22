@@ -19,7 +19,7 @@ func ReadFull(fd int32, buf []byte) (int64, error) {
 	for read < int64(len(buf)) {
 		n, err := Read(fd, buf[read:])
 		if err != nil {
-			code := err.(E).Code
+			code := err.(ErrorWithCode).Code
 			if code != EINTR {
 				return n, err
 			}

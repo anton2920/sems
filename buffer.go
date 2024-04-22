@@ -28,7 +28,7 @@ func NewCircularBuffer(size int) (CircularBuffer, error) {
 	var cb CircularBuffer
 
 	if size%int(PageSize) != 0 {
-		return cb, ErrorWithCode("size must be divisible by 4096, got ", size)
+		return cb, NewErrorWithCode("size must be divisible by 4096, got ", size)
 	}
 
 	fd, err := ShmOpen2(SHM_ANON, O_RDWR, 0, 0, NULL)

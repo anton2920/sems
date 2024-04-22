@@ -94,6 +94,12 @@ type HTTPResponse struct {
 	Bodies     []Iovec
 }
 
+type HTTPError struct {
+	StatusCode     HTTPStatus
+	DisplayMessage string
+	LogError       error
+}
+
 type HTTPContext struct {
 	RequestBuffer CircularBuffer
 	ResponseArena Arena
@@ -107,6 +113,12 @@ type HTTPContext struct {
 }
 
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
+
+var (
+	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page"}
+	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient"}
+	NotFoundError     = HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: "whoops... Requested page not found"}
+)
 
 func (r *HTTPRequest) Cookie(name string) string {
 	for i := 0; i < len(r.Headers); i++ {
@@ -139,7 +151,7 @@ func (r *HTTPRequest) ParseForm() error {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
 		if strings.Contains(key, ";") {
-			err = Error("invalid semicolon separator in query")
+			err = NewError("invalid semicolon separator in query")
 			continue
 		}
 		if key == "" {
@@ -151,7 +163,7 @@ func (r *HTTPRequest) ParseForm() error {
 		n, ok := URLDecode(keyBuffer, key)
 		if !ok {
 			if err == nil {
-				err = Error("invalid key")
+				err = NewError("invalid key")
 			}
 			continue
 		}
@@ -161,7 +173,7 @@ func (r *HTTPRequest) ParseForm() error {
 		n, ok = URLDecode(valueBuffer, value)
 		if !ok {
 			if err == nil {
-				err = Error("invalid value")
+				err = NewError("invalid value")
 			}
 			continue
 		}
@@ -315,6 +327,25 @@ func (w *HTTPResponse) WriteString(s string) (int, error) {
 
 func (w *HTTPResponse) WriteHTMLString(s string) {
 	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
+}
+
+func ClientError(err error) HTTPError {
+	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: "whoops... Something went wrong. Please reload this page or try again later", LogError: WrapErrorWithTraceEx(err, 2)}
+}
+
+func ServerError(err error) HTTPError {
+	return HTTPError{StatusCode: HTTPStatusInternalServerError, DisplayMessage: "whoops... Something went wrong. Please try again later", LogError: WrapErrorWithTraceEx(err, 2)}
+}
+
+func NewHTTPError(statusCode HTTPStatus, message string) HTTPError {
+	return HTTPError{StatusCode: statusCode, DisplayMessage: message, LogError: NewError(message)}
+}
+
+func (e HTTPError) Error() string {
+	if e.LogError == nil {
+		return "<nil>"
+	}
+	return e.LogError.Error()
 }
 
 /* NOTE(anton2920): Noescape hides a pointer from escape analysis. Noescape is the identity function but escape analysis doesn't think the output depends on the input. Noescape is inlined and currently compiles down to zero instructions. */
@@ -536,7 +567,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 	for {
 		nevents, err := Kevent(kq, nil, unsafe.Slice(&events[0], len(events)), nil)
 		if err != nil {
-			code := err.(E).Code
+			code := err.(ErrorWithCode).Code
 			if code == EINTR {
 				continue
 			}
@@ -552,7 +583,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 			case l:
 				c, err := Accept(l, nil, nil)
 				if err != nil {
-					code := err.(E).Code
+					code := err.(ErrorWithCode).Code
 					if code == EAGAIN {
 						continue
 					}
@@ -617,7 +648,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				if len(wIovs[ctx.ResponsePos:]) > 0 {
 					n, err := Writev(c, wIovs[ctx.ResponsePos:])
 					if err != nil {
-						code := err.(E).Code
+						code := err.(ErrorWithCode).Code
 						if code == EAGAIN {
 							continue
 						}

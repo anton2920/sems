@@ -244,7 +244,7 @@ func SubmissionProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submitted
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<h2>Description</h2>`)
 	w.AppendString(`<p>`)
@@ -280,19 +280,19 @@ func SubmissionProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submitted
 func SubmissionHandleCommand(w *HTTPResponse, r *HTTPRequest, submission *Submission, currentPage, k, command string) error {
 	pindex, _, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	switch currentPage {
 	default:
-		return ReloadPageError
+		return ClientError(nil)
 	case "Main":
 		switch command {
 		default:
-			return ReloadPageError
+			return ClientError(nil)
 		case "Open":
 			if (pindex < 0) || (pindex >= len(submission.Steps)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 
 			switch submittedStep := submission.SubmittedSteps[pindex].(type) {
@@ -314,13 +314,12 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
-	id := r.Form.Get("ID")
-	subjectID, err := strconv.Atoi(id)
-	if (err != nil) || (subjectID < 0) || (subjectID >= len(DB.Subjects)) {
-		return ReloadPageError
+	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	if err != nil {
+		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 	switch WhoIsUserInSubject(session.ID, subject) {
@@ -382,7 +381,7 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 			return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("question %d: select at least one answer", i+1))
 		}
 		if (len(question.CorrectAnswers) == 1) && (len(selectedAnswers) > 1) {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 		for j := 0; j < len(selectedAnswers); j++ {
 			if j >= len(passedQuestion.SelectedAnswers) {
@@ -392,7 +391,7 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 			var err error
 			passedQuestion.SelectedAnswers[j], err = strconv.Atoi(selectedAnswers[j])
 			if (err != nil) || (passedQuestion.SelectedAnswers[j] < 0) || (passedQuestion.SelectedAnswers[j] >= len(question.Answers)) {
-				return ReloadPageError
+				return ClientError(err)
 			}
 		}
 	}
@@ -406,12 +405,12 @@ func SubmissionNewProgrammingVerifyRequest(vs URLValues, submittedTask *Submitte
 	submittedTask.LanguageID, err = strconv.Atoi(vs.Get("LanguageID"))
 	/* TODO(anton2920): replace with actual check for programming language. */
 	if (err != nil) || (submittedTask.LanguageID < 0) || (submittedTask.LanguageID >= 2) {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	submittedTask.Solution = vs.Get("Solution")
 	if !StringLengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
-		return NewHTTPError(HTTPStatusBadRequest, fmt.Sprintf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen))
+		return fmt.Errorf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
 	}
 
 	return nil
@@ -430,7 +429,7 @@ func SubmissionNewMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *S
 	w.WriteHTMLString(submission.Name)
 	w.AppendString(`</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -519,7 +518,7 @@ func SubmissionNewTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest
 	w.WriteHTMLString(test.Name)
 	w.AppendString(`</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -658,7 +657,7 @@ func SubmissionNewProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submit
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</h1>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<h2>Description</h2>`)
 	w.AppendString(`<p>`)
@@ -717,19 +716,19 @@ func SubmissionNewProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submit
 func SubmissionNewHandleCommand(w *HTTPResponse, r *HTTPRequest, submission *Submission, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	switch currentPage {
 	default:
-		return ReloadPageError
+		return ClientError(nil)
 	case "Main":
 		switch command {
 		default:
-			return ReloadPageError
+			return ClientError(nil)
 		case "Pass", "Edit":
 			if (pindex < 0) || (pindex >= len(submission.Steps)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 
 			switch step := submission.Steps[pindex].(type) {
@@ -767,7 +766,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
@@ -787,8 +786,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	var submission *Submission
-	submissionIndex := r.Form.Get("SubmissionIndex")
-	if submissionIndex == "" {
+	if r.Form.Get("SubmissionIndex") == "" {
 		submission = new(Submission)
 		submission.Draft = true
 		submission.Name = lesson.Name
@@ -800,9 +798,9 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Submissions = append(lesson.Submissions, submission)
 		r.Form.Set("SubmissionIndex", strconv.Itoa(len(lesson.Submissions)-1))
 	} else {
-		si, err := strconv.Atoi(submissionIndex)
-		if (err != nil) || (si < 0) || (si >= len(lesson.Submissions)) {
-			return ReloadPageError
+		si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+		if err != nil {
+			return ClientError(err)
 		}
 		submission = lesson.Submissions[si]
 	}
@@ -832,7 +830,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			case "Test":
 				submittedTest, ok := submission.SubmittedSteps[si].(*SubmittedTest)
 				if !ok {
-					return ReloadPageError
+					return ClientError(nil)
 				}
 
 				if err := SubmissionNewTestVerifyRequest(r.Form, submittedTest); err != nil {
@@ -841,7 +839,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			case "Programming":
 				passedProgramming, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
 				if !ok {
-					return ReloadPageError
+					return ClientError(nil)
 				}
 
 				if err := SubmissionNewProgrammingVerifyRequest(r.Form, passedProgramming); err != nil {
@@ -868,7 +866,7 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
@@ -903,7 +901,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)

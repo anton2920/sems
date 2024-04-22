@@ -47,7 +47,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	id, err := GetIDFromURL(r.URL, "/subject/")
 	if err != nil {
-		return err
+		return ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Subjects)) {
 		return NotFoundError
@@ -265,7 +265,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -274,7 +274,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>Subject</h1>`)
 	w.AppendString(`<h2>Create</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/subject/create">`)
 
@@ -298,7 +298,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -326,7 +326,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == group.ID {
 				w.AppendString(` selected`)
@@ -359,7 +359,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -368,7 +368,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>Subject</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/subject/edit">`)
 
@@ -396,7 +396,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -424,7 +424,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == group.ID {
 				w.AppendString(` selected`)
@@ -457,7 +457,7 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	name := r.Form.Get("Name")
@@ -493,7 +493,7 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)

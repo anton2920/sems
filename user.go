@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/mail"
-	"strconv"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -25,13 +24,13 @@ func UserNameValid(name string) error {
 	/* Fist character must be a letter. */
 	r, nbytes := utf8.DecodeRuneInString(name)
 	if !unicode.IsLetter(r) {
-		return Error("first character of the name must be a letter")
+		return NewError("first character of the name must be a letter")
 	}
 
 	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
 	for _, r := range name[nbytes:] {
 		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
-			return Error("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
+			return NewError("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
 		}
 	}
 
@@ -119,7 +118,7 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Create user</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/create">`)
 
@@ -171,7 +170,7 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -180,7 +179,7 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
@@ -237,7 +236,7 @@ func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>Master's degree</h1>`)
 	w.AppendString(`<h2>Sign in</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/signin">`)
 
@@ -268,7 +267,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return WritePage(w, r, UserCreatePageHandler, ReloadPageError)
+		return ClientError(err)
 	}
 
 	if session.ID != AdminID {
@@ -320,12 +319,12 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
+		return ClientError(err)
 	}
 
-	userID, err := strconv.Atoi(r.Form.Get("ID"))
+	userID, err := GetValidIndex(r.Form, "UserID", DB.Users)
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, ReloadPageError)
+		return ClientError(err)
 	}
 
 	if (session.ID != userID) && (session.ID != AdminID) {
@@ -369,7 +368,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	/* TODO(anton2920): replace with actual user checks. */
@@ -408,7 +407,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	SessionsLock.Unlock()
 
-	if DebugMode == "on" {
+	if Debug {
 		w.SetCookieUnsafe("Token", token, expiry)
 	} else {
 		w.SetCookie("Token", token, expiry)

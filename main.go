@@ -14,7 +14,10 @@ const (
 	PageSize = 4096
 )
 
-var DebugMode = "off"
+var (
+	DebugMode string
+	Debug     bool
+)
 
 func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
@@ -138,7 +141,7 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 		w.AppendString("Hello, world!\n")
 		return nil
 	case path == "/error":
-		return WrapErrorWithTrace(WrapErrorWithTrace(TryAgainLaterError))
+		return WrapErrorWithTrace(WrapErrorWithTrace(ServerError(nil)))
 	case path == "/panic":
 		panic("test panic")
 	}
@@ -150,24 +153,30 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 
 	err := RouterFunc(w, r)
 	if err != nil {
+		var panicError PanicError
 		var httpError HTTPError
-		displayError := err
-		if (errors.As(err, &httpError)) && (httpError.StatusCode != HTTPStatusInternalServerError) {
+		var message string
+
+		if errors.As(err, &httpError) {
 			w.StatusCode = httpError.StatusCode
-			level = LevelWarn
-		} else {
-			w.StatusCode = HTTPStatusInternalServerError
-			if DebugMode != "on" {
-				displayError = TryAgainLaterError
-			}
-			if _, ok := err.(PanicError); ok {
-				level = LevelPanic
+			message = httpError.DisplayMessage
+			if (w.StatusCode >= 400) && (w.StatusCode < 500) {
+				level = LevelWarn
 			} else {
 				level = LevelError
 			}
+		} else if errors.As(err, &panicError) {
+			w.StatusCode = ServerError(nil).StatusCode
+			message = ServerError(nil).DisplayMessage
+			level = LevelPanic
+		} else {
+			panic("unsupported error")
 		}
 
-		ErrorPageHandler(w, r, displayError)
+		if Debug {
+			message = err.Error()
+		}
+		ErrorPageHandler(w, r, message)
 	}
 
 	Logf(level, "%7s %s -> %d (%v), %v", r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
@@ -175,6 +184,9 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 
 func main() {
 	if DebugMode == "on" {
+		Debug = true
+	}
+	if Debug {
 		SetLogLevel(LevelDebug)
 	}
 

@@ -12,7 +12,7 @@ func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
@@ -143,7 +143,7 @@ func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *
 	w.AppendString(`<h1>Subject</h1>`)
 	w.AppendString(`<h2>Lessons</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -217,7 +217,7 @@ func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *
 func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Subject, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	switch currentPage {
@@ -229,7 +229,7 @@ func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Su
 			subject.Lessons = RemoveAtIndex(subject.Lessons, pindex)
 		case "Edit":
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
-				return ReloadPageError
+				return ClientError(nil)
 			}
 			lesson := subject.Lessons[pindex]
 			lesson.Draft = true
@@ -254,7 +254,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
@@ -325,7 +325,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonTestAddVerifyRequest(r.Form, test, true); err != nil {
@@ -344,7 +344,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
-			return ReloadPageError
+			return ClientError(nil)
 		}
 
 		if err := LessonProgrammingAddVerifyRequest(r.Form, task, true); err != nil {
@@ -445,7 +445,7 @@ func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)

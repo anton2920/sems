@@ -102,7 +102,7 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -111,7 +111,7 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>Group</h1>`)
 	w.AppendString(`<h2>Create</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/group/create">`)
 
@@ -136,7 +136,7 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -171,7 +171,7 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -180,7 +180,7 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h1>Group</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
-	ErrorDiv(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/group/edit">`)
 
@@ -209,7 +209,7 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := strconv.Atoi(ids[j])
 			if err != nil {
-				return ReloadPageError
+				return ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -244,7 +244,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	name := r.Form.Get("Name")
@@ -257,7 +257,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := strconv.Atoi(sids[i])
 		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
-			return WritePage(w, r, GroupEditPageHandler, ReloadPageError)
+			return WritePage(w, r, GroupEditPageHandler, ClientError(err))
 		}
 		users[i] = &DB.Users[id]
 	}
@@ -277,12 +277,12 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 
 	groupID, err := strconv.Atoi(r.Form.Get("ID"))
 	if err != nil {
-		return ReloadPageError
+		return ClientError(err)
 	}
 	if (groupID < 0) || (groupID >= len(DB.Groups)) {
 		return NotFoundError
@@ -299,7 +299,7 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := strconv.Atoi(sids[i])
 		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
-			return WritePage(w, r, GroupEditPageHandler, ReloadPageError)
+			return WritePage(w, r, GroupEditPageHandler, ClientError(err))
 		}
 		users[i] = &DB.Users[id]
 	}

@@ -6,15 +6,13 @@ import (
 	"runtime/debug"
 )
 
-type E struct {
+type Error struct {
 	Message string
-	Code    int
 }
 
-/* TODO(anton2920): think about placing this into 'http.go' file. */
-type HTTPError struct {
-	StatusCode HTTPStatus
-	Message    string
+type ErrorWithCode struct {
+	Message string
+	Code    int
 }
 
 type PanicError struct {
@@ -35,15 +33,19 @@ const (
 	ENOSYS      = 78     /* Function not implemented */
 )
 
-var (
-	ReloadPageError    = HTTPError{StatusCode: HTTPStatusBadRequest, Message: "whoops... Something went wrong. Please reload this page or try again later"}
-	UnauthorizedError  = HTTPError{StatusCode: HTTPStatusUnauthorized, Message: "whoops... You have to sign in to see this page"}
-	ForbiddenError     = HTTPError{StatusCode: HTTPStatusForbidden, Message: "whoops... Your permissions are insufficient"}
-	NotFoundError      = HTTPError{StatusCode: HTTPStatusNotFound, Message: "whoops... Requested page not found"}
-	TryAgainLaterError = HTTPError{StatusCode: HTTPStatusInternalServerError, Message: "whoops... Something went wrong. Please try again later"}
-)
+func NewError(msg string) Error {
+	return Error{Message: msg}
+}
 
-func (e E) Error() string {
+func (e Error) Error() string {
+	return e.Message
+}
+
+func NewErrorWithCode(msg string, code int) ErrorWithCode {
+	return ErrorWithCode{Message: msg, Code: code}
+}
+
+func (e ErrorWithCode) Error() string {
 	buffer := make([]byte, 512)
 	n := copy(buffer, e.Message)
 	buffer[n] = ' '
@@ -54,29 +56,6 @@ func (e E) Error() string {
 	}
 
 	return string(buffer[:n])
-}
-
-func Error(msg string) error {
-	return error(E{Message: msg})
-}
-
-func ErrorWithCode(msg string, code int) error {
-	return error(E{Message: msg, Code: code})
-}
-
-func SyscallError(msg string, errno uintptr) error {
-	if errno == 0 {
-		return nil
-	}
-	return error(E{Message: msg, Code: int(errno)})
-}
-
-func NewHTTPError(statusCode HTTPStatus, message string) HTTPError {
-	return HTTPError{StatusCode: statusCode, Message: message}
-}
-
-func (e HTTPError) Error() string {
-	return e.Message
 }
 
 func NewPanicError(value interface{}) PanicError {
@@ -90,23 +69,34 @@ func (e PanicError) Error() string {
 	return string(buffer)
 }
 
+func NewSyscallError(msg string, errno uintptr) error {
+	if errno == 0 {
+		return nil
+	}
+	return error(ErrorWithCode{Message: msg, Code: int(errno)})
+}
+
 func WrapErrorWithTrace(err error) error {
-	_, file, line, ok := runtime.Caller(1)
+	return WrapErrorWithTraceEx(err, 2)
+}
+
+func WrapErrorWithTraceEx(err error, skip int) error {
+	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
 		return err
 	}
 	return fmt.Errorf("%s:%d: %w", file, line, err)
 }
 
-func ErrorDiv(w *HTTPResponse, e string) {
-	if e != "" {
+func DisplayErrorMessage(w *HTTPResponse, message string) {
+	if message != "" {
 		w.AppendString(`<div><p>Error: `)
-		w.WriteHTMLString(e)
+		w.WriteHTMLString(message)
 		w.AppendString(`.</p></div>`)
 	}
 }
 
-func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, err error) {
+func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, message string) {
 	w.Bodies = w.Bodies[:0]
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -116,7 +106,7 @@ func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, err error) {
 	w.AppendString(`<h1>Master's degree</h1>`)
 	w.AppendString(`<h2>Error</h2>`)
 
-	ErrorDiv(w, err.Error())
+	DisplayErrorMessage(w, message)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)

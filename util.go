@@ -46,7 +46,7 @@ func GetValidIndex[T any](vs URLValues, key string, ts []T) (int, error) {
 	}
 
 	if (i < 0) || (i >= len(ts)) {
-		return 0, Error("slice index out of range")
+		return 0, NewError("slice index out of range")
 	}
 
 	return i, nil
