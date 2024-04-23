@@ -17,6 +17,16 @@ type (
 		SubmittedQuestions []SubmittedQuestion
 	}
 
+	ProgrammingLanguage struct {
+		Name         string
+		Compiler     string
+		CompilerArgs []string
+		Runner       string
+		RunnerArgs   []string
+		SourceFile   string
+		Executable   string
+		Available    bool
+	}
 	SubmittedProgramming struct {
 		Task       *StepProgramming
 		LanguageID int
@@ -40,6 +50,14 @@ const (
 	MinSolutionLen = 1
 	MaxSolutionLen = 1024
 )
+
+var ProgrammingLanguages = []ProgrammingLanguage{
+	{"c", "cc", nil, "", nil, "main.c", "./a.out", true},
+	{"c++", "c++", nil, "", nil, "main.cpp", "./a.out", true},
+	{"go", "sh", []string{"-c", "/usr/local/bin/go-build"}, "", nil, "main.go", "./main", false},
+	{"php", "php", []string{"-l"}, "php", nil, "main.php", "", true},
+	{"python3", "python3", []string{"-c", `import ast; ast.parse(open("main.py").read())`}, "python3", nil, "main.py", "", true},
+}
 
 func init() {
 	gob.Register(&SubmittedTest{})
@@ -937,6 +955,8 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	submission.Draft = false
 	submission.FinishedAt = time.Now()
+
+	/* TODO(anton2920): send for verification. */
 
 	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil

@@ -24,6 +24,7 @@ const (
 	/* From <errno.h>. */
 	ENOENT      = 2      /* No such file or directory */
 	EINTR       = 4      /* Interrupted system call */
+	EEXIST      = 17     /* File exists */
 	EPIPE       = 32     /* Broken pipe */
 	EAGAIN      = 35     /* Resource temporarily unavailable */
 	EWOULDBLOCK = EAGAIN /* Operation would block */

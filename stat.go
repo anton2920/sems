@@ -1,7 +1,7 @@
 package main
 
 /* See <sys/stat.h>. */
-type Stat struct {
+type Stat_t struct {
 	Dev       uint   /* inode's device */
 	Ino       uint   /* inode's number */
 	Nlink     uint64 /* number of hard links */

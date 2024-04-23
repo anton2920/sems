@@ -19,6 +19,8 @@ var (
 	Debug     bool
 )
 
+var WorkingDirectory string
+
 func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
 	default:
@@ -183,9 +185,16 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 }
 
 func main() {
+	var err error
+
 	if DebugMode == "on" {
 		Debug = true
 		SetLogLevel(LevelDebug)
+	}
+
+	WorkingDirectory, err = os.Getwd()
+	if err != nil {
+		Fatalf("Failed to get current working directory: %v", err)
 	}
 
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {

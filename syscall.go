@@ -4,29 +4,39 @@ import "unsafe"
 
 const (
 	/* See <sys/syscall.h>. */
-	SYS_accept        = 30
-	SYS_bind          = 104
-	SYS_clock_gettime = 232
-	SYS_close         = 6
-	SYS_exit          = 1
-	SYS_fcntl         = 92
-	SYS_fstat         = 551
-	SYS_ftruncate     = 480
-	SYS_getrandom     = 563
-	SYS_kevent        = 560
-	SYS_kqueue        = 362
-	SYS_listen        = 106
-	SYS_lseek         = 478
-	SYS_mmap          = 477
-	SYS_nanosleep     = 240
-	SYS_open          = 5
-	SYS_read          = 3
-	SYS_setsockopt    = 105
-	SYS_shm_open2     = 571
-	SYS_shutdown      = 134
-	SYS_socket        = 97
-	SYS_write         = 4
-	SYS_writev        = 121
+	SYS_accept           = 30
+	SYS_access           = 33
+	SYS_bind             = 104
+	SYS_clock_gettime    = 232
+	SYS_close            = 6
+	SYS_exit             = 1
+	SYS_fcntl            = 92
+	SYS_fstat            = 551
+	SYS_ftruncate        = 480
+	SYS_getrandom        = 563
+	SYS_jail_remove      = 508
+	SYS_jail_set         = 507
+	SYS_kevent           = 560
+	SYS_kqueue           = 362
+	SYS_listen           = 106
+	SYS_lseek            = 478
+	SYS_mkdir            = 136
+	SYS_mmap             = 477
+	SYS_nanosleep        = 240
+	SYS_nmount           = 378
+	SYS_open             = 5
+	SYS_rctl_add_rule    = 528
+	SYS_rctl_remove_rule = 529
+	SYS_read             = 3
+	SYS_rmdir            = 137
+	SYS_setsockopt       = 105
+	SYS_shm_open2        = 571
+	SYS_shutdown         = 134
+	SYS_socket           = 97
+	SYS_stat             = 188
+	SYS_unmount          = 22
+	SYS_write            = 4
+	SYS_writev           = 121
 )
 
 //go:linkname SyscallEnter runtime.entersyscall
@@ -58,6 +68,14 @@ func Accept(s int32, addr *SockAddr, addrlen *uint32) (int32, error) {
 	return int32(r1), NewSyscallError("accept failed with code", errno)
 }
 
+func Access(path string, mode int32) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_access, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
+	return NewSyscallError("access failed with code", errno)
+}
+
 func Bind(s int32, addr *SockAddr, addrlen uint32) error {
 	_, _, errno := RawSyscall(SYS_bind, uintptr(s), uintptr(unsafe.Pointer(addr)), uintptr(addrlen))
 	return NewSyscallError("bind failed with code", errno)
@@ -82,7 +100,7 @@ func Fcntl(fd, cmd, arg int32) error {
 	return NewSyscallError("fcntl failed with code", errno)
 }
 
-func Fstat(fd int32, sb *Stat) error {
+func Fstat(fd int32, sb *Stat_t) error {
 	_, _, errno := Syscall(SYS_fstat, uintptr(fd), uintptr(unsafe.Pointer(sb)), 0)
 	return NewSyscallError("fstat failed with code", errno)
 }
@@ -95,6 +113,16 @@ func Ftruncate(fd int32, length int64) error {
 func Getrandom(buf []byte, flags uint32) (int64, error) {
 	r1, _, errno := Syscall(SYS_getrandom, uintptr(unsafe.Pointer(unsafe.SliceData(buf))), uintptr(len(buf)), uintptr(flags))
 	return int64(r1), NewSyscallError("getrandom failed with code", errno)
+}
+
+func JailRemove(jid int32) error {
+	_, _, errno := Syscall(SYS_jail_remove, uintptr(jid), 0, 0)
+	return NewSyscallError("jail_remove failed with code", errno)
+}
+
+func JailSet(iovs []Iovec, flags int32) (int32, error) {
+	jid, _, errno := Syscall(SYS_jail_set, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
+	return int32(jid), NewSyscallError("jail_set failed with code", errno)
 }
 
 func Kevent(kq int32, changelist []Kevent_t, eventlist []Kevent_t, timeout *Timespec) (int, error) {
@@ -117,6 +145,14 @@ func Lseek(fd int32, offset int64, whence int32) (int64, error) {
 	return int64(r1), NewSyscallError("lseek failed with code", errno)
 }
 
+func Mkdir(path string, mode int16) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_mkdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
+	return NewSyscallError("mkdir failed with code", errno)
+}
+
 func Mmap(addr unsafe.Pointer, len uint64, prot, flags, fd int32, offset int64) (unsafe.Pointer, error) {
 	r1, _, errno := RawSyscall6(SYS_mmap, uintptr(addr), uintptr(len), uintptr(prot), uintptr(flags), uintptr(fd), uintptr(offset))
 	return unsafe.Pointer(r1), NewSyscallError("mmap failed with code", errno)
@@ -127,14 +163,40 @@ func Nanosleep(rqtp, rmtp *Timespec) error {
 	return NewSyscallError("nanosleep failed with code", errno)
 }
 
+func Nmount(iovs []Iovec, flags int32) error {
+	_, _, errno := Syscall(SYS_nmount, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
+	return NewSyscallError("nmount failed with code", errno)
+}
+
 func Open(path string, flags int32, mode uint16) (int32, error) {
-	r1, _, errno := Syscall(SYS_open, uintptr(unsafe.Pointer(unsafe.StringData(path+"\x00"))), uintptr(flags), uintptr(mode))
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	r1, _, errno := Syscall(SYS_open, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(flags), uintptr(mode))
 	return int32(r1), NewSyscallError("open failed with code", errno)
+}
+
+func RctlAddRule(rule []byte) error {
+	_, _, errno := Syscall6(SYS_rctl_add_rule, uintptr(unsafe.Pointer(unsafe.SliceData(rule))), uintptr(len(rule)), 0, 0, 0, 0)
+	return NewSyscallError("rctl_add_rule failed with code", errno)
+}
+
+func RctlRemoveRule(filter []byte) error {
+	_, _, errno := Syscall6(SYS_rctl_remove_rule, uintptr(unsafe.Pointer(unsafe.SliceData(filter))), uintptr(len(filter)), 0, 0, 0, 0)
+	return NewSyscallError("rctl_remove_rule failed with code", errno)
 }
 
 func Read(fd int32, buf []byte) (int64, error) {
 	r1, _, errno := Syscall(SYS_read, uintptr(fd), uintptr(unsafe.Pointer(unsafe.SliceData(buf))), uintptr(len(buf)))
 	return int64(r1), NewSyscallError("read failed with code", errno)
+}
+
+func Rmdir(path string) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_rmdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
+	return NewSyscallError("rmdir failed with code", errno)
 }
 
 func Setsockopt(s, level, optname int32, optval unsafe.Pointer, optlen uint32) error {
@@ -155,6 +217,22 @@ func Shutdown(s int32, how int32) error {
 func Socket(domain, typ, protocol int32) (int32, error) {
 	r1, _, errno := RawSyscall(SYS_socket, uintptr(domain), uintptr(typ), uintptr(protocol))
 	return int32(r1), NewSyscallError("socket failed with code", errno)
+}
+
+func Stat(path string, sb *Stat_t) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_stat, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(unsafe.Pointer(sb)), 0)
+	return NewSyscallError("stat failed with code", errno)
+}
+
+func Unmount(path string, flags int32) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_unmount, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(flags), 0)
+	return NewSyscallError("unmount failed with code", errno)
 }
 
 func Write(fd int32, buf []byte) (int64, error) {
