@@ -317,7 +317,7 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -329,13 +329,13 @@ func SubmissionPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		r.Form.Set("Teacher", "yay")
 	}
 
-	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 	if err != nil {
 		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), lesson.Submissions)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -387,8 +387,8 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 			}
 
 			var err error
-			passedQuestion.SelectedAnswers[j], err = strconv.Atoi(selectedAnswers[j])
-			if (err != nil) || (passedQuestion.SelectedAnswers[j] < 0) || (passedQuestion.SelectedAnswers[j] >= len(question.Answers)) {
+			passedQuestion.SelectedAnswers[j], err = GetValidIndex(selectedAnswers[j], question.Answers)
+			if err != nil {
 				return ClientError(err)
 			}
 		}
@@ -400,8 +400,8 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 func SubmissionNewProgrammingVerifyRequest(vs URLValues, submittedTask *SubmittedProgramming) error {
 	var err error
 
-	submittedTask.LanguageID, err = strconv.Atoi(vs.Get("LanguageID"))
 	/* TODO(anton2920): replace with actual check for programming language. */
+	submittedTask.LanguageID, err = strconv.Atoi(vs.Get("LanguageID"))
 	if (err != nil) || (submittedTask.LanguageID < 0) || (submittedTask.LanguageID >= 2) {
 		return ClientError(err)
 	}
@@ -767,13 +767,13 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
 		return ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 
-	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -783,8 +783,9 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ForbiddenError
 	}
 
+	submissionIndex := r.Form.Get("SubmissionIndex")
 	var submission *Submission
-	if r.Form.Get("SubmissionIndex") == "" {
+	if submissionIndex == "" {
 		submission = new(Submission)
 		submission.Draft = true
 		submission.Name = lesson.Name
@@ -794,9 +795,9 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		submission.SubmittedSteps = make([]interface{}, len(lesson.Steps))
 
 		lesson.Submissions = append(lesson.Submissions, submission)
-		r.Form.Set("SubmissionIndex", strconv.Itoa(len(lesson.Submissions)-1))
+		r.Form.SetInt("SubmissionIndex", len(lesson.Submissions)-1)
 	} else {
-		si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+		si, err := GetValidIndex(submissionIndex, lesson.Submissions)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -819,7 +820,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	stepIndex := r.Form.Get("StepIndex")
 	if stepIndex != "" {
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -867,7 +868,7 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -876,13 +877,13 @@ func SubmissionDiscardHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ForbiddenError
 	}
 
-	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 	if err != nil {
 		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), lesson.Submissions)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -902,7 +903,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -911,13 +912,13 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ForbiddenError
 	}
 
-	li, err := GetValidIndex(r.Form, "LessonIndex", subject.Lessons)
+	li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 	if err != nil {
 		return ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
-	si, err := GetValidIndex(r.Form, "SubmissionIndex", lesson.Submissions)
+	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), lesson.Submissions)
 	if err != nil {
 		return ClientError(err)
 	}

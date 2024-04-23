@@ -329,23 +329,23 @@ func (w *HTTPResponse) WriteHTMLString(s string) {
 }
 
 func BadRequest(message string) HTTPError {
-	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
 func NotFound(message string) HTTPError {
-	return HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+	return HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
 func Conflict(message string) HTTPError {
-	return HTTPError{StatusCode: HTTPStatusConflict, DisplayMessage: message, LogError: WrapErrorWithTraceEx(NewError(message), 2)}
+	return HTTPError{StatusCode: HTTPStatusConflict, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
 func ClientError(err error) HTTPError {
-	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: "whoops... Something went wrong. Please reload this page or try again later", LogError: WrapErrorWithTraceEx(err, 2)}
+	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: "whoops... Something went wrong. Please reload this page or try again later", LogError: WrapErrorWithTrace(err, 2)}
 }
 
 func ServerError(err error) HTTPError {
-	return HTTPError{StatusCode: HTTPStatusInternalServerError, DisplayMessage: "whoops... Something went wrong. Please try again later", LogError: WrapErrorWithTraceEx(err, 2)}
+	return HTTPError{StatusCode: HTTPStatusInternalServerError, DisplayMessage: "whoops... Something went wrong. Please try again later", LogError: WrapErrorWithTrace(err, 2)}
 }
 
 /*

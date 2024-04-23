@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type Course struct {
@@ -240,13 +239,14 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
+	id := r.Form.Get("ID")
 	var course *Course
-	if r.Form.Get("ID") == "" {
+	if id == "" {
 		course = new(Course)
 		user.Courses = append(user.Courses, course)
-		r.Form.Set("ID", strconv.Itoa(len(user.Courses)-1))
+		r.Form.SetInt("ID", len(user.Courses)-1)
 	} else {
-		ci, err := GetValidIndex(r.Form, "ID", user.Courses)
+		ci, err := GetValidIndex(id, user.Courses)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -272,7 +272,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
 		}
 	case "Lesson":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -282,13 +282,13 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
 	case "Test":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -301,13 +301,13 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return WritePageEx(w, r, LessonTestAddPageHandler, test, err)
 		}
 	case "Programming":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -325,7 +325,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	default:
 		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Next":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -351,16 +351,16 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Draft = true
 		course.Lessons = append(course.Lessons, lesson)
 
-		r.Form.Set("LessonIndex", strconv.Itoa(len(course.Lessons)-1))
+		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
 		lesson := course.Lessons[li]
 
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -375,7 +375,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Add test":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -386,10 +386,10 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		test.Draft = true
 		lesson.Steps = append(lesson.Steps, test)
 
-		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
+		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonTestAddPageHandler(w, r, test)
 	case "Add programming task":
-		li, err := GetValidIndex(r.Form, "LessonIndex", course.Lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -400,7 +400,7 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		task.Draft = true
 		lesson.Steps = append(lesson.Steps, task)
 
-		r.Form.Set("StepIndex", strconv.Itoa(len(lesson.Steps)-1))
+		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonProgrammingAddPageHandler(w, r, task)
 	case "Save":
 		return CourseCreateEditHandler(w, r)
@@ -418,7 +418,7 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
+	courseID, err := GetValidIndex(r.Form.Get("ID"), user.Courses)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -450,7 +450,7 @@ func CourseDeleteHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	courseID, err := GetValidIndex(r.Form, "ID", user.Courses)
+	courseID, err := GetValidIndex(r.Form.Get("ID"), user.Courses)
 	if err != nil {
 		return ClientError(err)
 	}

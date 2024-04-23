@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -296,7 +295,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(user.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -324,7 +323,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(group.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Groups)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -394,7 +393,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(user.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -422,7 +421,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(group.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Groups)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -465,13 +464,13 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
-	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
+	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
 	if err != nil {
 		return ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
-	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -496,7 +495,7 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form, "ID", DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
 		return ClientError(err)
 	}
@@ -507,13 +506,13 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
 	}
 
-	teacherID, err := GetValidIndex(r.Form, "TeacherID", DB.Users)
+	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
 	if err != nil {
 		return ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
-	groupID, err := GetValidIndex(r.Form, "GroupID", DB.Groups)
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
 	if err != nil {
 		return ClientError(err)
 	}

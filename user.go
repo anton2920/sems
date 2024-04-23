@@ -323,7 +323,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	userID, err := GetValidIndex(r.Form, "UserID", DB.Users)
+	userID, err := GetValidIndex(r.Form.Get("UserID"), DB.Users)
 	if err != nil {
 		return ClientError(err)
 	}

@@ -76,11 +76,7 @@ func NewSyscallError(msg string, errno uintptr) error {
 	return error(ErrorWithCode{Message: msg, Code: int(errno)})
 }
 
-func WrapErrorWithTrace(err error) error {
-	return WrapErrorWithTraceEx(err, 2)
-}
-
-func WrapErrorWithTraceEx(err error, skip int) error {
+func WrapErrorWithTrace(err error, skip int) error {
 	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
 		return err

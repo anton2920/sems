@@ -141,7 +141,7 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 		w.AppendString("Hello, world!\n")
 		return nil
 	case path == "/error":
-		return WrapErrorWithTrace(WrapErrorWithTrace(ServerError(nil)))
+		return ServerError(NewError("test error"))
 	case path == "/panic":
 		panic("test panic")
 	}

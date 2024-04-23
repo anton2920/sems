@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -134,7 +133,7 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(user.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -207,7 +206,7 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteInt(user.ID)
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
+			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -255,8 +254,8 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	sids := r.Form.GetMany("UserID")
 	users := make([]*User, len(sids))
 	for i := 0; i < len(sids); i++ {
-		id, err := strconv.Atoi(sids[i])
-		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
+		id, err := GetValidIndex(sids[i], DB.Users)
+		if (err != nil) || (id == AdminID) {
 			return ClientError(err)
 		}
 		users[i] = &DB.Users[id]
@@ -280,12 +279,9 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	groupID, err := strconv.Atoi(r.Form.Get("ID"))
+	groupID, err := GetValidIndex(r.Form.Get("ID"), DB.Groups)
 	if err != nil {
 		return ClientError(err)
-	}
-	if (groupID < 0) || (groupID >= len(DB.Groups)) {
-		return NotFound("group with this ID does not exist")
 	}
 	group := &DB.Groups[groupID]
 
@@ -297,8 +293,8 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	sids := r.Form.GetMany("UserID")
 	users := make([]*User, len(sids))
 	for i := 0; i < len(sids); i++ {
-		id, err := strconv.Atoi(sids[i])
-		if (err != nil) || (id <= AdminID) || (id >= len(DB.Users)) {
+		id, err := GetValidIndex(sids[i], DB.Users)
+		if (err != nil) || (id == AdminID) {
 			return ClientError(err)
 		}
 		users[i] = &DB.Users[id]

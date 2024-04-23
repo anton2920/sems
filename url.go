@@ -97,6 +97,11 @@ func (vs *URLValues) Set(key string, value string) {
 	v.Values = append(v.Values, value)
 }
 
+func (vs *URLValues) SetInt(key string, value int) {
+	/* TODO(anton2920): change to arena allocation. */
+	vs.Set(key, strconv.Itoa(value))
+}
+
 /* CharToByte returns ASCII-decoded character. For example, 'A' yields '\x0A'. */
 func CharToByte(c byte) (byte, bool) {
 	if c >= '0' && c <= '9' {

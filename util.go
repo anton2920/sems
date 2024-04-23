@@ -39,8 +39,8 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 	return
 }
 
-func GetValidIndex[T any](vs URLValues, key string, ts []T) (int, error) {
-	i, err := vs.GetInt(key)
+func GetValidIndex[T any](si string, ts []T) (int, error) {
+	i, err := strconv.Atoi(si)
 	if err != nil {
 		return 0, err
 	}

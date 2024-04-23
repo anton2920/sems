@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"unsafe"
 )
 
@@ -94,8 +93,8 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			}
 
 			var err error
-			question.CorrectAnswers[j], err = strconv.Atoi(correctAnswers[j])
-			if (err != nil) || (question.CorrectAnswers[j] < 0) || (question.CorrectAnswers[j] >= len(question.Answers)) {
+			question.CorrectAnswers[j], err = GetValidIndex(correctAnswers[j], question.Answers)
+			if err != nil {
 				return ClientError(err)
 			}
 		}
@@ -556,7 +555,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	default:
 		return ClientError(nil)
 	case "Lesson":
-		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -590,13 +589,13 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Test":
-		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
 			return ClientError(err)
 		}
 		lesson := lessons[li]
 
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
@@ -696,13 +695,13 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 		return LessonTestAddPageHandler(w, r, test)
 
 	case "Programming":
-		li, err := GetValidIndex(r.Form, "LessonIndex", lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
 			return ClientError(err)
 		}
 		lesson := lessons[li]
 
-		si, err := GetValidIndex(r.Form, "StepIndex", lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
 			return ClientError(err)
 		}
