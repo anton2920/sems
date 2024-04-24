@@ -115,8 +115,8 @@ type HTTPContext struct {
 type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 
 var (
-	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page"}
-	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient"}
+	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page", LogError: NewError("whoops... You have to sign in to see this page")}
+	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient", LogError: NewError("whoops... Your permissions are insufficient")}
 )
 
 func (r *HTTPRequest) Cookie(name string) string {

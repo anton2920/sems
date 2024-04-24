@@ -17,6 +17,7 @@ const (
 	SYS_jail_remove      = 508
 	SYS_jail_set         = 507
 	SYS_kevent           = 560
+	SYS_kill             = 37
 	SYS_kqueue           = 362
 	SYS_listen           = 106
 	SYS_lseek            = 478
@@ -34,6 +35,7 @@ const (
 	SYS_shutdown         = 134
 	SYS_socket           = 97
 	SYS_stat             = 188
+	SYS_unlink           = 10
 	SYS_unmount          = 22
 	SYS_write            = 4
 	SYS_writev           = 121
@@ -128,6 +130,11 @@ func JailSet(iovs []Iovec, flags int32) (int32, error) {
 func Kevent(kq int32, changelist []Kevent_t, eventlist []Kevent_t, timeout *Timespec) (int, error) {
 	r1, _, errno := Syscall6(SYS_kevent, uintptr(kq), uintptr(unsafe.Pointer(unsafe.SliceData(changelist))), uintptr(len(changelist)), uintptr(unsafe.Pointer(unsafe.SliceData(eventlist))), uintptr(len(eventlist)), uintptr(unsafe.Pointer(timeout)))
 	return int(r1), NewSyscallError("kevent failed with code", errno)
+}
+
+func Kill(pid int32, sig int32) error {
+	_, _, errno := Syscall(SYS_kill, uintptr(pid), uintptr(sig), 0)
+	return NewSyscallError("kill failed with code", errno)
 }
 
 func Kqueue() (int32, error) {
@@ -225,6 +232,14 @@ func Stat(path string, sb *Stat_t) error {
 
 	_, _, errno := Syscall(SYS_stat, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(unsafe.Pointer(sb)), 0)
 	return NewSyscallError("stat failed with code", errno)
+}
+
+func Unlink(path string) error {
+	buffer := make([]byte, PATH_MAX)
+	n := copy(buffer, path)
+
+	_, _, errno := Syscall(SYS_unlink, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
+	return NewSyscallError("unlink failed with code", errno)
 }
 
 func Unmount(path string, flags int32) error {

@@ -221,6 +221,8 @@ func main() {
 		os.Exit(0)
 	}()
 
+	go SubmissionVerifyWorker()
+
 	Infof("Listening on 0.0.0.0:7072...")
 
 	if err := ListenAndServe(7072, Router); err != nil {

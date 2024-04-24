@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"strconv"
 	"time"
 	"unsafe"
 )
@@ -15,6 +14,8 @@ type (
 	SubmittedTest struct {
 		Test               *StepTest
 		SubmittedQuestions []SubmittedQuestion
+
+		Scores []int
 	}
 
 	ProgrammingLanguage struct {
@@ -28,14 +29,19 @@ type (
 		Available    bool
 	}
 	SubmittedProgramming struct {
-		Task       *StepProgramming
-		LanguageID int
-		Solution   string
+		Task     *StepProgramming
+		Language *ProgrammingLanguage
+		Solution string
+
+		Scores   [2][]int
+		Messages [2][]string
+		Error    error
 	}
 
 	Submission struct {
-		Name           string
-		User           *User
+		LessonName string
+		User       *User
+
 		Steps          []interface{}
 		StartedAt      time.Time
 		SubmittedSteps []interface{}
@@ -54,7 +60,7 @@ const (
 var ProgrammingLanguages = []ProgrammingLanguage{
 	{"c", "cc", nil, "", nil, "main.c", "./a.out", true},
 	{"c++", "c++", nil, "", nil, "main.cpp", "./a.out", true},
-	{"go", "sh", []string{"-c", "/usr/local/bin/go-build"}, "", nil, "main.go", "./main", false},
+	{"go", "sh", []string{"-c", "/usr/local/bin/go-build"}, "", nil, "main.go", "./main", true},
 	{"php", "php", []string{"-l"}, "php", nil, "main.php", "", true},
 	{"python3", "python3", []string{"-c", `import ast; ast.parse(open("main.py").read())`}, "python3", nil, "main.py", "", true},
 }
@@ -68,7 +74,7 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Submission for `)
-	w.WriteHTMLString(submission.Name)
+	w.WriteHTMLString(submission.LessonName)
 	w.AppendString(` by `)
 	w.WriteHTMLString(submission.User.LastName)
 	w.AppendString(` `)
@@ -78,7 +84,7 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 
 	w.AppendString(`<h1>`)
 	w.AppendString(`Submission for `)
-	w.WriteHTMLString(submission.Name)
+	w.WriteHTMLString(submission.LessonName)
 	w.AppendString(` by `)
 	w.WriteHTMLString(submission.User.LastName)
 	w.AppendString(` `)
@@ -105,6 +111,7 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 
 	for i := 0; i < len(submission.Steps); i++ {
 		var name, stepType string
+		var scores []int
 
 		step := submission.Steps[i]
 		switch step := step.(type) {
@@ -116,6 +123,13 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 		case *StepProgramming:
 			name = step.Name
 			stepType = "Programming task"
+		}
+
+		switch step := submission.SubmittedSteps[i].(type) {
+		case *SubmittedTest:
+			scores = step.Scores
+		case *SubmittedProgramming:
+			scores = step.Scores[CheckTypeTest]
 		}
 
 		w.AppendString(`<fieldset>`)
@@ -133,8 +147,18 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 		w.AppendString(`</p>`)
 
 		if submission.SubmittedSteps[i] == nil {
-			w.AppendString(`<p><i>Student skipped this step.</i></p>`)
+			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
 		} else {
+			var score int
+			for i := 0; i < len(scores); i++ {
+				score += scores[i]
+			}
+			w.AppendString(`<p>Score: `)
+			w.WriteInt(score)
+			w.AppendString(`/`)
+			w.WriteInt(len(scores))
+			w.AppendString(`</p>`)
+
 			w.AppendString(`<input type="submit" name="Command`)
 			w.WriteInt(i)
 			w.AppendString(`" value="Open">`)
@@ -236,6 +260,10 @@ func SubmissionTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest *S
 		}
 		w.AppendString(`</ol>`)
 
+		w.AppendString(`<p>Score: `)
+		w.WriteInt(submittedTest.Scores[i])
+		w.AppendString(`/1</p>`)
+
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)
 	}
@@ -244,6 +272,53 @@ func SubmissionTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest *S
 	w.AppendString(`</html>`)
 
 	return nil
+}
+
+func SubmissionProgrammingDisplayChecks(w *HTTPResponse, submittedTask *SubmittedProgramming, checkType CheckType) {
+	task := submittedTask.Task
+	scores := submittedTask.Scores[checkType]
+	messages := submittedTask.Messages[checkType]
+
+	w.AppendString(`<ol>`)
+	for i := 0; i < len(task.Checks[checkType]); i++ {
+		check := &task.Checks[checkType][i]
+		score := scores[i]
+		message := messages[i]
+
+		w.AppendString(`<li>`)
+
+		w.AppendString(`<label>Input: `)
+
+		w.AppendString(`<textarea rows="1" readonly>`)
+		w.WriteHTMLString(check.Input)
+		w.AppendString(`</textarea>`)
+
+		w.AppendString(`</label>`)
+		w.AppendString("\r\n")
+
+		w.AppendString(`<label>output: `)
+
+		w.AppendString(`<textarea rows="1" readonly>`)
+		w.WriteHTMLString(check.Output)
+		w.AppendString(`</textarea>`)
+
+		w.AppendString(`</label>`)
+		w.AppendString("\r\n")
+
+		w.AppendString(`<span>score: `)
+		w.WriteInt(score)
+		w.AppendString(`/1</span>`)
+
+		if message != "" {
+			w.AppendString("\r\n")
+			w.AppendString(`<span>`)
+			w.WriteHTMLString(message)
+			w.AppendString(`</span>`)
+		}
+
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ol>`)
 }
 
 func SubmissionProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTask *SubmittedProgramming) error {
@@ -286,7 +361,7 @@ func SubmissionProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submitted
 
 	if teacher {
 		w.AppendString(`<h2>Tests</h2>`)
-		SubmissionNewProgrammingDisplayChecks(w, task, CheckTypeExample)
+		SubmissionProgrammingDisplayChecks(w, submittedTask, CheckTypeTest)
 	}
 
 	w.AppendString(`</body>`)
@@ -389,7 +464,7 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
-		passedQuestion := &submittedTest.SubmittedQuestions[i]
+		submittedQuestion := &submittedTest.SubmittedQuestions[i]
 
 		n := SlicePutInt(selectedAnswerKey[len("SelectedAnswer"):], i)
 		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(selectedAnswerKey), len("SelectedAnswer")+n))
@@ -400,12 +475,12 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 			return ClientError(nil)
 		}
 		for j := 0; j < len(selectedAnswers); j++ {
-			if j >= len(passedQuestion.SelectedAnswers) {
-				passedQuestion.SelectedAnswers = append(passedQuestion.SelectedAnswers, 0)
+			if j >= len(submittedQuestion.SelectedAnswers) {
+				submittedQuestion.SelectedAnswers = append(submittedQuestion.SelectedAnswers, 0)
 			}
 
 			var err error
-			passedQuestion.SelectedAnswers[j], err = GetValidIndex(selectedAnswers[j], question.Answers)
+			submittedQuestion.SelectedAnswers[j], err = GetValidIndex(selectedAnswers[j], question.Answers)
 			if err != nil {
 				return ClientError(err)
 			}
@@ -416,12 +491,13 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 }
 
 func SubmissionNewProgrammingVerifyRequest(vs URLValues, submittedTask *SubmittedProgramming) error {
-	var err error
-
-	/* TODO(anton2920): replace with actual check for programming language. */
-	submittedTask.LanguageID, err = strconv.Atoi(vs.Get("LanguageID"))
-	if (err != nil) || (submittedTask.LanguageID < 0) || (submittedTask.LanguageID >= 2) {
+	id, err := GetValidIndex(vs.Get("LanguageID"), ProgrammingLanguages)
+	if err != nil {
 		return ClientError(err)
+	}
+	submittedTask.Language = &ProgrammingLanguages[id]
+	if !submittedTask.Language.Available {
+		return BadRequest("selected language is not available")
 	}
 
 	submittedTask.Solution = vs.Get("Solution")
@@ -436,13 +512,13 @@ func SubmissionNewMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *S
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(submission.Name)
+	w.WriteHTMLString(submission.LessonName)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(submission.Name)
+	w.WriteHTMLString(submission.LessonName)
 	w.AppendString(`</h1>`)
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
@@ -806,7 +882,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if submissionIndex == "" {
 		submission = new(Submission)
 		submission.Draft = true
-		submission.Name = lesson.Name
+		submission.LessonName = lesson.Name
 		submission.StartedAt = time.Now()
 		submission.User = &DB.Users[session.ID]
 		StepsDeepCopy(&submission.Steps, lesson.Steps)
@@ -854,13 +930,25 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
 				}
 			case "Programming":
-				passedProgramming, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
+				submittedProgramming, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
 				if !ok {
 					return ClientError(nil)
 				}
 
-				if err := SubmissionNewProgrammingVerifyRequest(r.Form, passedProgramming); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, passedProgramming, err)
+				if err := SubmissionNewProgrammingVerifyRequest(r.Form, submittedProgramming); err != nil {
+					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, err)
+				}
+
+				if err := SubmissionVerifyProgramming(submittedProgramming, CheckTypeExample); err != nil {
+					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, BadRequest(err.Error()))
+				}
+
+				scores := submittedProgramming.Scores[CheckTypeExample]
+				messages := submittedProgramming.Messages[CheckTypeExample]
+				for i := 0; i < len(scores); i++ {
+					if scores[i] == 0 {
+						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, BadRequest(fmt.Sprintf("example %d: %s", i+1, messages[i])))
+					}
 				}
 			}
 		} else {
@@ -956,7 +1044,8 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 	submission.Draft = false
 	submission.FinishedAt = time.Now()
 
-	/* TODO(anton2920): send for verification. */
+	// SubmissionVerifyChannel <- submission
+	SubmissionVerify(submission)
 
 	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
 	return nil

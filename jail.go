@@ -206,6 +206,31 @@ func NewJail() (Jail, error) {
 	return jail, nil
 }
 
+func ProtectJail(jail Jail) error {
+	tmp := make([]byte, PATH_MAX)
+	n := SlicePutJailTmp(tmp, int(jail.Index))
+	tmp = tmp[:n+1]
+
+	env := make([]byte, PATH_MAX)
+	n = SlicePutJailEnv(env, int(jail.Index))
+	env = env[:n+1]
+
+	if err := Unmount(unsafe.String(unsafe.SliceData(tmp), len(tmp)), 0); err != nil {
+		return fmt.Errorf("failed to unmount environment: %w", err)
+	}
+
+	if err := Nmount([]Iovec{
+		IovecForString("target\x00"), IovecForByteSlice(env),
+		IovecForString("fspath\x00"), IovecForByteSlice(tmp),
+		IovecForString("fstype\x00"), IovecForString("nullfs\x00"),
+		IovecForString("ro\x00"), Iovec{},
+	}, 0); err != nil {
+		return fmt.Errorf("failed to mount environment directory: %w", err)
+	}
+
+	return nil
+}
+
 func RemoveJail(jail Jail) error {
 	var err error
 
@@ -230,7 +255,7 @@ func RemoveJail(jail Jail) error {
 	prefix = prefix[:n+1]
 
 	if err1 := RctlRemoveRule(prefix); err1 != nil {
-		err = fmt.Errorf("failed to remove jail rules: %w", err1)
+		err = errors.Join(err, fmt.Errorf("failed to remove jail rules: %w", err1))
 	}
 
 	if err1 := JailRemove(jail.ID); err1 != nil {

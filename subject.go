@@ -163,10 +163,14 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			w.WriteInt(i)
 			w.AppendString(`">`)
 
+			/* TODO(anton2920): do not display if no submissions are ready. */
 			w.AppendString(`<label>Submissions: `)
 			w.AppendString(`<select name="SubmissionIndex">`)
 			for j := 0; j < len(lesson.Submissions); j++ {
 				submission := lesson.Submissions[j]
+				if submission.Draft {
+					continue
+				}
 
 				w.AppendString(`<option value="`)
 				w.WriteInt(j)
