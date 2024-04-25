@@ -76,6 +76,52 @@ func init() {
 	gob.Register(&SubmittedProgramming{})
 }
 
+func GetSubmittedStepScore(step interface{}, submittedStep interface{}) (int, int) {
+	var nsteps int
+	switch step := step.(type) {
+	default:
+		panic("invalid step type")
+	case *StepTest:
+		nsteps = len(step.Questions)
+	case *StepProgramming:
+		nsteps = len(step.Checks[CheckTypeTest])
+	}
+
+	if submittedStep == nil {
+		return 0, nsteps
+	}
+
+	var scores []int
+	switch step := submittedStep.(type) {
+	default:
+		panic("invalid step type")
+	case *SubmittedTest:
+		scores = step.Scores
+	case *SubmittedProgramming:
+		scores = step.Scores[CheckTypeTest]
+	}
+
+	var score int
+	for i := 0; i < len(scores); i++ {
+		score += scores[i]
+	}
+
+	return score, nsteps
+}
+
+func DisplaySubmissionTotalScore(w *HTTPResponse, submission *Submission) {
+	var totalScore, totalMaximum int
+
+	for i := 0; i < len(submission.SubmittedSteps); i++ {
+		score, maximum := GetSubmittedStepScore(submission.Steps[i], submission.SubmittedSteps[i])
+		totalScore += score
+		totalMaximum += maximum
+	}
+	w.WriteInt(totalScore)
+	w.AppendString(`/`)
+	w.WriteInt(totalMaximum)
+}
+
 func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Submission) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -117,7 +163,6 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 
 	for i := 0; i < len(submission.Steps); i++ {
 		var name, stepType string
-		var scores []int
 
 		step := submission.Steps[i]
 		switch step := step.(type) {
@@ -131,11 +176,8 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 			stepType = "Programming task"
 		}
 
-		switch step := submission.SubmittedSteps[i].(type) {
-		case *SubmittedTest:
-			scores = step.Scores
-		case *SubmittedProgramming:
-			scores = step.Scores[CheckTypeTest]
+		if i > 0 {
+			w.AppendString(`<br>`)
 		}
 
 		w.AppendString(`<fieldset>`)
@@ -152,29 +194,30 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 		w.AppendString(stepType)
 		w.AppendString(`</p>`)
 
-		if submission.SubmittedSteps[i] == nil {
+		submittedStep := submission.SubmittedSteps[i]
+		score, maximum := GetSubmittedStepScore(step, submittedStep)
+		w.AppendString(`<p>Score: `)
+		w.WriteInt(score)
+		w.AppendString(`/`)
+		w.WriteInt(maximum)
+		w.AppendString(`</p>`)
+
+		if submittedStep == nil {
 			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
 		} else {
-			var score int
-			for i := 0; i < len(scores); i++ {
-				score += scores[i]
-			}
-			w.AppendString(`<p>Score: `)
-			w.WriteInt(score)
-			w.AppendString(`/`)
-			w.WriteInt(len(scores))
-			w.AppendString(`</p>`)
-
 			w.AppendString(`<input type="submit" name="Command`)
 			w.WriteInt(i)
 			w.AppendString(`" value="Open">`)
 		}
 
 		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
 	}
 
 	w.AppendString(`</form>`)
+
+	w.AppendString(`<p>Total score: `)
+	DisplaySubmissionTotalScore(w, submission)
+	w.AppendString(`</p>`)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
