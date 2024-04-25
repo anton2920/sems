@@ -190,7 +190,7 @@ func SubmissionVerifyProgrammingRun(jail Jail, lang *ProgrammingLanguage, input 
 
 	if err := cmd.Run(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("failed to run program: exceeded compilation timeout of %d seconds", timeout)
+			return fmt.Errorf("failed to run program: exceeded timeout of %d seconds", timeout)
 		}
 		return fmt.Errorf("failed to run program: %s %w", output.String(), err)
 	}
