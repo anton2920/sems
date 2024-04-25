@@ -8,6 +8,8 @@ func BenchmarkCreateRemoveJail(b *testing.B) {
 		if err != nil {
 			b.Error("Failed to create new jail: ", err)
 		}
-		RemoveJail(jail)
+		if err := RemoveJail(jail); err != nil {
+			b.Error("Failed to remove jail: ", err)
+		}
 	}
 }

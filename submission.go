@@ -350,8 +350,21 @@ func SubmissionProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submitted
 	w.AppendString(`<h2>Solution</h2>`)
 
 	w.AppendString(`<label>Programming language: `)
-	/* TODO(anton2920): add list of programming languages. */
-	w.AppendString(`<select name="LanguageID" disabled><option value="0">C</option><option value="1">Go</option></select>`)
+	w.AppendString(`<select name="LanguageID" disabled>`)
+	for i := 0; i < len(ProgrammingLanguages); i++ {
+		lang := &ProgrammingLanguages[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteInt(i)
+		w.AppendString(`"`)
+		if lang == submittedTask.Language {
+			w.AppendString(` selected`)
+		}
+		w.AppendString(`>`)
+		w.AppendString(lang.Name)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -784,8 +797,21 @@ func SubmissionNewProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submit
 	w.AppendString(`<h2>Solution</h2>`)
 
 	w.AppendString(`<label>Programming language: `)
-	/* TODO(anton2920): add list of programming languages. */
-	w.AppendString(`<select name="LanguageID"><option value="0">C</option><option value="1">Go</option></select>`)
+	w.AppendString(`<select name="LanguageID">`)
+	for i := 0; i < len(ProgrammingLanguages); i++ {
+		lang := &ProgrammingLanguages[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteInt(i)
+		w.AppendString(`"`)
+		if lang == submittedTask.Language {
+			w.AppendString(` selected`)
+		}
+		w.AppendString(`>`)
+		w.AppendString(lang.Name)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
