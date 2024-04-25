@@ -10,7 +10,32 @@ const (
 	MaxGroupNameLen = 15
 )
 
-/* TODO(anton2920): display group only to its members. */
+func UserInGroup(userID int, group *Group) bool {
+	if userID == AdminID {
+		return true
+	}
+	for i := 0; i < len(group.Users); i++ {
+		user := group.Users[i]
+
+		if userID == user.ID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func DisplayGroupLink(w *HTTPResponse, group *Group) {
+	w.AppendString(`<a href="/group/`)
+	w.WriteInt(group.ID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(group.Name)
+	w.AppendString(` (ID: `)
+	w.WriteInt(group.ID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+}
+
 func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -25,6 +50,9 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return NotFound("group with this ID does not exist")
 	}
 	group := &DB.Groups[id]
+	if !UserInGroup(session.ID, group) {
+		return ForbiddenError
+	}
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -49,18 +77,11 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	w.AppendString(`<h2>Students</h2>`)
 	w.AppendString(`<ul>`)
-	for _, user := range group.Users {
+	for i := 0; i < len(group.Users); i++ {
+		user := group.Users[i]
+
 		w.AppendString(`<li>`)
-		w.AppendString(`<a href="/user/`)
-		w.WriteInt(user.ID)
-		w.AppendString(`">`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(` (ID: `)
-		w.WriteInt(user.ID)
-		w.AppendString(`)`)
-		w.AppendString(`</a>`)
+		DisplayUserLink(w, user)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)
@@ -88,29 +109,29 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`</form>`)
 	}
 
-	w.AppendString(`<h2>Subjects</h2>`)
-	w.AppendString(`<ul>`)
+	var displaySubjects bool
 	for i := 0; i < len(DB.Subjects); i++ {
 		subject := &DB.Subjects[i]
 
 		if group.ID == subject.Group.ID {
-			w.AppendString(`<li>`)
-			w.AppendString(`<a href="/subject/`)
-			w.WriteInt(subject.ID)
-			w.AppendString(`">`)
-			w.WriteHTMLString(subject.Name)
-			w.AppendString(` with `)
-			w.WriteHTMLString(subject.Teacher.LastName)
-			w.AppendString(` `)
-			w.WriteHTMLString(subject.Teacher.FirstName)
-			w.AppendString(` (ID: `)
-			w.WriteInt(subject.ID)
-			w.AppendString(`)`)
-			w.AppendString(`</a>`)
-			w.AppendString(`</li>`)
+			displaySubjects = true
+			break
 		}
 	}
-	w.AppendString(`</ul>`)
+	if displaySubjects {
+		w.AppendString(`<h2>Subjects</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(DB.Subjects); i++ {
+			subject := &DB.Subjects[i]
+
+			if group.ID == subject.Group.ID {
+				w.AppendString(`<li>`)
+				DisplaySubjectLink(w, subject)
+				w.AppendString(`</li>`)
+			}
+		}
+		w.AppendString(`</ul>`)
+	}
 
 	return nil
 }

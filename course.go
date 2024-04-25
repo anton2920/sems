@@ -17,6 +17,17 @@ const (
 	MaxNameLen = 45
 )
 
+func DisplayCourseLink(w *HTTPResponse, index int, course *Course) {
+	w.AppendString(`<a href="/course/`)
+	w.WriteInt(index)
+	w.AppendString(`">`)
+	w.WriteHTMLString(course.Name)
+	if course.Draft {
+		w.AppendString(` (draft)`)
+	}
+	w.AppendString(`</a>`)
+}
+
 func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {

@@ -37,6 +37,19 @@ func UserNameValid(name string) error {
 	return nil
 }
 
+func DisplayUserLink(w *HTTPResponse, user *User) {
+	w.AppendString(`<a href="/user/`)
+	w.WriteInt(user.ID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(user.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(user.FirstName)
+	w.AppendString(` (ID: `)
+	w.WriteInt(user.ID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+}
+
 func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {

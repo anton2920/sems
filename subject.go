@@ -38,6 +38,21 @@ func WhoIsUserInSubject(userID int, subject *Subject) SubjectUserType {
 	return SubjectUserNone
 }
 
+func DisplaySubjectLink(w *HTTPResponse, subject *Subject) {
+	w.AppendString(`<a href="/subject/`)
+	w.WriteInt(subject.ID)
+	w.AppendString(`">`)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(` with `)
+	w.WriteHTMLString(subject.Teacher.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.AppendString(` (ID: `)
+	w.WriteInt(subject.ID)
+	w.AppendString(`)`)
+	w.AppendString(`</a>`)
+}
+
 func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
