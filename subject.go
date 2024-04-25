@@ -68,7 +68,8 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 	subject := &DB.Subjects[id]
 
-	if WhoIsUserInSubject(session.ID, subject) == SubjectUserNone {
+	who := WhoIsUserInSubject(session.ID, subject)
+	if who == SubjectUserNone {
 		return ForbiddenError
 	}
 
@@ -131,8 +132,9 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`</form>`)
 	}
 
-	w.AppendString(`<h2>Lessons</h2>`)
-
+	if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
+		w.AppendString(`<h2>Lessons</h2>`)
+	}
 	for i := 0; i < len(subject.Lessons); i++ {
 		lesson := subject.Lessons[i]
 
