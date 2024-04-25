@@ -545,7 +545,7 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 }
 
 func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, currentPage, k, command string) error {
-	/* TODO(anton2920): pass as params. */
+	/* TODO(anton2920): pass indicies as params. */
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return ClientError(err)

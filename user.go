@@ -409,9 +409,13 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	/* TODO(anton2920): replace with actual user checks. */
+	/* TODO(anton2920): add hashing and everything. */
 	id := -1
-	email := r.Form.Get("Email")
+	address, err := mail.ParseAddress(r.Form.Get("Email"))
+	if err != nil {
+		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
+	}
+	email := address.Address
 	password := r.Form.Get("Password")
 
 	for i := 0; i < len(DB.Users); i++ {
