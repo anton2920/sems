@@ -41,7 +41,9 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			w.AppendString(`<form method="POST" action="/user/create">`)
 			w.AppendString(`<input type="submit" value="Create user">`)
 			w.AppendString(`</form>`)
+		}
 
+		if session.ID == AdminID {
 			w.AppendString(`<h2>Groups</h2>`)
 			w.AppendString(`<ul>`)
 			for i := 0; i < len(DB.Groups); i++ {
@@ -62,6 +64,37 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			w.AppendString(`<form method="POST" action="/group/create">`)
 			w.AppendString(`<input type="submit" value="Create group">`)
 			w.AppendString(`</form>`)
+		} else {
+			w.AppendString(`<h2>Groups</h2>`)
+			w.AppendString(`<ul>`)
+			for i := 0; i < len(DB.Groups); i++ {
+				group := &DB.Groups[i]
+
+				var member bool
+				for j := 0; j < len(group.Users); j++ {
+					user := group.Users[j]
+
+					if session.ID == user.ID {
+						member = true
+						break
+					}
+				}
+				if !member {
+					continue
+				}
+
+				w.AppendString(`<li>`)
+				w.AppendString(`<a href="/group/`)
+				w.WriteInt(group.ID)
+				w.AppendString(`">`)
+				w.WriteHTMLString(group.Name)
+				w.AppendString(` (ID: `)
+				w.WriteInt(group.ID)
+				w.AppendString(`)`)
+				w.AppendString(`</a>`)
+				w.AppendString(`</li>`)
+			}
+			w.AppendString(`</ul>`)
 		}
 
 		w.AppendString(`<h2>Courses</h2>`)

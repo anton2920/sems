@@ -24,7 +24,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if (id < 0) || (id >= len(DB.Groups)) {
 		return NotFound("group with this ID does not exist")
 	}
-	group := DB.Groups[id]
+	group := &DB.Groups[id]
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -87,6 +87,30 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		w.AppendString(`</form>`)
 	}
+
+	w.AppendString(`<h2>Subjects</h2>`)
+	w.AppendString(`<ul>`)
+	for i := 0; i < len(DB.Subjects); i++ {
+		subject := &DB.Subjects[i]
+
+		if group.ID == subject.Group.ID {
+			w.AppendString(`<li>`)
+			w.AppendString(`<a href="/subject/`)
+			w.WriteInt(subject.ID)
+			w.AppendString(`">`)
+			w.WriteHTMLString(subject.Name)
+			w.AppendString(` with `)
+			w.WriteHTMLString(subject.Teacher.LastName)
+			w.AppendString(` `)
+			w.WriteHTMLString(subject.Teacher.FirstName)
+			w.AppendString(` (ID: `)
+			w.WriteInt(subject.ID)
+			w.AppendString(`)`)
+			w.AppendString(`</a>`)
+			w.AppendString(`</li>`)
+		}
+	}
+	w.AppendString(`</ul>`)
 
 	return nil
 }

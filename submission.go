@@ -16,6 +16,9 @@ type (
 		SubmittedQuestions []SubmittedQuestion
 
 		Scores []int
+
+		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
+		Draft bool
 	}
 
 	ProgrammingLanguage struct {
@@ -36,6 +39,9 @@ type (
 		Scores   [2][]int
 		Messages [2][]string
 		Error    error
+
+		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
+		Draft bool
 	}
 
 	Submission struct {
@@ -556,6 +562,7 @@ func SubmissionNewMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *S
 
 	for i := 0; i < len(submission.Steps); i++ {
 		var name, stepType string
+		var draft bool
 
 		step := submission.Steps[i]
 		switch step := step.(type) {
@@ -569,10 +576,23 @@ func SubmissionNewMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *S
 			stepType = "Programming task"
 		}
 
+		submittedStep := submission.SubmittedSteps[i]
+		if submittedStep != nil {
+			switch submittedStep := submittedStep.(type) {
+			case *SubmittedTest:
+				draft = submittedStep.Draft
+			case *SubmittedProgramming:
+				draft = submittedStep.Draft
+			}
+		}
+
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Step #`)
 		w.WriteInt(i + 1)
+		if draft {
+			w.AppendString(` (draft)`)
+		}
 		w.AppendString(`</legend>`)
 
 		w.AppendString(`<p>Name: `)
@@ -857,6 +877,7 @@ func SubmissionNewHandleCommand(w *HTTPResponse, r *HTTPRequest, submission *Sub
 				if !ok {
 					submittedStep = new(SubmittedTest)
 					submittedStep.Test = step
+					submittedStep.Draft = true
 					submission.SubmittedSteps[pindex] = submittedStep
 				}
 
@@ -867,6 +888,7 @@ func SubmissionNewHandleCommand(w *HTTPResponse, r *HTTPRequest, submission *Sub
 				if !ok {
 					submittedStep = new(SubmittedProgramming)
 					submittedStep.Task = step
+					submittedStep.Draft = true
 					submission.SubmittedSteps[pindex] = submittedStep
 				}
 
@@ -955,27 +977,31 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 				if err := SubmissionNewTestVerifyRequest(r.Form, submittedTest); err != nil {
 					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
 				}
+
+				submittedTest.Draft = false
 			case "Programming":
-				submittedProgramming, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
+				submittedTask, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
 				if !ok {
 					return ClientError(nil)
 				}
 
-				if err := SubmissionNewProgrammingVerifyRequest(r.Form, submittedProgramming); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, err)
+				if err := SubmissionNewProgrammingVerifyRequest(r.Form, submittedTask); err != nil {
+					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 
-				if err := SubmissionVerifyProgramming(submittedProgramming, CheckTypeExample); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, BadRequest(err.Error()))
+				if err := SubmissionVerifyProgramming(submittedTask, CheckTypeExample); err != nil {
+					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, BadRequest(err.Error()))
 				}
 
-				scores := submittedProgramming.Scores[CheckTypeExample]
-				messages := submittedProgramming.Messages[CheckTypeExample]
+				scores := submittedTask.Scores[CheckTypeExample]
+				messages := submittedTask.Messages[CheckTypeExample]
 				for i := 0; i < len(scores); i++ {
 					if scores[i] == 0 {
-						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedProgramming, BadRequest(fmt.Sprintf("example %d: %s", i+1, messages[i])))
+						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, BadRequest(fmt.Sprintf("example %d: %s", i+1, messages[i])))
 					}
 				}
+
+				submittedTask.Draft = false
 			}
 		} else {
 			submission.SubmittedSteps[si] = nil
@@ -1058,9 +1084,20 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		if submission.SubmittedSteps[i] != nil {
+		step := submission.SubmittedSteps[i]
+		if step != nil {
 			empty = false
-			break
+
+			var draft bool
+			switch step := step.(type) {
+			case *SubmittedTest:
+				draft = step.Draft
+			case *SubmittedProgramming:
+				draft = step.Draft
+			}
+			if draft {
+				return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, BadRequest(fmt.Sprintf("step %d is still a draft", i+1)))
+			}
 		}
 	}
 	if empty {
