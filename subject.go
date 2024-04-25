@@ -80,7 +80,9 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(` `)
 	w.WriteHTMLString(subject.Teacher.FirstName)
 	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
@@ -94,27 +96,11 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Teacher: `)
-	w.AppendString(`<a href="/user/`)
-	w.WriteInt(subject.Teacher.ID)
-	w.AppendString(`">`)
-	w.WriteHTMLString(subject.Teacher.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(subject.Teacher.FirstName)
-	w.AppendString(` (ID: `)
-	w.WriteInt(subject.Teacher.ID)
-	w.AppendString(`)`)
-	w.AppendString(`</a>`)
+	DisplayUserLink(w, subject.Teacher)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Group: `)
-	w.AppendString(`<a href="/group/`)
-	w.WriteInt(subject.Group.ID)
-	w.AppendString(`">`)
-	w.WriteHTMLString(subject.Group.Name)
-	w.AppendString(` (ID: `)
-	w.WriteInt(subject.Group.ID)
-	w.AppendString(`)`)
-	w.AppendString(`</a>`)
+	DisplayGroupLink(w, subject.Group)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
@@ -167,45 +153,54 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		LessonDisplayTheory(w, lesson.Theory)
 		w.AppendString(`</p>`)
 
-		if ((session.ID == AdminID) || (session.ID == subject.Teacher.ID)) && (len(lesson.Submissions) > 0) {
-			w.AppendString(`<form method="POST" action="/submission">`)
-
-			w.AppendString(`<input type="hidden" name="ID" value="`)
-			w.WriteString(r.URL.Path[len("/subject/"):])
-			w.AppendString(`">`)
-
-			w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-			w.WriteInt(i)
-			w.AppendString(`">`)
-
-			/* TODO(anton2920): do not display if no submissions are ready. */
-			w.AppendString(`<label>Submissions: `)
-			w.AppendString(`<select name="SubmissionIndex">`)
+		if (session.ID == AdminID) || (session.ID == subject.Teacher.ID) {
+			var displaySubmissions bool
 			for j := 0; j < len(lesson.Submissions); j++ {
 				submission := lesson.Submissions[j]
-				if submission.Draft {
-					continue
+				if !submission.Draft {
+					displaySubmissions = true
+					break
 				}
-
-				w.AppendString(`<option value="`)
-				w.WriteInt(j)
-				w.AppendString(`">`)
-				w.WriteHTMLString(submission.User.LastName)
-				w.AppendString(` `)
-				w.WriteHTMLString(submission.User.FirstName)
-				w.AppendString(`</option>`)
 			}
-			w.AppendString(`</select>`)
-			w.AppendString(`</label>`)
+			if displaySubmissions {
+				w.AppendString(`<form method="POST" action="/submission">`)
 
-			w.AppendString("\r\n")
-			w.AppendString(`<input type="submit" value="See results">`)
-			w.AppendString("\r\n")
-			w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
+				w.AppendString(`<input type="hidden" name="ID" value="`)
+				w.WriteString(r.URL.Path[len("/subject/"):])
+				w.AppendString(`">`)
 
-			w.AppendString(`</form>`)
+				w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
+				w.WriteInt(i)
+				w.AppendString(`">`)
 
-			w.AppendString(`<br>`)
+				w.AppendString(`<label>Submissions: `)
+				w.AppendString(`<select name="SubmissionIndex">`)
+				for j := 0; j < len(lesson.Submissions); j++ {
+					submission := lesson.Submissions[j]
+					if submission.Draft {
+						continue
+					}
+
+					w.AppendString(`<option value="`)
+					w.WriteInt(j)
+					w.AppendString(`">`)
+					w.WriteHTMLString(submission.User.LastName)
+					w.AppendString(` `)
+					w.WriteHTMLString(submission.User.FirstName)
+					w.AppendString(`</option>`)
+				}
+				w.AppendString(`</select>`)
+				w.AppendString(`</label>`)
+
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" value="See results">`)
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
+
+				w.AppendString(`</form>`)
+
+				w.AppendString(`<br>`)
+			}
 		}
 
 		w.AppendString(`<form method="POST" action="/subject/lesson">`)
@@ -233,20 +228,28 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`">`)
 
 		if len(subject.Lessons) == 0 {
-			/* TODO(anton2920): calculate length on non-draft slice. */
-			if len(subject.Teacher.Courses) != 0 {
+			var displayCourses bool
+			for i := 0; i < len(subject.Teacher.Courses); i++ {
+				course := subject.Teacher.Courses[i]
+				if !course.Draft {
+					displayCourses = true
+					break
+				}
+			}
+			if displayCourses {
 				w.AppendString(`<label>Courses: `)
 				w.AppendString(`<select name="CourseID">`)
 				for i := 0; i < len(subject.Teacher.Courses); i++ {
 					course := subject.Teacher.Courses[i]
-
-					if !course.Draft {
-						w.AppendString(`<option value="`)
-						w.WriteInt(i)
-						w.AppendString(`">`)
-						w.WriteHTMLString(course.Name)
-						w.AppendString(`</option>`)
+					if course.Draft {
+						continue
 					}
+
+					w.AppendString(`<option value="`)
+					w.WriteInt(i)
+					w.AppendString(`">`)
+					w.WriteHTMLString(course.Name)
+					w.AppendString(`</option>`)
 				}
 				w.AppendString(`</select>`)
 
@@ -260,14 +263,12 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			}
 
 			w.AppendString(`<input type="submit" value="create new from scratch">`)
-
 			w.AppendString(`</label>`)
 		} else {
 			w.AppendString(`<input type="submit" value="Edit">`)
 		}
 
 		w.AppendString(`</form>`)
-
 	}
 
 	return nil

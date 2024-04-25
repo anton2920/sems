@@ -47,6 +47,9 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(course.Name)
+	if course.Draft {
+		w.AppendString(` (draft)`)
+	}
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)

@@ -118,6 +118,30 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`</form>`)
 	}
 
+	var displaySubjects bool
+	for i := 0; i < len(DB.Subjects); i++ {
+		subject := &DB.Subjects[i]
+
+		if user.ID == subject.Teacher.ID {
+			displaySubjects = true
+			break
+		}
+	}
+	if displaySubjects {
+		w.AppendString(`<h2>Subjects</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(DB.Subjects); i++ {
+			subject := &DB.Subjects[i]
+
+			if user.ID == subject.Teacher.ID {
+				w.AppendString(`<li>`)
+				DisplaySubjectLink(w, subject)
+				w.AppendString(`</li>`)
+			}
+		}
+		w.AppendString(`</ul>`)
+	}
+
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
 
