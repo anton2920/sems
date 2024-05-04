@@ -117,6 +117,46 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`</form>`)
 	}
 
+	var displayGroups bool
+	for i := 0; i < len(DB.Groups); i++ {
+		group := &DB.Groups[i]
+
+		if UserInGroup(user.ID, group) {
+			displayGroups = true
+			break
+		}
+	}
+	if displayGroups {
+		w.AppendString(`<h2>Groups</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(DB.Groups); i++ {
+			group := &DB.Groups[i]
+
+			if UserInGroup(user.ID, group) {
+				w.AppendString(`<li>`)
+				DisplayGroupLink(w, group)
+				w.AppendString(`</li>`)
+			}
+		}
+		w.AppendString(`</ul>`)
+	}
+
+	if session.ID == user.ID {
+		w.AppendString(`<h2>Courses</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(user.Courses); i++ {
+			course := user.Courses[i]
+
+			w.AppendString(`<li>`)
+			DisplayCourseLink(w, i, course)
+			w.AppendString(`</li>`)
+		}
+		w.AppendString(`</ul>`)
+		w.AppendString(`<form method="POST" action="/course/create">`)
+		w.AppendString(`<input type="submit" value="Create course">`)
+		w.AppendString(`</form>`)
+	}
+
 	var displaySubjects bool
 	for i := 0; i < len(DB.Subjects); i++ {
 		subject := &DB.Subjects[i]
@@ -148,7 +188,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	session.ID, err := GetSessionFromRequest(r)
+	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
 	}
@@ -210,7 +250,7 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	session.ID, err := GetSessionFromRequest(r)
+	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return UnauthorizedError
 	}
