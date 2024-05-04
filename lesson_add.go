@@ -154,6 +154,7 @@ func LessonTestAddPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Test</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Lesson</h1>`)
 	w.AppendString(`<h2>Test</h2>`)
 
@@ -371,6 +372,7 @@ func LessonProgrammingAddPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Programming task</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Lesson</h1>`)
 	w.AppendString(`<h2>Programming task</h2>`)
 
@@ -435,6 +437,7 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create lesson</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Lesson</h1>`)
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))

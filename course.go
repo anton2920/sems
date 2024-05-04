@@ -47,7 +47,6 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(` (draft)`)
 	}
 	w.AppendString(`</title></head>`)
-
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
@@ -58,29 +57,7 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Lessons</h2>`)
-	for i := 0; i < len(course.Lessons); i++ {
-		lesson := course.Lessons[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Draft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
+	DisplayLessonsList(w, course.Lessons)
 
 	w.AppendString(`<div>`)
 
@@ -117,7 +94,7 @@ func CourseCreateEditCourseVerifyRequest(vs URLValues, course *Course) error {
 
 func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *Course) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create course</title></head>`)
+	w.AppendString(`<head><title>Course</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>Course</h1>`)
@@ -141,51 +118,7 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	for i := 0; i < len(course.Lessons); i++ {
-		lesson := course.Lessons[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Draft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Edit" formnovalidate>`)
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Delete" formnovalidate>`)
-		if len(course.Lessons) > 1 {
-			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
-			}
-			if i < len(course.Lessons)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
-			}
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
+	DisplayLessonsEditableList(w, course.Lessons)
 
 	w.AppendString(`<input type="submit" name="NextPage" value="Add lesson">`)
 	w.AppendString(`<br><br>`)

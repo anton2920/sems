@@ -150,51 +150,7 @@ func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
-	for i := 0; i < len(subject.Lessons); i++ {
-		lesson := subject.Lessons[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Draft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Edit" formnovalidate>`)
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Delete" formnovalidate>`)
-		if len(subject.Lessons) > 1 {
-			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
-			}
-			if i < len(subject.Lessons)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
-			}
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
+	DisplayLessonsEditableList(w, subject.Lessons)
 
 	w.AppendString(`<input type="submit" name="NextPage" value="Add lesson">`)
 	w.AppendString(`<br><br>`)
