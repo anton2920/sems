@@ -36,6 +36,18 @@ func UserNameValid(name string) error {
 	return nil
 }
 
+func GetUserByEmail(email string) *User {
+	for i := 0; i < len(DB.Users); i++ {
+		user := &DB.Users[i]
+
+		if user.Email == email {
+			return user
+		}
+	}
+
+	return nil
+}
+
 func DisplayUserLink(w *HTTPResponse, user *User) {
 	w.AppendString(`<a href="/user/`)
 	w.WriteInt(user.ID)
@@ -389,10 +401,8 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserCreatePageHandler, BadRequest("passwords do not match each other"))
 	}
 
-	for i := 0; i < len(DB.Users); i++ {
-		if email == DB.Users[i].Email {
-			return WritePage(w, r, UserCreatePageHandler, Conflict("user with this email already exists"))
-		}
+	if GetUserByEmail(email) != nil {
+		return WritePage(w, r, UserCreatePageHandler, Conflict("user with this email already exists"))
 	}
 
 	DB.Users = append(DB.Users, User{ID: len(DB.Users), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
@@ -446,9 +456,12 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))
 	}
 
-	/* TODO(anton2920): verify that email doesn't exist. */
+	user := GetUserByEmail(email);
+	if (user != nil) && (user.ID != userID) {
+		return WritePage(w, r, UserEditPageHandler, Conflict("user with this email already exists"))
+	}
 
-	user := &DB.Users[userID]
+	user = &DB.Users[userID]
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.Email = email
@@ -463,29 +476,20 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return ClientError(err)
 	}
 
-	/* TODO(anton2920): add hashing and everything. */
-	id := -1
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
 	}
 	email := address.Address
-	password := r.Form.Get("Password")
 
-	for i := 0; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
-
-		if email == user.Email {
-			if password != user.Password {
-				return WritePage(w, r, UserSigninPageHandler, Conflict("provided password is incorrect"))
-			}
-
-			id = i
-			break
-		}
-	}
-	if id == -1 {
+	user := GetUserByEmail(email)
+	if user == nil {
 		return WritePage(w, r, UserSigninPageHandler, NotFound("user with this email does not exist"))
+	}
+
+	password := r.Form.Get("Password")
+	if user.Password != password {
+		return WritePage(w, r, UserSigninPageHandler, Conflict("provided password is incorrect"))
 	}
 
 	token, err := GenerateSessionToken()
@@ -496,7 +500,7 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	SessionsLock.Lock()
 	Sessions[token] = &Session{
-		ID:     id,
+		ID:     user.ID,
 		Expiry: expiry,
 	}
 	SessionsLock.Unlock()
