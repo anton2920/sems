@@ -384,6 +384,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
 	}
 	email := address.Address
+	/* TODO(anton2920): verify that email doesn't exist. */
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")

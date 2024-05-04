@@ -74,7 +74,7 @@ func Access(path string, mode int32) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_access, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
+	_, _, errno := RawSyscall(SYS_access, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
 	return NewSyscallError("access failed with code", errno)
 }
 
@@ -103,12 +103,12 @@ func Fcntl(fd, cmd, arg int32) error {
 }
 
 func Fstat(fd int32, sb *Stat_t) error {
-	_, _, errno := Syscall(SYS_fstat, uintptr(fd), uintptr(unsafe.Pointer(sb)), 0)
+	_, _, errno := RawSyscall(SYS_fstat, uintptr(fd), uintptr(unsafe.Pointer(sb)), 0)
 	return NewSyscallError("fstat failed with code", errno)
 }
 
 func Ftruncate(fd int32, length int64) error {
-	_, _, errno := Syscall(SYS_ftruncate, uintptr(fd), uintptr(length), 0)
+	_, _, errno := RawSyscall(SYS_ftruncate, uintptr(fd), uintptr(length), 0)
 	return NewSyscallError("ftruncate failed with code", errno)
 }
 
@@ -118,12 +118,12 @@ func Getrandom(buf []byte, flags uint32) (int64, error) {
 }
 
 func JailRemove(jid int32) error {
-	_, _, errno := Syscall(SYS_jail_remove, uintptr(jid), 0, 0)
+	_, _, errno := RawSyscall(SYS_jail_remove, uintptr(jid), 0, 0)
 	return NewSyscallError("jail_remove failed with code", errno)
 }
 
 func JailSet(iovs []Iovec, flags int32) (int32, error) {
-	jid, _, errno := Syscall(SYS_jail_set, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
+	jid, _, errno := RawSyscall(SYS_jail_set, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
 	return int32(jid), NewSyscallError("jail_set failed with code", errno)
 }
 
@@ -133,7 +133,7 @@ func Kevent(kq int32, changelist []Kevent_t, eventlist []Kevent_t, timeout *Time
 }
 
 func Kill(pid int32, sig int32) error {
-	_, _, errno := Syscall(SYS_kill, uintptr(pid), uintptr(sig), 0)
+	_, _, errno := RawSyscall(SYS_kill, uintptr(pid), uintptr(sig), 0)
 	return NewSyscallError("kill failed with code", errno)
 }
 
@@ -156,7 +156,7 @@ func Mkdir(path string, mode int16) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_mkdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
+	_, _, errno := RawSyscall(SYS_mkdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(mode), 0)
 	return NewSyscallError("mkdir failed with code", errno)
 }
 
@@ -171,7 +171,7 @@ func Nanosleep(rqtp, rmtp *Timespec) error {
 }
 
 func Nmount(iovs []Iovec, flags int32) error {
-	_, _, errno := Syscall(SYS_nmount, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
+	_, _, errno := RawSyscall(SYS_nmount, uintptr(unsafe.Pointer(unsafe.SliceData(iovs))), uintptr(len(iovs)), uintptr(flags))
 	return NewSyscallError("nmount failed with code", errno)
 }
 
@@ -184,12 +184,12 @@ func Open(path string, flags int32, mode uint16) (int32, error) {
 }
 
 func RctlAddRule(rule []byte) error {
-	_, _, errno := Syscall6(SYS_rctl_add_rule, uintptr(unsafe.Pointer(unsafe.SliceData(rule))), uintptr(len(rule)), 0, 0, 0, 0)
+	_, _, errno := RawSyscall6(SYS_rctl_add_rule, uintptr(unsafe.Pointer(unsafe.SliceData(rule))), uintptr(len(rule)), 0, 0, 0, 0)
 	return NewSyscallError("rctl_add_rule failed with code", errno)
 }
 
 func RctlRemoveRule(filter []byte) error {
-	_, _, errno := Syscall6(SYS_rctl_remove_rule, uintptr(unsafe.Pointer(unsafe.SliceData(filter))), uintptr(len(filter)), 0, 0, 0, 0)
+	_, _, errno := RawSyscall6(SYS_rctl_remove_rule, uintptr(unsafe.Pointer(unsafe.SliceData(filter))), uintptr(len(filter)), 0, 0, 0, 0)
 	return NewSyscallError("rctl_remove_rule failed with code", errno)
 }
 
@@ -202,7 +202,7 @@ func Rmdir(path string) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_rmdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
+	_, _, errno := RawSyscall(SYS_rmdir, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
 	return NewSyscallError("rmdir failed with code", errno)
 }
 
@@ -230,7 +230,7 @@ func Stat(path string, sb *Stat_t) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_stat, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(unsafe.Pointer(sb)), 0)
+	_, _, errno := RawSyscall(SYS_stat, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(unsafe.Pointer(sb)), 0)
 	return NewSyscallError("stat failed with code", errno)
 }
 
@@ -238,7 +238,7 @@ func Unlink(path string) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_unlink, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
+	_, _, errno := RawSyscall(SYS_unlink, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), 0, 0)
 	return NewSyscallError("unlink failed with code", errno)
 }
 
@@ -246,7 +246,7 @@ func Unmount(path string, flags int32) error {
 	buffer := make([]byte, PATH_MAX)
 	n := copy(buffer, path)
 
-	_, _, errno := Syscall(SYS_unmount, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(flags), 0)
+	_, _, errno := RawSyscall(SYS_unmount, uintptr(unsafe.Pointer(unsafe.SliceData(buffer[:n+1]))), uintptr(flags), 0)
 	return NewSyscallError("unmount failed with code", errno)
 }
 
