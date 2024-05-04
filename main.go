@@ -34,6 +34,8 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			return CoursePageHandler(w, r)
 		case "/create", "/edit":
 			return CourseCreateEditPageHandler(w, r)
+		case "/lesson":
+			return CourseLessonPageHandler(w, r)
 		}
 	case StringStartsWith(path, "/group"):
 		switch path[len("/group"):] {

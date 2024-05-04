@@ -111,32 +111,6 @@ func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 	}
 }
 
-func DisplayLessonsList(w *HTTPResponse, lessons []*Lesson) {
-	for i := 0; i < len(lessons); i++ {
-		lesson := lessons[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Draft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-}
-
 func DisplayLessonsEditableList(w *HTTPResponse, lessons []*Lesson) {
 	for i := 0; i < len(lessons); i++ {
 		lesson := lessons[i]

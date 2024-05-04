@@ -251,7 +251,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 	}
 
-	/* 'currentPage' is the page to check before leaving it. */
+	/* 'currentPage' is the page to save/check before leaving it. */
 	switch currentPage {
 	case "Lesson":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
@@ -260,9 +260,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson := subject.Lessons[li]
 
-		if err := LessonAddVerifyRequest(r.Form, lesson); err != nil {
-			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
-		}
+		LessonFillFromRequest(r.Form, lesson)
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
@@ -279,8 +277,11 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ClientError(nil)
 		}
 
-		if err := LessonTestAddVerifyRequest(r.Form, test, true); err != nil {
-			return WritePageEx(w, r, LessonTestAddPageHandler, test, err)
+		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
+			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
+		}
+		if err := LessonTestVerify(test); err != nil {
+			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
 		}
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
@@ -298,8 +299,11 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			return ClientError(nil)
 		}
 
-		if err := LessonProgrammingAddVerifyRequest(r.Form, task, true); err != nil {
-			return WritePageEx(w, r, LessonProgrammingAddPageHandler, task, err)
+		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
+			return WritePageEx(w, r, LessonAddProgrammingPageHandler, task, err)
+		}
+		if err := LessonProgrammingVerify(task); err != nil {
+			return WritePageEx(w, r, LessonAddProgrammingPageHandler, task, err)
 		}
 	}
 
@@ -313,17 +317,8 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		lesson := subject.Lessons[li]
 
-		for si := 0; si < len(lesson.Steps); si++ {
-			switch step := lesson.Steps[si].(type) {
-			case *StepTest:
-				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("test %d is a draft", si+1))
-				}
-			case *StepProgramming:
-				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("programming task %d is a draft", si+1))
-				}
-			}
+		if err := LessonVerify(lesson); err != nil {
+			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
 		lesson.Draft = false
 
@@ -369,7 +364,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, test)
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonTestAddPageHandler(w, r, test)
+		return LessonAddTestPageHandler(w, r, test)
 	case "Add programming task":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
@@ -383,7 +378,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		lesson.Steps = append(lesson.Steps, task)
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonProgrammingAddPageHandler(w, r, task)
+		return LessonAddProgrammingPageHandler(w, r, task)
 	case "Save":
 		return SubjectLessonEditHandler(w, r)
 	}

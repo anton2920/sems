@@ -32,27 +32,38 @@ var CheckKeys = [2][3]string{
 	CheckTypeTest:    {CheckKeyDisplay: "test", CheckKeyInput: "TestInput", CheckKeyOutput: "TestOutput"},
 }
 
-func LessonAddVerifyRequest(vs URLValues, lesson *Lesson) error {
+func LessonFillFromRequest(vs URLValues, lesson *Lesson) {
 	lesson.Name = vs.Get("Name")
+	lesson.Theory = vs.Get("Theory")
+}
+
+func LessonVerify(lesson *Lesson) error {
 	if !StringLengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
 		return BadRequest("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
 	}
 
-	lesson.Theory = vs.Get("Theory")
 	if !StringLengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
 		return BadRequest("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen)
+	}
+
+	for si := 0; si < len(lesson.Steps); si++ {
+		switch step := lesson.Steps[si].(type) {
+		case *StepTest:
+			if step.Draft {
+				return BadRequest("test %d is a draft", si+1)
+			}
+		case *StepProgramming:
+			if step.Draft {
+				return BadRequest("programming task %d is a draft", si+1)
+			}
+		}
 	}
 
 	return nil
 }
 
-func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
+func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
 	test.Name = vs.Get("Name")
-	if (shouldCheck) && (!StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen)) {
-		return BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
-	}
-
-	questions := vs.GetMany("Question")
 
 	answerKey := make([]byte, 30)
 	copy(answerKey, "Answer")
@@ -60,15 +71,13 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 	correctAnswerKey := make([]byte, 30)
 	copy(correctAnswerKey, "CorrectAnswer")
 
+	questions := vs.GetMany("Question")
 	for i := 0; i < len(questions); i++ {
 		if i >= len(test.Questions) {
 			test.Questions = append(test.Questions, Question{})
 		}
 		question := &test.Questions[i]
 		question.Name = questions[i]
-		if (shouldCheck) && (!StringLengthInRange(question.Name, MinQuestionLen, MaxQuestionLen)) {
-			return BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
-		}
 
 		n := SlicePutInt(answerKey[len("Answer"):], i)
 		answers := vs.GetMany(unsafe.String(unsafe.SliceData(answerKey), len("Answer")+n))
@@ -77,10 +86,6 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 				question.Answers = append(question.Answers, "")
 			}
 			question.Answers[j] = answers[j]
-
-			if (shouldCheck) && (!StringLengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen)) {
-				return BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
-			}
 		}
 		question.Answers = question.Answers[:len(answers)]
 
@@ -97,9 +102,6 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 				return ClientError(err)
 			}
 		}
-		if (shouldCheck) && (len(correctAnswers) == 0) {
-			return BadRequest("question %d: select at least one correct answer", i+1)
-		}
 		question.CorrectAnswers = question.CorrectAnswers[:len(correctAnswers)]
 	}
 	test.Questions = test.Questions[:len(questions)]
@@ -107,16 +109,36 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 	return nil
 }
 
-func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
-	task.Name = vs.Get("Name")
-	if (shouldCheck) && (!StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen)) {
-		return BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
+func LessonTestVerify(test *StepTest) error {
+	if !StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen) {
+		return BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
 	}
 
-	task.Description = vs.Get("Description")
-	if (shouldCheck) && (!StringLengthInRange(task.Name, MinDescriptionLen, MaxDescriptionLen)) {
-		return BadRequest("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen)
+	for i := 0; i < len(test.Questions); i++ {
+		question := &test.Questions[i]
+
+		if !StringLengthInRange(question.Name, MinQuestionLen, MaxQuestionLen) {
+			return BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
+		}
+
+		for j := 0; j < len(question.Answers); j++ {
+			answer := question.Answers[j]
+
+			if !StringLengthInRange(answer, MinAnswerLen, MaxAnswerLen) {
+				return BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
+			}
+		}
+		if len(question.CorrectAnswers) == 0 {
+			return BadRequest("question %d: select at least one correct answer", i+1)
+		}
 	}
+
+	return nil
+}
+
+func LessonProgrammingFillFromRequest(vs URLValues, task *StepProgramming) error {
+	task.Name = vs.Get("Name")
+	task.Description = vs.Get("Description")
 
 	for i := 0; i < len(CheckKeys); i++ {
 		checks := &task.Checks[i]
@@ -137,11 +159,33 @@ func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shou
 			check.Input = inputs[j]
 			check.Output = outputs[j]
 
-			if (shouldCheck) && (!StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen)) {
+		}
+
+	}
+
+	return nil
+}
+
+func LessonProgrammingVerify(task *StepProgramming) error {
+	if !StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen) {
+		return BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
+	}
+
+	if !StringLengthInRange(task.Description, MinDescriptionLen, MaxDescriptionLen) {
+		return BadRequest("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen)
+	}
+
+	for i := 0; i < len(task.Checks); i++ {
+		checks := task.Checks[i]
+
+		for j := 0; j < len(checks); j++ {
+			check := &checks[j]
+
+			if !StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen) {
 				return BadRequest("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 
-			if (shouldCheck) && (!StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen)) {
+			if !StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen) {
 				return BadRequest("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 		}
@@ -150,7 +194,120 @@ func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shou
 	return nil
 }
 
-func LessonTestAddPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
+func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>Create lesson</title></head>`)
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>Lesson</h1>`)
+
+	DisplayErrorMessage(w, r.Form.Get("Error"))
+
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(r.URL.Path)
+	w.AppendString(`">`)
+
+	w.AppendString(`<input type="hidden" name="CurrentPage" value="Lesson">`)
+
+	w.AppendString(`<input type="hidden" name="ID" value="`)
+	w.WriteHTMLString(r.Form.Get("ID"))
+	w.AppendString(`">`)
+
+	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
+	w.WriteHTMLString(r.Form.Get("LessonIndex"))
+	w.AppendString(`">`)
+
+	w.AppendString(`<label>Name: `)
+	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`" required>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<label>Theory:<br>`)
+	w.AppendString(`<textarea cols="80" rows="24" minlength="1" maxlength="1024" name="Theory" required>`)
+	w.WriteHTMLString(lesson.Theory)
+	w.AppendString(`</textarea>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
+
+	for i := 0; i < len(lesson.Steps); i++ {
+		var name, stepType string
+		var draft bool
+
+		step := lesson.Steps[i]
+		switch step := step.(type) {
+		default:
+			panic("invalid step type")
+		case *StepTest:
+			name = step.Name
+			draft = step.Draft
+			stepType = "Test"
+		case *StepProgramming:
+			name = step.Name
+			draft = step.Draft
+			stepType = "Programming task"
+		}
+
+		w.AppendString(`<fieldset>`)
+
+		w.AppendString(`<legend>Step #`)
+		w.WriteInt(i + 1)
+		if draft {
+			w.AppendString(` (draft)`)
+		}
+		w.AppendString(`</legend>`)
+
+		w.AppendString(`<p>Name: `)
+		w.WriteHTMLString(name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>Type: `)
+		w.AppendString(stepType)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<input type="submit" name="Command`)
+		w.WriteInt(i)
+		w.AppendString(`" value="Edit" formnovalidate>`)
+		w.AppendString("\r\n")
+		w.AppendString(`<input type="submit" name="Command`)
+		w.WriteInt(i)
+		w.AppendString(`" value="Delete" formnovalidate>`)
+		if len(lesson.Steps) > 1 {
+			if i > 0 {
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Command`)
+				w.WriteInt(i)
+				w.AppendString(`" value="↑" formnovalidate>`)
+			}
+			if i < len(lesson.Steps)-1 {
+				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Command`)
+				w.WriteInt(i)
+				w.AppendString(`" value="↓" formnovalidate>`)
+			}
+		}
+
+		w.AppendString(`</fieldset>`)
+		w.AppendString(`<br>`)
+	}
+
+	w.AppendString(`<input type="submit" name="NextPage" value="Add test" formnovalidate>`)
+	w.AppendString("\r\n")
+	w.AppendString(`<input type="submit" name="NextPage" value="Add programming task" formnovalidate>`)
+	w.AppendString(`<br><br>`)
+
+	w.AppendString(`<input type="submit" name="NextPage" value="Next">`)
+
+	w.AppendString(`</form>`)
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
+
+	return nil
+}
+
+func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Test</title></head>`)
 	w.AppendString(`<body>`)
@@ -308,7 +465,7 @@ func LessonTestAddPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 	return nil
 }
 
-func LessonProgrammingAddDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
+func LessonAddProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
 	checks := task.Checks[checkType]
 
 	w.AppendString(`<ol>`)
@@ -368,7 +525,7 @@ func LessonProgrammingAddDisplayChecks(w *HTTPResponse, task *StepProgramming, c
 	w.AppendString(`</ol>`)
 }
 
-func LessonProgrammingAddPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
+func LessonAddProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Programming task</title></head>`)
 	w.AppendString(`<body>`)
@@ -411,11 +568,11 @@ func LessonProgrammingAddPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<h3>Examples</h3>`)
-	LessonProgrammingAddDisplayChecks(w, task, CheckTypeExample)
+	LessonAddProgrammingDisplayChecks(w, task, CheckTypeExample)
 	w.AppendString(`<input type="submit" name="Command" value="Add example">`)
 
 	w.AppendString(`<h3>Tests</h3>`)
-	LessonProgrammingAddDisplayChecks(w, task, CheckTypeTest)
+	LessonAddProgrammingDisplayChecks(w, task, CheckTypeTest)
 	w.AppendString(`<input type="submit" name="Command" value="Add test">`)
 
 	w.AppendString(`<br><br>`)
@@ -433,121 +590,7 @@ func LessonProgrammingAddPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	return nil
 }
 
-func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create lesson</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>Lesson</h1>`)
-
-	DisplayErrorMessage(w, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Lesson">`)
-
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("LessonIndex"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`" required>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>Theory:<br>`)
-	w.AppendString(`<textarea cols="80" rows="24" minlength="1" maxlength="1024" name="Theory" required>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</textarea>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	for i := 0; i < len(lesson.Steps); i++ {
-		var name, stepType string
-		var draft bool
-
-		step := lesson.Steps[i]
-		switch step := step.(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
-			draft = step.Draft
-			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
-			draft = step.Draft
-			stepType = "Programming task"
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		if draft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Edit" formnovalidate>`)
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Delete" formnovalidate>`)
-		if len(lesson.Steps) > 1 {
-			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
-			}
-			if i < len(lesson.Steps)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
-			}
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-
-	w.AppendString(`<input type="submit" name="NextPage" value="Add test">`)
-	w.AppendString("\r\n")
-	w.AppendString(`<input type="submit" name="NextPage" value="Add programming task">`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<input type="submit" name="NextPage" value="Next">`)
-
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
-}
-
 func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, currentPage, k, command string) error {
-	/* TODO(anton2920): pass indicies as params. */
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return ClientError(err)
@@ -578,10 +621,10 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 				panic("invalid step type")
 			case *StepTest:
 				step.Draft = true
-				return LessonTestAddPageHandler(w, r, step)
+				return LessonAddTestPageHandler(w, r, step)
 			case *StepProgramming:
 				step.Draft = true
-				return LessonProgrammingAddPageHandler(w, r, step)
+				return LessonAddProgrammingPageHandler(w, r, step)
 			}
 		case "↑", "^|":
 			MoveUp(lesson.Steps, pindex)
@@ -606,7 +649,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			return ClientError(nil)
 		}
 
-		if err := LessonTestAddVerifyRequest(r.Form, test, false); err != nil {
+		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
 			return ClientError(err)
 		}
 
@@ -694,7 +737,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			}
 		}
 
-		return LessonTestAddPageHandler(w, r, test)
+		return LessonAddTestPageHandler(w, r, test)
 
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
@@ -712,7 +755,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			return ClientError(nil)
 		}
 
-		if err := LessonProgrammingAddVerifyRequest(r.Form, task, false); err != nil {
+		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
 			return ClientError(err)
 		}
 
@@ -738,6 +781,6 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			MoveDown(task.Checks[sindex], pindex)
 		}
 
-		return LessonProgrammingAddPageHandler(w, r, task)
+		return LessonAddProgrammingPageHandler(w, r, task)
 	}
 }
