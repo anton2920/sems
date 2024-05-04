@@ -90,7 +90,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
-	w.Write(user.CreatedOn.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+	DisplayFormattedTime(w, user.CreatedOn)
 	w.AppendString(`</p>`)
 
 	if (session.ID == id) || (session.ID == AdminID) {

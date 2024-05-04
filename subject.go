@@ -104,7 +104,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
-	w.Write(subject.CreatedOn.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+	DisplayFormattedTime(w, subject.CreatedOn)
 	w.AppendString(`</p>`)
 
 	if session.ID == AdminID {

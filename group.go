@@ -71,7 +71,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
-	w.Write(group.CreatedOn.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+	DisplayFormattedTime(w, group.CreatedOn)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<h2>Students</h2>`)
