@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/gob"
-	"unicode/utf8"
 )
 
 type (
@@ -51,6 +50,8 @@ const (
 	CheckTypeExample CheckType = iota
 	CheckTypeTest
 )
+
+const LessonTheoryMaxDisplayLen = 30
 
 func init() {
 	gob.Register(&StepTest{})
@@ -110,21 +111,6 @@ func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 	}
 }
 
-func LessonDisplayTheory(w *HTTPResponse, theory string) {
-	const maxVisibleLen = 30
-	if utf8.RuneCountInString(theory) < maxVisibleLen {
-		w.WriteHTMLString(theory)
-	} else {
-		space := FindChar(theory[maxVisibleLen:], ' ')
-		if space == -1 {
-			w.WriteHTMLString(theory[:maxVisibleLen])
-		} else {
-			w.WriteHTMLString(theory[:space+maxVisibleLen])
-		}
-		w.AppendString(`...`)
-	}
-}
-
 func DisplayLessonsList(w *HTTPResponse, lessons []*Lesson) {
 	for i := 0; i < len(lessons); i++ {
 		lesson := lessons[i]
@@ -143,7 +129,7 @@ func DisplayLessonsList(w *HTTPResponse, lessons []*Lesson) {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
+		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
 		w.AppendString(`</fieldset>`)
@@ -169,7 +155,7 @@ func DisplayLessonsEditableList(w *HTTPResponse, lessons []*Lesson) {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
+		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<input type="submit" name="Command`)

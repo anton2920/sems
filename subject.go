@@ -151,7 +151,7 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Theory: `)
-		LessonDisplayTheory(w, lesson.Theory)
+		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
 		if (session.ID == AdminID) || (session.ID == subject.Teacher.ID) {

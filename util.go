@@ -5,6 +5,20 @@ import (
 	"unicode/utf8"
 )
 
+func DisplayShortenedString(w *HTTPResponse, s string, maxVisibleLen int) {
+	if utf8.RuneCountInString(s) < maxVisibleLen {
+		w.WriteHTMLString(s)
+	} else {
+		space := FindCharReverse(s[:maxVisibleLen], ' ')
+		if space == -1 {
+			w.WriteHTMLString(s[:maxVisibleLen])
+		} else {
+			w.WriteHTMLString(s[:space])
+		}
+		w.AppendString(`...`)
+	}
+}
+
 func GetIDFromURL(u URL, prefix string) (int, error) {
 	path := u.Path
 
