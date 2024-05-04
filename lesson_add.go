@@ -122,12 +122,11 @@ func LessonTestVerify(test *StepTest) error {
 		}
 
 		for j := 0; j < len(question.Answers); j++ {
-			answer := question.Answers[j]
-
-			if !StringLengthInRange(answer, MinAnswerLen, MaxAnswerLen) {
+			if !StringLengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen) {
 				return BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
 			}
 		}
+
 		if len(question.CorrectAnswers) == 0 {
 			return BadRequest("question %d: select at least one correct answer", i+1)
 		}
@@ -218,16 +217,12 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Theory:<br>`)
-	w.AppendString(`<textarea cols="80" rows="24" minlength="1" maxlength="1024" name="Theory" required>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</textarea>`)
+	DisplayConstraintTextarea(w, "80", "24", MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -266,25 +261,14 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 		w.AppendString(stepType)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Edit" formnovalidate>`)
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Delete" formnovalidate>`)
+		DisplayIndexedCommand(w, i, "Edit")
+		DisplayIndexedCommand(w, i, "Delete")
 		if len(lesson.Steps) > 1 {
 			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↑")
 			}
 			if i < len(lesson.Steps)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↓")
 			}
 		}
 
@@ -292,8 +276,7 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Add test" formnovalidate>`)
-	w.AppendString("\r\n")
+	w.AppendString(`<input type="submit" name="NextPage" value="Add test" formnovalidate> `)
 	w.AppendString(`<input type="submit" name="NextPage" value="Add programming task" formnovalidate>`)
 	w.AppendString(`<br><br>`)
 
@@ -336,9 +319,7 @@ func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>Title: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(test.Name)
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -349,13 +330,13 @@ func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 		question := &test.Questions[i]
 
 		w.AppendString(`<fieldset>`)
+
 		w.AppendString(`<legend>Question #`)
 		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
+
 		w.AppendString(`<label>Title: `)
-		w.AppendString(`<input type="text" minlength="1" maxlength="128" name="Question" value="`)
-		w.WriteHTMLString(question.Name)
-		w.AppendString(`" required>`)
+		DisplayConstraintInput(w, "text", MinQuestionLen, MaxQuestionLen, "Question", question.Name, true)
 		w.AppendString(`</label>`)
 		w.AppendString(`<br>`)
 
@@ -387,36 +368,16 @@ func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 				}
 			}
 			w.AppendString(`>`)
-			w.AppendString("\r\n")
 
-			w.AppendString(`<input type="text" minlength="1" maxlength="128" name="Answer`)
-			w.WriteInt(i)
-			w.AppendString(`" value="`)
-			w.WriteHTMLString(answer)
-			w.AppendString(`" required>`)
+			DisplayConstraintIndexedInput(w, "text", MinAnswerLen, MaxAnswerLen, "Answer", i, answer, true)
 
 			if len(question.Answers) > 1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`.`)
-				w.WriteInt(j)
-				w.AppendString(`" value="-" formnovalidate>`)
+				DisplayDoublyIndexedCommand(w, i, j, "-")
 				if j > 0 {
-					w.AppendString("\r\n")
-					w.AppendString(`<input type="submit" name="Command`)
-					w.WriteInt(i)
-					w.AppendString(`.`)
-					w.WriteInt(j)
-					w.AppendString(`" value="↑" formnovalidate>`)
+					DisplayDoublyIndexedCommand(w, i, j, "↑")
 				}
 				if j < len(question.Answers)-1 {
-					w.AppendString("\r\n")
-					w.AppendString(`<input type="submit" name="Command`)
-					w.WriteInt(i)
-					w.AppendString(`.`)
-					w.WriteInt(j)
-					w.AppendString(`" value="↓" formnovalidate>`)
+					DisplayDoublyIndexedCommand(w, i, j, "↓")
 				}
 			}
 
@@ -424,27 +385,15 @@ func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 		}
 		w.AppendString(`</ol>`)
 
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Add another answer" formnovalidate>`)
-
+		DisplayIndexedCommand(w, i, "Add another answer")
 		if len(test.Questions) > 1 {
 			w.AppendString(`<br><br>`)
-			w.AppendString("\r\n")
-			w.AppendString(`<input type="submit" name="Command`)
-			w.WriteInt(i)
-			w.AppendString(`" value="Delete" formnovalidate>`)
+			DisplayIndexedCommand(w, i, "Delete")
 			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↑")
 			}
 			if i < len(test.Questions)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↓")
 			}
 		}
 
@@ -475,48 +424,20 @@ func LessonAddProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, c
 		w.AppendString(`<li>`)
 
 		w.AppendString(`<label>Input: `)
+		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyInput], check.Input, true)
+		w.AppendString(`</label> `)
 
-		w.AppendString(`<textarea rows="1" minlength="1" maxlength="512" name="`)
-		w.AppendString(CheckKeys[checkType][CheckKeyInput])
-		w.AppendString(`">`)
-		w.WriteHTMLString(check.Input)
-		w.AppendString(`</textarea>`)
-
-		w.AppendString(`</label>`)
-		w.AppendString("\r\n")
 		w.AppendString(`<label>output: `)
-
-		w.AppendString(`<textarea rows="1" minlength="1" maxlength="512" name="`)
-		w.AppendString(CheckKeys[checkType][CheckKeyOutput])
-		w.AppendString(`">`)
-		w.WriteHTMLString(check.Output)
-		w.AppendString(`</textarea>`)
-
+		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyOutput], check.Output, true)
 		w.AppendString(`</label>`)
 
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`.`)
-		w.WriteInt(int(checkType))
-		w.AppendString(`" value="-" formnovalidate>`)
-
+		DisplayDoublyIndexedCommand(w, i, int(checkType), "-")
 		if len(checks) > 1 {
 			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`.`)
-				w.WriteInt(int(checkType))
-				w.AppendString(`" value="↑" formnovalidate>`)
+				DisplayDoublyIndexedCommand(w, i, int(checkType), "↑")
 			}
 			if i < len(checks)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`.`)
-				w.WriteInt(int(checkType))
-				w.AppendString(`" value="↓" formnovalidate>`)
+				DisplayDoublyIndexedCommand(w, i, int(checkType), "↓")
 			}
 		}
 
@@ -554,16 +475,12 @@ func LessonAddProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="128" name="Name" value="`)
-	w.WriteHTMLString(task.Name)
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Description:<br>`)
-	w.AppendString(`<textarea cols="80" rows="24" minlength="1" maxlength="1024" name="Description" required>`)
-	w.WriteHTMLString(task.Description)
-	w.AppendString(`</textarea>`)
+	DisplayConstraintTextarea(w, "80", "24", MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -580,10 +497,6 @@ func LessonAddProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 
 	w.AppendString(`</form>`)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	w.AppendString(`</form>`)
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
 

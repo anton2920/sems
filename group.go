@@ -185,11 +185,8 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	w.AppendString(`<form method="POST" action="/api/group/create">`)
 
-	/* TODO(anton2920): insert length constraints parametrically. */
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="5" maxlength="15" name="Name" value="`)
-	w.WriteHTMLString(r.Form.Get("Name"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -234,15 +231,11 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
-	/* TODO(anton2920): insert length constraints parametrically. */
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="5" maxlength="15" name="Name" value="`)
-	w.WriteHTMLString(r.Form.Get("Name"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	/* TODO(anton2920): think about bulk add. */
 	w.AppendString(`<label>Students:<br>`)
 	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 	w.AppendString(`</label>`)

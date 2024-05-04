@@ -204,9 +204,7 @@ func SubmissionMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *Subm
 		if submittedStep == nil {
 			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
 		} else {
-			w.AppendString(`<input type="submit" name="Command`)
-			w.WriteInt(i)
-			w.AppendString(`" value="Open">`)
+			DisplayIndexedCommand(w, i, "Open")
 		}
 
 		w.AppendString(`</fieldset>`)
@@ -286,8 +284,7 @@ func SubmissionTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest *S
 				}
 			}
 
-			w.AppendString(` disabled>`)
-			w.AppendString("\r\n")
+			w.AppendString(` disabled> `)
 
 			w.AppendString(`<span>`)
 			w.WriteHTMLString(answer)
@@ -297,8 +294,7 @@ func SubmissionTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest *S
 				for k := 0; k < len(question.CorrectAnswers); k++ {
 					correctAnswer := question.CorrectAnswers[k]
 					if j == correctAnswer {
-						w.AppendString("\r\n")
-						w.AppendString(`<span>[x]</span>`)
+						w.AppendString(` <span>[x]</span>`)
 						break
 					}
 				}
@@ -341,8 +337,7 @@ func SubmissionProgrammingDisplayChecks(w *HTTPResponse, submittedTask *Submitte
 		w.WriteHTMLString(check.Input)
 		w.AppendString(`</textarea>`)
 
-		w.AppendString(`</label>`)
-		w.AppendString("\r\n")
+		w.AppendString(`</label> `)
 
 		w.AppendString(`<label>output: `)
 
@@ -350,16 +345,14 @@ func SubmissionProgrammingDisplayChecks(w *HTTPResponse, submittedTask *Submitte
 		w.WriteHTMLString(check.Output)
 		w.AppendString(`</textarea>`)
 
-		w.AppendString(`</label>`)
-		w.AppendString("\r\n")
+		w.AppendString(`</label> `)
 
 		w.AppendString(`<span>score: `)
 		w.WriteInt(score)
 		w.AppendString(`/1</span>`)
 
 		if message != "" {
-			w.AppendString("\r\n")
-			w.AppendString(`<span>`)
+			w.AppendString(` <span>`)
 			w.WriteHTMLString(message)
 			w.AppendString(`</span>`)
 		}
@@ -645,15 +638,11 @@ func SubmissionNewMainPageHandler(w *HTTPResponse, r *HTTPRequest, submission *S
 		w.AppendString(stepType)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="`)
 		if submission.SubmittedSteps[i] == nil {
-			w.AppendString(`Pass`)
+			DisplayIndexedCommand(w, i, "Pass")
 		} else {
-			w.AppendString(`Edit`)
+			DisplayIndexedCommand(w, i, "Edit")
 		}
-		w.AppendString(`">`)
 
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)
@@ -753,8 +742,7 @@ func SubmissionNewTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest
 				}
 			}
 
-			w.AppendString(`>`)
-			w.AppendString("\r\n")
+			w.AppendString(`> `)
 
 			w.AppendString(`<span>`)
 			w.WriteHTMLString(answer)
@@ -768,8 +756,7 @@ func SubmissionNewTestPageHandler(w *HTTPResponse, r *HTTPRequest, submittedTest
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Save">`)
-	w.AppendString("\r\n")
+	w.AppendString(`<input type="submit" name="NextPage" value="Save"> `)
 	w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
 
 	w.AppendString(`</form>`)
@@ -793,8 +780,7 @@ func SubmissionNewProgrammingDisplayChecks(w *HTTPResponse, task *StepProgrammin
 		w.WriteHTMLString(check.Input)
 		w.AppendString(`</textarea>`)
 
-		w.AppendString(`</label>`)
-		w.AppendString("\r\n")
+		w.AppendString(`</label> `)
 
 		w.AppendString(`<label>output: `)
 
@@ -882,8 +868,7 @@ func SubmissionNewProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, submit
 	w.AppendString(`</textarea>`)
 
 	w.AppendString(`<br><br>`)
-	w.AppendString(`<input type="submit" name="NextPage" value="Save">`)
-	w.WriteHTMLString("\r\n")
+	w.AppendString(`<input type="submit" name="NextPage" value="Save"> `)
 	w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
 
 	w.AppendString(`</form>`)

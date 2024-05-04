@@ -194,11 +194,9 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 					w.AppendString(`</option>`)
 				}
 				w.AppendString(`</select>`)
-				w.AppendString(`</label>`)
+				w.AppendString(`</label> `)
 
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" value="See results">`)
-				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" value="See results"> `)
 				w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
 
 				w.AppendString(`</form>`)
@@ -256,18 +254,14 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 					w.AppendString(`</option>`)
 				}
 				w.AppendString(`</select>`)
+				w.AppendString(`</label> `)
 
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Action" value="create from">`)
-				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Action" value="create from"> `)
 				w.AppendString(`, `)
-				w.AppendString(`<input type="submit" name="Action" value="give as is">`)
-				w.AppendString("\r\n")
+				w.AppendString(`<input type="submit" name="Action" value="give as is"> `)
 				w.AppendString(`or `)
 			}
-
 			w.AppendString(`<input type="submit" value="create new from scratch">`)
-			w.AppendString(`</label>`)
 		} else {
 			w.AppendString(`<input type="submit" value="Edit">`)
 		}
@@ -294,6 +288,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create subject</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Subject</h1>`)
 	w.AppendString(`<h2>Create</h2>`)
 
@@ -301,11 +296,8 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	w.AppendString(`<form method="POST" action="/api/subject/create">`)
 
-	/* TODO(anton2920): insert length constraints parametrically. */
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(r.Form.Get("Name"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -388,6 +380,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Edit subject</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Subject</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
@@ -399,11 +392,8 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
-	/* TODO(anton2920): insert length constraints parametrically. */
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(r.Form.Get("Name"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 

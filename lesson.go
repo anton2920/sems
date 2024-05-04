@@ -132,25 +132,14 @@ func DisplayLessonsEditableList(w *HTTPResponse, lessons []*Lesson) {
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Edit" formnovalidate>`)
-		w.AppendString("\r\n")
-		w.AppendString(`<input type="submit" name="Command`)
-		w.WriteInt(i)
-		w.AppendString(`" value="Delete" formnovalidate>`)
+		DisplayIndexedCommand(w, i, "Edit")
+		DisplayIndexedCommand(w, i, "Delete")
 		if len(lessons) > 1 {
 			if i > 0 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↑" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↑")
 			}
 			if i < len(lessons)-1 {
-				w.AppendString("\r\n")
-				w.AppendString(`<input type="submit" name="Command`)
-				w.WriteInt(i)
-				w.AppendString(`" value="↓" formnovalidate>`)
+				DisplayIndexedCommand(w, i, "↓")
 			}
 		}
 

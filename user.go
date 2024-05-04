@@ -219,18 +219,13 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	w.AppendString(`<form method="POST" action="/api/user/create">`)
 
-	/* TODO(anton2920): replace with dynamically inserted length checks. */
 	w.AppendString(`<label>First name:<br>`)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="FirstName" value="`)
-	w.WriteHTMLString(r.Form.Get("FirstName"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Last name:<br>`)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="LastName" value="`)
-	w.WriteHTMLString(r.Form.Get("LastName"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -242,12 +237,12 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Password:<br>`)
-	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="Password" required>`)
+	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Repeat password:<br>`)
-	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="RepeatPassword" required>`)
+	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -289,18 +284,13 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
-	/* TODO(anton2920): replace with dynamically inserted length checks. */
 	w.AppendString(`<label>First name:<br>`)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="FirstName" value="`)
-	w.WriteHTMLString(r.Form.Get("FirstName"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Last name:<br>`)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="LastName" value="`)
-	w.WriteHTMLString(r.Form.Get("LastName"))
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -312,12 +302,12 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Password:<br>`)
-	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="Password" required>`)
+	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Repeat password:<br>`)
-	w.AppendString(`<input type="password" minlength="5" maxlength="45" name="RepeatPassword" required>`)
+	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -347,11 +337,13 @@ func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<input type="email" name="Email" value="`)
 	w.WriteHTMLString(r.Form.Get("Email"))
 	w.AppendString(`" required>`)
-	w.AppendString(`</label><br><br>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Password:<br>`)
 	w.AppendString(`<input type="password" name="Password" required>`)
-	w.AppendString(`</label><br><br>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<input type="submit" value="Sign in">`)
 
@@ -456,7 +448,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))
 	}
 
-	user := GetUserByEmail(email);
+	user := GetUserByEmail(email)
 	if (user != nil) && (user.ID != userID) {
 		return WritePage(w, r, UserEditPageHandler, Conflict("user with this email already exists"))
 	}

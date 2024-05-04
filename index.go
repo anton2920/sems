@@ -139,8 +139,7 @@ func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 		w.AppendString(`<a href="/user/`)
 		w.WriteInt(user.ID)
-		w.AppendString(`">Profile</a>`)
-		w.AppendString("\r\n")
+		w.AppendString(`">Profile</a> `)
 		w.AppendString(`<a href="/api/user/signout">Sign out</a>`)
 		w.AppendString(`<br>`)
 

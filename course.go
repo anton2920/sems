@@ -102,8 +102,8 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.WriteHTMLString(r.URL.Path[len("/course/"):])
 	w.AppendString(`">`)
 	w.AppendString(`<input type="submit" value="Edit">`)
-	w.AppendString(`</form>`)
-	w.AppendString("\r\n")
+	w.AppendString(`</form> `)
+
 	w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
 	w.AppendString(`<input type="hidden" name="ID" value="`)
 	w.WriteHTMLString(r.URL.Path[len("/course/"):])
@@ -246,9 +246,7 @@ func CourseCreateEditCoursePageHandler(w *HTTPResponse, r *HTTPRequest, course *
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>Name: `)
-	w.AppendString(`<input type="text" minlength="1" maxlength="45" name="Name" value="`)
-	w.WriteHTMLString(course.Name)
-	w.AppendString(`" required>`)
+	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
