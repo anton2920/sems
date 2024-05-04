@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -486,7 +485,7 @@ func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
+		return WritePage(w, r, SubjectCreatePageHandler, BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
@@ -528,7 +527,7 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, BadRequest(fmt.Sprintf("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen)))
+		return WritePage(w, r, SubjectCreatePageHandler, BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)

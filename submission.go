@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/gob"
-	"fmt"
 	"time"
 	"unsafe"
 )
@@ -531,7 +530,7 @@ func SubmissionNewTestVerifyRequest(vs URLValues, submittedTest *SubmittedTest) 
 		n := SlicePutInt(selectedAnswerKey[len("SelectedAnswer"):], i)
 		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(selectedAnswerKey), len("SelectedAnswer")+n))
 		if len(selectedAnswers) == 0 {
-			return BadRequest(fmt.Sprintf("question %d: select at least one answer", i+1))
+			return BadRequest("question %d: select at least one answer", i+1)
 		}
 		if (len(question.CorrectAnswers) == 1) && (len(selectedAnswers) > 1) {
 			return ClientError(nil)
@@ -564,7 +563,7 @@ func SubmissionNewProgrammingVerifyRequest(vs URLValues, submittedTask *Submitte
 
 	submittedTask.Solution = vs.Get("Solution")
 	if !StringLengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
-		return BadRequest(fmt.Sprintf("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen))
+		return BadRequest("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
 	}
 
 	return nil
@@ -1040,7 +1039,7 @@ func SubmissionNewPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 				messages := submittedTask.Messages[CheckTypeExample]
 				for i := 0; i < len(scores); i++ {
 					if scores[i] == 0 {
-						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, BadRequest(fmt.Sprintf("example %d: %s", i+1, messages[i])))
+						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, BadRequest("example %d: %s", i+1, messages[i]))
 					}
 				}
 
@@ -1139,7 +1138,7 @@ func SubmissionNewHandler(w *HTTPResponse, r *HTTPRequest) error {
 				draft = step.Draft
 			}
 			if draft {
-				return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, BadRequest(fmt.Sprintf("step %d is still a draft", i+1)))
+				return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, BadRequest("step %d is still a draft", i+1))
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -36,12 +35,12 @@ var CheckKeys = [2][3]string{
 func LessonAddVerifyRequest(vs URLValues, lesson *Lesson) error {
 	lesson.Name = vs.Get("Name")
 	if !StringLengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
-		return BadRequest(fmt.Sprintf("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
+		return BadRequest("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
 	}
 
 	lesson.Theory = vs.Get("Theory")
 	if !StringLengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
-		return BadRequest(fmt.Sprintf("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen))
+		return BadRequest("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen)
 	}
 
 	return nil
@@ -50,7 +49,7 @@ func LessonAddVerifyRequest(vs URLValues, lesson *Lesson) error {
 func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) error {
 	test.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen)) {
-		return BadRequest(fmt.Sprintf("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
+		return BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
 	}
 
 	questions := vs.GetMany("Question")
@@ -68,7 +67,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 		question := &test.Questions[i]
 		question.Name = questions[i]
 		if (shouldCheck) && (!StringLengthInRange(question.Name, MinQuestionLen, MaxQuestionLen)) {
-			return BadRequest(fmt.Sprintf("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen))
+			return BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
 		}
 
 		n := SlicePutInt(answerKey[len("Answer"):], i)
@@ -80,7 +79,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			question.Answers[j] = answers[j]
 
 			if (shouldCheck) && (!StringLengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen)) {
-				return BadRequest(fmt.Sprintf("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen))
+				return BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
 			}
 		}
 		question.Answers = question.Answers[:len(answers)]
@@ -99,7 +98,7 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 			}
 		}
 		if (shouldCheck) && (len(correctAnswers) == 0) {
-			return BadRequest(fmt.Sprintf("question %d: select at least one correct answer", i+1))
+			return BadRequest("question %d: select at least one correct answer", i+1)
 		}
 		question.CorrectAnswers = question.CorrectAnswers[:len(correctAnswers)]
 	}
@@ -111,12 +110,12 @@ func LessonTestAddVerifyRequest(vs URLValues, test *StepTest, shouldCheck bool) 
 func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shouldCheck bool) error {
 	task.Name = vs.Get("Name")
 	if (shouldCheck) && (!StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen)) {
-		return BadRequest(fmt.Sprintf("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen))
+		return BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
 	}
 
 	task.Description = vs.Get("Description")
 	if (shouldCheck) && (!StringLengthInRange(task.Name, MinDescriptionLen, MaxDescriptionLen)) {
-		return BadRequest(fmt.Sprintf("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen))
+		return BadRequest("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen)
 	}
 
 	for i := 0; i < len(CheckKeys); i++ {
@@ -139,11 +138,11 @@ func LessonProgrammingAddVerifyRequest(vs URLValues, task *StepProgramming, shou
 			check.Output = outputs[j]
 
 			if (shouldCheck) && (!StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen)) {
-				return BadRequest(fmt.Sprintf("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+				return BadRequest("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 
 			if (shouldCheck) && (!StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen)) {
-				return BadRequest(fmt.Sprintf("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen))
+				return BadRequest("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 		}
 	}

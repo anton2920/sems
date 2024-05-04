@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 type Course struct {
 	Name    string
 	Lessons []*Lesson
@@ -113,7 +109,7 @@ func CoursePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 func CourseCreateEditCourseVerifyRequest(vs URLValues, course *Course) error {
 	course.Name = vs.Get("Name")
 	if !StringLengthInRange(course.Name, MinNameLen, MaxNameLen) {
-		return BadRequest(fmt.Sprintf("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen))
+		return BadRequest("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
 	}
 
 	return nil
@@ -349,11 +345,11 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("test %d is a draft", si+1))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("programming task %d is a draft", si+1))
 				}
 			}
 		}
@@ -444,7 +440,7 @@ func CourseCreateEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for li := 0; li < len(course.Lessons); li++ {
 		lesson := course.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, BadRequest(fmt.Sprintf("lesson %d is a draft", li+1)))
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, BadRequest("lesson %d is a draft", li+1))
 		}
 	}
 	course.Draft = false

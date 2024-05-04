@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -365,11 +361,11 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 			switch step := lesson.Steps[si].(type) {
 			case *StepTest:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("test %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("test %d is a draft", si+1))
 				}
 			case *StepProgramming:
 				if step.Draft {
-					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest(fmt.Sprintf("programming task %d is a draft", si+1)))
+					return WritePageEx(w, r, LessonAddPageHandler, lesson, BadRequest("programming task %d is a draft", si+1))
 				}
 			}
 		}
@@ -462,7 +458,7 @@ func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for li := 0; li < len(subject.Lessons); li++ {
 		lesson := subject.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, BadRequest(fmt.Sprintf("lesson %d is a draft", li+1)))
+			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, BadRequest("lesson %d is a draft", li+1))
 		}
 	}
 

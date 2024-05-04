@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -293,7 +292,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupCreatePageHandler, BadRequest(fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
+		return WritePage(w, r, GroupCreatePageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	sids := r.Form.GetMany("UserID")
@@ -332,7 +331,7 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	name := r.Form.Get("Name")
 	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupEditPageHandler, BadRequest(fmt.Sprintf("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen)))
+		return WritePage(w, r, GroupEditPageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	sids := r.Form.GetMany("UserID")

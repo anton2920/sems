@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"unicode/utf8"
 )
@@ -15,7 +14,7 @@ func GetIDFromURL(u URL, prefix string) (int, error) {
 
 	id, err := strconv.Atoi(path[len(prefix):])
 	if err != nil {
-		return 0, BadRequest(fmt.Sprintf("invalid ID for '%s'", prefix))
+		return 0, BadRequest("invalid ID for '%s'", prefix)
 	}
 
 	return id, nil

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/mail"
 	"time"
 	"unicode"
@@ -18,7 +17,7 @@ const (
 
 func UserNameValid(name string) error {
 	if !StringLengthInRange(name, MinUserNameLen, MaxUserNameLen) {
-		return BadRequest(fmt.Sprintf("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen))
+		return BadRequest("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen)
 	}
 
 	/* Fist character must be a letter. */
@@ -331,7 +330,7 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserCreatePageHandler, BadRequest(fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+		return WritePage(w, r, UserCreatePageHandler, BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
 		return WritePage(w, r, UserCreatePageHandler, BadRequest("passwords do not match each other"))
@@ -389,7 +388,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserEditPageHandler, BadRequest(fmt.Sprintf("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen)))
+		return WritePage(w, r, UserEditPageHandler, BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))

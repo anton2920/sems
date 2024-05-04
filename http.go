@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 	"strconv"
 	"strings"
@@ -328,15 +329,18 @@ func (w *HTTPResponse) WriteHTMLString(s string) {
 	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
-func BadRequest(message string) HTTPError {
+func BadRequest(format string, args ...interface{}) HTTPError {
+	message := fmt.Sprintf(format, args...)
 	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
-func NotFound(message string) HTTPError {
+func NotFound(format string, args ...interface{}) HTTPError {
+	message := fmt.Sprintf(format, args...)
 	return HTTPError{StatusCode: HTTPStatusNotFound, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
-func Conflict(message string) HTTPError {
+func Conflict(format string, args ...interface{}) HTTPError {
+	message := fmt.Sprintf(format, args...)
 	return HTTPError{StatusCode: HTTPStatusConflict, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
 }
 
