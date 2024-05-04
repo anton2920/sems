@@ -11,7 +11,7 @@ type (
 	Group struct {
 		ID        int
 		Name      string
-		Users     []*User
+		Students  []*User
 		CreatedOn time.Time
 	}
 
@@ -117,7 +117,7 @@ func CreateInitialDB() {
 	}
 
 	DB.Groups = []Group{
-		{Name: "18-SWE", Users: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now()},
+		{Name: "18-SWE", Students: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now()},
 	}
 	for id := 0; id < len(DB.Groups); id++ {
 		DB.Groups[id].ID = id

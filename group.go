@@ -13,8 +13,8 @@ func UserInGroup(userID int, group *Group) bool {
 	if userID == AdminID {
 		return true
 	}
-	for i := 0; i < len(group.Users); i++ {
-		user := group.Users[i]
+	for i := 0; i < len(group.Students); i++ {
+		user := group.Students[i]
 
 		if userID == user.ID {
 			return true
@@ -76,8 +76,8 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	w.AppendString(`<h2>Students</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(group.Users); i++ {
-		user := group.Users[i]
+	for i := 0; i < len(group.Students); i++ {
+		user := group.Students[i]
 
 		w.AppendString(`<li>`)
 		DisplayUserLink(w, user)
@@ -96,8 +96,8 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.WriteHTMLString(group.Name)
 		w.AppendString(`">`)
 
-		for i := 0; i < len(group.Users); i++ {
-			user := group.Users[i]
+		for i := 0; i < len(group.Students); i++ {
+			user := group.Students[i]
 			w.AppendString(`<input type="hidden" name="UserID" value="`)
 			w.WriteInt(user.ID)
 			w.AppendString(`">`)
@@ -166,7 +166,6 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	/* TODO(anton2920): think about bulk add. */
 	w.AppendString(`<label>Users:<br>`)
 	w.AppendString(`<select name="UserID" multiple>`)
 	ids := r.Form.GetMany("UserID")
@@ -304,7 +303,7 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		}
 		users[i] = &DB.Users[id]
 	}
-	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Users: users, CreatedOn: time.Now()})
+	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: users, CreatedOn: time.Now()})
 
 	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
@@ -344,7 +343,7 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		users[i] = &DB.Users[id]
 	}
 	group.Name = name
-	group.Users = users
+	group.Students = users
 
 	w.RedirectID("/group/", groupID, HTTPStatusSeeOther)
 	return nil

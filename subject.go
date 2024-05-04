@@ -27,8 +27,8 @@ func WhoIsUserInSubject(userID int, subject *Subject) SubjectUserType {
 		return SubjectUserTeacher
 	}
 
-	for i := 0; i < len(subject.Group.Users); i++ {
-		student := subject.Group.Users[i]
+	for i := 0; i < len(subject.Group.Students); i++ {
+		student := subject.Group.Students[i]
 		if userID == student.ID {
 			return SubjectUserStudent
 		}
