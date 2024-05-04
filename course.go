@@ -237,9 +237,6 @@ func CourseCreateEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return UnauthorizedError
 	}
-	if session.ID != AdminID {
-		return ForbiddenError
-	}
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
