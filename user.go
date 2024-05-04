@@ -121,7 +121,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(DB.Subjects); i++ {
 		subject := &DB.Subjects[i]
 
-		if user.ID == subject.Teacher.ID {
+		if WhoIsUserInSubject(user.ID, subject) != SubjectUserNone {
 			displaySubjects = true
 			break
 		}
@@ -132,7 +132,7 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for i := 0; i < len(DB.Subjects); i++ {
 			subject := &DB.Subjects[i]
 
-			if user.ID == subject.Teacher.ID {
+			if WhoIsUserInSubject(user.ID, subject) != SubjectUserNone {
 				w.AppendString(`<li>`)
 				DisplaySubjectLink(w, subject)
 				w.AppendString(`</li>`)
@@ -148,12 +148,20 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+	session.ID, err := GetSessionFromRequest(r)
+	if err != nil {
+		return UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return ForbiddenError
+	}
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create user</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>User</h1>`)
-	w.AppendString(`<h2>Create user</h2>`)
+	w.AppendString(`<h2>Create</h2>`)
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
 
@@ -202,8 +210,12 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 }
 
 func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
-	if _, err := GetSessionFromRequest(r); err != nil {
+	session.ID, err := GetSessionFromRequest(r)
+	if err != nil {
 		return UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
@@ -213,6 +225,7 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Edit user</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
@@ -270,6 +283,7 @@ func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Sign in</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Master's degree</h1>`)
 	w.AppendString(`<h2>Sign in</h2>`)
 
@@ -302,13 +316,12 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if err != nil {
 		return UnauthorizedError
 	}
+	if session.ID != AdminID {
+		return ForbiddenError
+	}
 
 	if err := r.ParseForm(); err != nil {
 		return ClientError(err)
-	}
-
-	if session.ID != AdminID {
-		return WritePage(w, r, UserCreatePageHandler, ForbiddenError)
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -365,7 +378,7 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 
 	if (session.ID != userID) && (session.ID != AdminID) {
-		return WritePage(w, r, UserEditPageHandler, ForbiddenError)
+		return ForbiddenError
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -383,7 +396,6 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
 	}
 	email := address.Address
-	/* TODO(anton2920): verify that email doesn't exist. */
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
@@ -393,6 +405,8 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	if password != repeatPassword {
 		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))
 	}
+
+	/* TODO(anton2920): verify that email doesn't exist. */
 
 	user := &DB.Users[userID]
 	user.FirstName = firstName
