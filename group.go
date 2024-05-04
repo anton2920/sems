@@ -14,9 +14,9 @@ func UserInGroup(userID int, group *Group) bool {
 		return true
 	}
 	for i := 0; i < len(group.Students); i++ {
-		user := group.Students[i]
+		student := group.Students[i]
 
-		if userID == user.ID {
+		if userID == student.ID {
 			return true
 		}
 	}
@@ -49,6 +49,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return NotFound("group with this ID does not exist")
 	}
 	group := &DB.Groups[id]
+
 	if !UserInGroup(session.ID, group) {
 		return ForbiddenError
 	}
@@ -57,7 +58,6 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(group.Name)
 	w.AppendString(`</title></head>`)
-
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
@@ -77,10 +77,10 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<h2>Students</h2>`)
 	w.AppendString(`<ul>`)
 	for i := 0; i < len(group.Students); i++ {
-		user := group.Students[i]
+		student := group.Students[i]
 
 		w.AppendString(`<li>`)
-		DisplayUserLink(w, user)
+		DisplayUserLink(w, student)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)
@@ -97,9 +97,9 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		w.AppendString(`">`)
 
 		for i := 0; i < len(group.Students); i++ {
-			user := group.Students[i]
-			w.AppendString(`<input type="hidden" name="UserID" value="`)
-			w.WriteInt(user.ID)
+			student := group.Students[i]
+			w.AppendString(`<input type="hidden" name="StudentID" value="`)
+			w.WriteInt(student.ID)
 			w.AppendString(`">`)
 		}
 
@@ -135,6 +135,32 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
+func DisplayStudentsSelect(w *HTTPResponse, ids []string) {
+	w.AppendString(`<select name="StudentID" multiple>`)
+	for i := AdminID + 1; i < len(DB.Users); i++ {
+		student := &DB.Users[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteInt(student.ID)
+		w.AppendString(`"`)
+		for j := 0; j < len(ids); j++ {
+			id, err := GetValidIndex(ids[j], DB.Users)
+			if err != nil {
+				continue
+			}
+			if id == student.ID {
+				w.AppendString(` selected`)
+			}
+		}
+		w.AppendString(`>`)
+		w.WriteHTMLString(student.LastName)
+		w.AppendString(` `)
+		w.WriteHTMLString(student.FirstName)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
+}
+
 func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -151,6 +177,7 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create group</title></head>`)
 	w.AppendString(`<body>`)
+
 	w.AppendString(`<h1>Group</h1>`)
 	w.AppendString(`<h2>Create</h2>`)
 
@@ -166,31 +193,8 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Users:<br>`)
-	w.AppendString(`<select name="UserID" multiple>`)
-	ids := r.Form.GetMany("UserID")
-	for i := AdminID + 1; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(user.ID)
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Users)
-			if err != nil {
-				return ClientError(err)
-			}
-			if id == user.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	w.AppendString(`<label>Students:<br>`)
+	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -239,31 +243,8 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	w.AppendString(`<br><br>`)
 
 	/* TODO(anton2920): think about bulk add. */
-	w.AppendString(`<label>Users:<br>`)
-	w.AppendString(`<select name="UserID" multiple>`)
-	ids := r.Form.GetMany("UserID")
-	for i := AdminID + 1; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(user.ID)
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Users)
-			if err != nil {
-				return ClientError(err)
-			}
-			if id == user.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	w.AppendString(`<label>Students:<br>`)
+	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -294,16 +275,16 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, GroupCreatePageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
-	sids := r.Form.GetMany("UserID")
-	users := make([]*User, len(sids))
+	sids := r.Form.GetMany("StudentID")
+	students := make([]*User, len(sids))
 	for i := 0; i < len(sids); i++ {
 		id, err := GetValidIndex(sids[i], DB.Users)
 		if (err != nil) || (id == AdminID) {
 			return ClientError(err)
 		}
-		users[i] = &DB.Users[id]
+		students[i] = &DB.Users[id]
 	}
-	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: users, CreatedOn: time.Now()})
+	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: students, CreatedOn: time.Now()})
 
 	w.Redirect("/", HTTPStatusSeeOther)
 	return nil
@@ -333,17 +314,17 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 		return WritePage(w, r, GroupEditPageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
-	sids := r.Form.GetMany("UserID")
-	users := make([]*User, len(sids))
+	sids := r.Form.GetMany("StudentID")
+	students := group.Students[:0]
 	for i := 0; i < len(sids); i++ {
 		id, err := GetValidIndex(sids[i], DB.Users)
 		if (err != nil) || (id == AdminID) {
 			return ClientError(err)
 		}
-		users[i] = &DB.Users[id]
+		students = append(students, &DB.Users[id])
 	}
 	group.Name = name
-	group.Students = users
+	group.Students = students
 
 	w.RedirectID("/group/", groupID, HTTPStatusSeeOther)
 	return nil

@@ -76,9 +76,11 @@ func DisplayIndexUserPage(w *HTTPResponse, user *User) {
 		for i := 0; i < len(DB.Groups); i++ {
 			group := &DB.Groups[i]
 
-			w.AppendString(`<li>`)
-			DisplayGroupLink(w, group)
-			w.AppendString(`</li>`)
+			if UserInGroup(userID, group) {
+				w.AppendString(`<li>`)
+				DisplayGroupLink(w, group)
+				w.AppendString(`</li>`)
+			}
 		}
 		w.AppendString(`</ul>`)
 	}
