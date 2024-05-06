@@ -22,7 +22,7 @@ const (
 )
 
 type HTTPRequest struct {
-	Arena *Arena
+	Arena Arena
 
 	Method  string
 	URL     URL
@@ -86,7 +86,7 @@ var Status2Reason = [...]string{
 }
 
 type HTTPResponse struct {
-	Arena *Arena
+	Arena Arena
 
 	StatusCode HTTPStatus
 	Headers    []Iovec
@@ -108,6 +108,8 @@ type HTTPContext struct {
 	ResponseIovs  []Iovec
 	ResponsePos   int
 	Response      HTTPResponse
+
+	DateBuf [31]byte
 
 	/* Check must be the same as pointer's bit, if context is in use. */
 	Check uintptr
@@ -291,6 +293,7 @@ func (r *HTTPRequest) Reset() {
 	r.Headers = r.Headers[:0]
 	r.Body = r.Body[:0]
 	r.Form = r.Form[:0]
+	r.Arena.Reset()
 }
 
 func (w *HTTPResponse) Append(b []byte) {
@@ -384,6 +387,7 @@ func (w *HTTPResponse) Reset() {
 	w.StatusCode = HTTPStatusOK
 	w.Headers = w.Headers[:0]
 	w.Bodies = w.Bodies[:0]
+	w.Arena.Reset()
 }
 
 func (w *HTTPResponse) Write(b []byte) (int, error) {
@@ -430,7 +434,6 @@ func (w *HTTPResponse) WriteInt(i int) (int, error) {
 	buffer := w.Arena.NewSlice(20)
 	n := SlicePutInt(buffer, i)
 	w.Append(buffer[:n])
-
 	return n, nil
 }
 
@@ -550,7 +553,7 @@ func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
 		Fatalf("Failed to get current walltime: %v", err)
 	}
 	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
-	dateBuf := make([]byte, 31)
+	dateBuf := unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
 	SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 
 	rBuf := &ctx.RequestBuffer
