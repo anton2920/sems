@@ -60,10 +60,15 @@ func platformQueueClose(q *EventQueue) error {
 }
 
 func platformQueueGetEvent(q *EventQueue) (Event, error) {
+	var err error
+
 	if q.head >= q.tail {
-		var err error
+	retry:
 		q.tail, err = Kevent(q.kq, nil, unsafe.Slice(&q.events[0], len(q.events)), nil)
 		if err != nil {
+			if err.(ErrorWithCode).Code == EINTR {
+				goto retry
+			}
 			return nil, err
 		}
 		q.head = 0
