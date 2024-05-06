@@ -184,7 +184,7 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 		ErrorPageHandler(w, message)
 	}
 
-	Logf(level, "%7s %s -> %d (%v), %v", r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
+	Logf(level, "[%21s] %7s %s -> %d (%v), %v", r.Address, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 }
 
 func main() {
@@ -242,23 +242,13 @@ func main() {
 		case EventRead:
 			switch event.Identifier {
 			case l: /* ready to accept new connection. */
-				var addr SockAddrIn
-				var addrLen uint32
-
-				c, err := Accept(l, &addr, &addrLen)
+				c, ctx, err := HTTPAccept(l, ctxPool)
 				if err != nil {
-					Errorf("Failed to accept new connection: %v", err)
+					Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
 
-				ctx, err := ctxPool.Get()
-				if err != nil {
-					Errorf("Failed to create new HTTP context: %v", err)
-					Close(c)
-					continue
-				}
 				pinner.Pin(ctx)
-
 				q.AddSocket(c, EventRequestRead|EventRequestWrite, EventTriggerEdge, ctx.CheckedPointer())
 			default: /* ready to serve new HTTP request. */
 				ctx, check := HTTPContextFromCheckedPointer(event.UserData)
@@ -279,7 +269,7 @@ func main() {
 					continue
 				}
 
-				HTTPProcessRequests(ctx, Router, true)
+				HTTPProcessRequests(ctx, Router)
 
 				if err := HTTPWrite(event.Identifier, ctx); err != nil {
 					Errorf("Failed to write HTTP response: %v", err)

@@ -53,12 +53,6 @@ func TCPListen(port uint16) (int32, error) {
 		return -1, err
 	}
 
-	/*
-		if err := Fcntl(l, F_SETFL, O_NONBLOCK); err != nil {
-			return -1, err
-		}
-	*/
-
 	addr := SockAddrIn{Family: AF_INET, Addr: INADDR_ANY, Port: SwapBytesInWord(port)}
 	if err := Bind(l, &addr, uint32(unsafe.Sizeof(addr))); err != nil {
 		return -1, err

@@ -24,6 +24,8 @@ const (
 type HTTPRequest struct {
 	Arena Arena
 
+	Address string
+
 	Method  string
 	URL     URL
 	Version string
@@ -108,6 +110,9 @@ type HTTPContext struct {
 	ResponseIovs  []Iovec
 	ResponsePos   int
 	Response      HTTPResponse
+
+	ClientAddressBuffer [21]byte
+	ClientAddress       string
 
 	DateBuf [31]byte
 
@@ -537,6 +542,49 @@ func (ctx *HTTPContext) Reset() {
 	ctx.ResponseIovs = ctx.ResponseIovs[:0]
 }
 
+func (ctx *HTTPContext) SetClientAddress(addr SockAddrIn) {
+	var n int
+
+	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x000000FF)>>0))
+	ctx.ClientAddressBuffer[n] = ':'
+	n++
+
+	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x0000FF00)>>8))
+	ctx.ClientAddressBuffer[n] = '.'
+	n++
+
+	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x00FF0000)>>16))
+	ctx.ClientAddressBuffer[n] = '.'
+	n++
+
+	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0xFF000000)>>24))
+	ctx.ClientAddressBuffer[n] = '.'
+	n++
+
+	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int(SwapBytesInWord(addr.Port)))
+
+	ctx.ClientAddress = unsafe.String(&ctx.ClientAddressBuffer[0], n)
+}
+
+func HTTPAccept(l int32, ctxPool Pool[HTTPContext]) (int32, *HTTPContext, error) {
+	var addr SockAddrIn
+	var addrLen uint32 = uint32(unsafe.Sizeof(addr))
+
+	c, err := Accept(l, &addr, &addrLen)
+	if err != nil {
+		return -1, nil, fmt.Errorf("failed to accept incoming connection: %w", err)
+	}
+
+	ctx, err := ctxPool.Get()
+	if err != nil {
+		Close(c)
+		return -1, nil, fmt.Errorf("failed to create new HTTP context: %w", err)
+	}
+	ctx.SetClientAddress(addr)
+
+	return c, ctx, nil
+}
+
 func HTTPRead(c int32, ctx *HTTPContext) error {
 	rBuf := &ctx.RequestBuffer
 	n, err := Read(c, rBuf.RemainingSlice())
@@ -547,7 +595,7 @@ func HTTPRead(c int32, ctx *HTTPContext) error {
 	return nil
 }
 
-func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
+func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter) {
 	var tp Timespec
 	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
 		Fatalf("Failed to get current walltime: %v", err)
@@ -562,8 +610,10 @@ func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
 
 	w := &ctx.Response
 	r := &ctx.Request
+	r.Address = ctx.ClientAddress
 
-	for {
+	const pipelining = true
+	for pipelining {
 		n, err := parser.Parse(rBuf.UnconsumedString(), r)
 		if err != nil {
 			Errorf("Failed to parse HTTP request: %v", err)
@@ -578,10 +628,6 @@ func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
 		r.Reset()
 
 		HTTPAppendResponse(wIovs, w, dateBuf)
-
-		if !pipelining {
-			return
-		}
 	}
 }
 
