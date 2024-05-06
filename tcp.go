@@ -1,5 +1,7 @@
 package main
 
+import "unsafe"
+
 type SockAddrIn struct {
 	Len    uint8
 	Family uint8
@@ -38,4 +40,34 @@ const (
 
 func SwapBytesInWord(x uint16) uint16 {
 	return ((x << 8) & 0xFF00) | (x >> 8)
+}
+
+func TCPListen(port uint16) (int32, error) {
+	l, err := Socket(PF_INET, SOCK_STREAM, 0)
+	if err != nil {
+		return -1, err
+	}
+
+	var enable int32 = 1
+	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEADDR, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
+		return -1, err
+	}
+
+	/*
+		if err := Fcntl(l, F_SETFL, O_NONBLOCK); err != nil {
+			return -1, err
+		}
+	*/
+
+	addr := SockAddrIn{Family: AF_INET, Addr: INADDR_ANY, Port: SwapBytesInWord(port)}
+	if err := Bind(l, &addr, uint32(unsafe.Sizeof(addr))); err != nil {
+		return -1, err
+	}
+
+	const backlog = 128
+	if err := Listen(l, backlog); err != nil {
+		return -1, err
+	}
+
+	return l, nil
 }

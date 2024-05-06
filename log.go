@@ -68,7 +68,15 @@ func Fatalf(format string, args ...interface{}) {
 }
 
 func Panicf(format string, args ...interface{}) {
-	Logf(LevelPanic, format, args...)
+	buffer := make([]byte, 0, 512)
+	buffer = time.Now().AppendFormat(buffer, "2006/01/02 15:04:05")
+	buffer = fmt.Appendf(buffer, " %5s ", Level2String[LevelPanic])
+	buffer = fmt.Appendf(buffer, format, args...)
+	if format[len(format)-1] != '\n' {
+		buffer = append(buffer, '\n')
+	}
+
+	panic(string(buffer))
 }
 
 func SetLogLevel(new Level) Level {

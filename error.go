@@ -93,7 +93,7 @@ func DisplayErrorMessage(w *HTTPResponse, message string) {
 	}
 }
 
-func ErrorPageHandler(w *HTTPResponse, r *HTTPRequest, message string) {
+func ErrorPageHandler(w *HTTPResponse, message string) {
 	w.Bodies = w.Bodies[:0]
 
 	w.AppendString(`<!DOCTYPE html>`)

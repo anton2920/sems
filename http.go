@@ -12,14 +12,13 @@ import (
 type HTTPState int
 
 const (
-	HTTPStateUnknown HTTPState = iota
-
-	HTTPStateMethod
+	HTTPStateMethod HTTPState = iota
 	HTTPStateURI
 	HTTPStateVersion
 	HTTPStateHeader
 	HTTPStateBody
 
+	HTTPStateUnknown
 	HTTPStateDone
 )
 
@@ -39,6 +38,7 @@ type HTTPRequest struct {
 type HTTPRequestParser struct {
 	State   HTTPState
 	Request HTTPRequest
+	Pos     int
 
 	ContentLength int
 }
@@ -102,12 +102,14 @@ type HTTPError struct {
 }
 
 type HTTPContext struct {
+	RequestParser HTTPRequestParser
 	RequestBuffer CircularBuffer
+	Request       HTTPRequest
+
 	ResponseArena Arena
 	ResponseIovs  []Iovec
 	ResponsePos   int
-
-	Parser HTTPRequestParser
+	Response      HTTPResponse
 
 	/* Check must be the same as pointer's bit, if context is in use. */
 	Check uintptr
@@ -183,6 +185,12 @@ func (r *HTTPRequest) ParseForm() error {
 	}
 
 	return err
+}
+
+func (r *HTTPRequest) Reset() {
+	r.Headers = r.Headers[:0]
+	r.Body = r.Body[:0]
+	r.Form = r.Form[:0]
 }
 
 func (w *HTTPResponse) Append(b []byte) {
@@ -272,7 +280,12 @@ func (w *HTTPResponse) RedirectID(prefix string, id int, code HTTPStatus) {
 	w.StatusCode = code
 }
 
-/* TODO(anton2920): allow large data to be written. */
+func (w *HTTPResponse) Reset() {
+	w.StatusCode = HTTPStatusOK
+	w.Headers = w.Headers[:0]
+	w.Bodies = w.Bodies[:0]
+}
+
 func (w *HTTPResponse) Write(b []byte) (int, error) {
 	if len(b) == 0 {
 		return 0, nil
@@ -285,7 +298,7 @@ func (w *HTTPResponse) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// WriteHTML writes to w the escaped HTML equivalent of the plain text data b.
+/* WriteHTML writes to w the escaped HTML equivalent of the plain text data b. */
 func (w *HTTPResponse) WriteHTML(b []byte) {
 	last := 0
 	for i, c := range b {
@@ -372,28 +385,40 @@ func Noescape(p unsafe.Pointer) unsafe.Pointer {
 	return unsafe.Pointer(x ^ 0)
 }
 
-func NewHTTPContext() unsafe.Pointer {
-	var err error
-
-	c := new(HTTPContext)
-	c.Parser.State = HTTPStateMethod
-
-	if c.RequestBuffer, err = NewCircularBuffer(PageSize); err != nil {
-		println("ERROR: failed to create request buffer:", err.Error())
-		return nil
+func NewHTTPContext() (*HTTPContext, error) {
+	rb, err := NewCircularBuffer(PageSize)
+	if err != nil {
+		return nil, err
 	}
-	c.ResponseIovs = make([]Iovec, 0, 512)
 
-	return unsafe.Pointer(c)
+	ctx := new(HTTPContext)
+	ctx.RequestBuffer = rb
+	ctx.ResponseIovs = make([]Iovec, 0, 512)
+
+	ctx.Response.Headers = make([]Iovec, 0, 32)
+	ctx.Response.Bodies = make([]Iovec, 0, 128)
+
+	return ctx, nil
 }
 
-func GetContextAndCheck(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
+func HTTPContextFromCheckedPointer(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
 	uptr := uintptr(ptr)
 
 	check := uptr & 0x1
 	ctx := (*HTTPContext)(unsafe.Pointer(uptr - check))
 
 	return ctx, check
+}
+
+func (ctx *HTTPContext) CheckedPointer() unsafe.Pointer {
+	return unsafe.Pointer(uintptr(unsafe.Pointer(ctx)) | ctx.Check)
+}
+
+func (ctx *HTTPContext) Reset() {
+	ctx.Check = 1 - ctx.Check
+	ctx.RequestBuffer.Reset()
+	ctx.ResponsePos = 0
+	ctx.ResponseIovs = ctx.ResponseIovs[:0]
 }
 
 func HTTPWriteError(wIovs *[]Iovec, arena *Arena, statusCode HTTPStatus) {
@@ -409,149 +434,126 @@ func HTTPWriteError(wIovs *[]Iovec, arena *Arena, statusCode HTTPStatus) {
 	*wIovs = append(*wIovs, IovecForString(body))
 }
 
-func HTTPHandleRequests(wIovs *[]Iovec, rBuf *CircularBuffer, arena *Arena, rp *HTTPRequestParser, dateBuf []byte, router HTTPRouter) {
-	var w HTTPResponse
+func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) {
 	var err error
 
-	r := &rp.Request
-
-	w.Arena = arena
-	w.Headers = make([]Iovec, 0, 32)
-	w.Bodies = make([]Iovec, 0, 128)
-
-	for {
-		r.Headers = r.Headers[:0]
-		r.Body = r.Body[:0]
-		r.Form = r.Form[:0]
-		rp.ContentLength = 0
-
-		/* BUG(anton2920): (*CircularBuffer).Consume allows parts of the request to be overwritten. */
-		for rp.State != HTTPStateDone {
-			switch rp.State {
-			default:
-				println(rp.State)
-				panic("unknown HTTP parser state")
-			case HTTPStateUnknown:
-				unconsumed := rBuf.UnconsumedString()
-				if len(unconsumed) < 2 {
-					return
-				}
-				if unconsumed[:2] == "\r\n" {
-					rBuf.Consume(len("\r\n"))
-
-					if rp.ContentLength != 0 {
-						rp.State = HTTPStateBody
-					} else {
-						rp.State = HTTPStateDone
-					}
-				} else {
-					rp.State = HTTPStateHeader
-				}
-
-			case HTTPStateMethod:
-				unconsumed := rBuf.UnconsumedString()
-				if len(unconsumed) < 4 {
-					return
-				}
-				switch unconsumed[:4] {
-				case "GET ":
-					r.Method = "GET"
-				case "POST":
-					r.Method = "POST"
-				default:
-					HTTPWriteError(wIovs, arena, HTTPStatusMethodNotAllowed)
-					return
-				}
-				rBuf.Consume(len(r.Method) + 1)
-				rp.State = HTTPStateURI
-			case HTTPStateURI:
-				unconsumed := rBuf.UnconsumedString()
-				lineEnd := FindChar(unconsumed, '\r')
-				if lineEnd == -1 {
-					return
-				}
-
-				uriEnd := FindChar(unconsumed[:lineEnd], ' ')
-				if uriEnd == -1 {
-					HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
-					return
-				}
-
-				queryStart := FindChar(unconsumed[:lineEnd], '?')
-				if queryStart != -1 {
-					r.URL.Path = unconsumed[:queryStart]
-					r.URL.Query = unconsumed[queryStart+1 : uriEnd]
-				} else {
-					r.URL.Path = unconsumed[:uriEnd]
-					r.URL.Query = ""
-				}
-
-				const httpVersionPrefix = "HTTP/"
-				httpVersion := unconsumed[uriEnd+1 : lineEnd]
-				if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
-					HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
-					return
-				}
-				r.Version = httpVersion[len(httpVersionPrefix):]
-				rBuf.Consume(len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n"))
-				rp.State = HTTPStateUnknown
-			case HTTPStateHeader:
-				unconsumed := rBuf.UnconsumedString()
-				lineEnd := FindChar(unconsumed, '\r')
-				if lineEnd == -1 {
-					return
-				}
-				header := unconsumed[:lineEnd]
-				r.Headers = append(r.Headers, header)
-				rBuf.Consume(len(header) + len("\r\n"))
-
-				if StringStartsWith(header, "Content-Length: ") {
-					header = header[len("Content-Length: "):]
-					rp.ContentLength, err = strconv.Atoi(header)
-					if err != nil {
-						HTTPWriteError(wIovs, arena, HTTPStatusBadRequest)
-						return
-					}
-				}
-
-				rp.State = HTTPStateUnknown
-			case HTTPStateBody:
-				unconsumed := rBuf.UnconsumedSlice()
-				if len(unconsumed) < rp.ContentLength {
-					return
-				}
-
-				r.Body = unconsumed[:rp.ContentLength]
-				rBuf.Consume(len(r.Body))
-				rp.State = HTTPStateDone
+	for rp.State != HTTPStateDone {
+		switch rp.State {
+		default:
+			Panicf("Unknown HTTP parser state %d", rp.State)
+		case HTTPStateUnknown:
+			if len(request[rp.Pos:]) < 2 {
+				return 0, nil
 			}
+			if request[rp.Pos:rp.Pos+2] == "\r\n" {
+				rp.Pos += len("\r\n")
+
+				if rp.ContentLength != 0 {
+					rp.State = HTTPStateBody
+				} else {
+					rp.State = HTTPStateDone
+				}
+			} else {
+				rp.State = HTTPStateHeader
+			}
+
+		case HTTPStateMethod:
+			if len(request[rp.Pos:]) < 4 {
+				return 0, nil
+			}
+			switch request[rp.Pos : rp.Pos+4] {
+			case "GET ":
+				r.Method = "GET"
+			case "POST":
+				r.Method = "POST"
+			default:
+				return 0, NewError("Method not allowed")
+			}
+			rp.Pos += len(r.Method) + 1
+			rp.State = HTTPStateURI
+		case HTTPStateURI:
+			lineEnd := FindChar(request[rp.Pos:], '\r')
+			if lineEnd == -1 {
+				return 0, nil
+			}
+
+			uriEnd := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
+			if uriEnd == -1 {
+				return 0, NewError("Bad Request")
+			}
+
+			queryStart := FindChar(request[rp.Pos:rp.Pos+lineEnd], '?')
+			if queryStart != -1 {
+				r.URL.Path = request[rp.Pos : rp.Pos+queryStart]
+				r.URL.Query = request[rp.Pos+queryStart+1 : rp.Pos+uriEnd]
+			} else {
+				r.URL.Path = request[rp.Pos : rp.Pos+uriEnd]
+				r.URL.Query = ""
+			}
+
+			const httpVersionPrefix = "HTTP/"
+			httpVersion := request[rp.Pos+uriEnd+1 : rp.Pos+lineEnd]
+			if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
+				return 0, NewError("Bad Request")
+			}
+			r.Version = httpVersion[len(httpVersionPrefix):]
+			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n")
+			rp.State = HTTPStateUnknown
+		case HTTPStateHeader:
+			lineEnd := FindChar(request[rp.Pos:], '\r')
+			if lineEnd == -1 {
+				return 0, nil
+			}
+			header := request[rp.Pos : rp.Pos+lineEnd]
+			r.Headers = append(r.Headers, header)
+			rp.Pos += len(header) + len("\r\n")
+
+			if StringStartsWith(header, "Content-Length: ") {
+				header = header[len("Content-Length: "):]
+				rp.ContentLength, err = strconv.Atoi(header)
+				if err != nil {
+					return 0, NewError("Bad Request")
+				}
+			}
+
+			rp.State = HTTPStateUnknown
+		case HTTPStateBody:
+			if len(request[rp.Pos:]) < rp.ContentLength {
+				return 0, nil
+			}
+
+			r.Body = unsafe.Slice(unsafe.StringData(request[rp.Pos:]), rp.ContentLength)
+			rp.Pos += len(r.Body)
+			rp.State = HTTPStateDone
 		}
-
-		w.StatusCode = HTTPStatusOK
-		w.Headers = w.Headers[:0]
-		w.Bodies = w.Bodies[:0]
-		router((*HTTPResponse)(Noescape(unsafe.Pointer(&w))), r)
-
-		var length int
-		for i := 0; i < len(w.Bodies); i++ {
-			length += int(w.Bodies[i].Len)
-		}
-
-		lengthBuf := arena.NewSlice(20)
-		n := SlicePutInt(lengthBuf, length)
-
-		*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
-		*wIovs = append(*wIovs, w.Headers...)
-		*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
-		*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
-		if ContentTypeHTML(w.Bodies) {
-			*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
-		}
-		*wIovs = append(*wIovs, IovecForString("\r\n"))
-		*wIovs = append(*wIovs, w.Bodies...)
-
-		rp.State = HTTPStateMethod
 	}
+
+	n := rp.Pos
+	rp.State = HTTPStateMethod
+	rp.ContentLength = 0
+	rp.Pos = 0
+
+	return n, nil
+}
+
+func HTTPAppendResponse(wIovs *[]Iovec, w *HTTPResponse, dateBuf []byte) {
+	var length int
+	for i := 0; i < len(w.Bodies); i++ {
+		length += int(w.Bodies[i].Len)
+	}
+
+	lengthBuf := w.Arena.NewSlice(20)
+	n := SlicePutInt(lengthBuf, length)
+
+	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Headers...)
+	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+	if ContentTypeHTML(w.Bodies) {
+		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
+	}
+	*wIovs = append(*wIovs, IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Bodies...)
 }
 
 func HTTPWorker(l int32, router HTTPRouter) {
@@ -608,7 +610,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 					continue
 				}
 
-				ctx = (*HTTPContext)(ctxPool.Get())
+				ctx, err := ctxPool.Get()
 				if ctx == nil {
 					Fatalf("Failed to acquire new HTTP context")
 				}
@@ -630,7 +632,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 				continue
 			}
 
-			ctx, check = GetContextAndCheck(e.Udata)
+			ctx, check = HTTPContextFromCheckedPointer(e.Udata)
 			if check != ctx.Check {
 				continue
 			}
@@ -643,7 +645,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 			case EVFILT_READ:
 				arena := &ctx.ResponseArena
 				rBuf := &ctx.RequestBuffer
-				parser := &ctx.Parser
+				// parser := &ctx.RequestParser
 
 				if rBuf.RemainingSpace() == 0 {
 					Shutdown(c, SHUT_RD)
@@ -656,7 +658,7 @@ func HTTPWorker(l int32, router HTTPRouter) {
 					}
 					rBuf.Produce(int(n))
 
-					HTTPHandleRequests(&ctx.ResponseIovs, rBuf, arena, parser, dateBuf, router)
+					// HTTPHandleRequests(&ctx.ResponseIovs, rBuf, arena, parser, dateBuf, router)
 				}
 
 				fallthrough
@@ -689,50 +691,12 @@ func HTTPWorker(l int32, router HTTPRouter) {
 			continue
 
 		closeConnection:
-			ctx.Check = 1 - ctx.Check
-			ctx.RequestBuffer.Reset()
-			ctx.ResponsePos = 0
-			ctx.ResponseIovs = ctx.ResponseIovs[:0]
-			ctxPool.Put(unsafe.Pointer(ctx))
+			ctx.Reset()
+			ctxPool.Put(ctx)
 
 			Shutdown(c, SHUT_WR)
 			Close(c)
 			continue
 		}
 	}
-}
-
-func ListenAndServe(port uint16, router HTTPRouter) error {
-	l, err := Socket(PF_INET, SOCK_STREAM, 0)
-	if err != nil {
-		return err
-	}
-
-	var enable int32 = 1
-	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEADDR, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
-		return err
-	}
-
-	if err := Fcntl(l, F_SETFL, O_NONBLOCK); err != nil {
-		return err
-	}
-
-	addr := SockAddrIn{Family: AF_INET, Addr: INADDR_ANY, Port: SwapBytesInWord(port)}
-	if err := Bind(l, &addr, uint32(unsafe.Sizeof(addr))); err != nil {
-		return err
-	}
-
-	const backlog = 128
-	if err := Listen(l, backlog); err != nil {
-		return err
-	}
-
-	// nworkers := runtime.GOMAXPROCS(0) / 2
-	const nworkers = 1
-	for i := 0; i < nworkers-1; i++ {
-		go HTTPWorker(l, router)
-	}
-	HTTPWorker(l, router)
-
-	return nil
 }

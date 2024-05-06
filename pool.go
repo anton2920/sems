@@ -1,31 +1,27 @@
 package main
 
-import "unsafe"
-
-type Pool struct {
-	Items []unsafe.Pointer
-	New   func() unsafe.Pointer
+type Pool[T any] struct {
+	Items   []*T
+	NewItem func() (*T, error)
 }
 
-func NewPool(newF func() unsafe.Pointer) *Pool {
-	ret := new(Pool)
-	ret.Items = make([]unsafe.Pointer, 0, 1024)
-	ret.New = newF
-	return ret
+func NewPool[T any](newItem func() (*T, error)) Pool[T] {
+	var p Pool[T]
+	p.Items = make([]*T, 0, 1024)
+	p.NewItem = newItem
+	return p
 }
 
-func (p *Pool) Get() unsafe.Pointer {
-	var item unsafe.Pointer
-
-	if len(p.Items) > 0 {
-		item = p.Items[len(p.Items)-1]
-		p.Items = p.Items[:len(p.Items)-1]
-	} else {
-		item = p.New()
+func (p *Pool[T]) Get() (*T, error) {
+	if len(p.Items) == 0 {
+		return p.NewItem()
 	}
-	return item
+
+	item := p.Items[len(p.Items)-1]
+	p.Items = p.Items[:len(p.Items)-1]
+	return item, nil
 }
 
-func (p *Pool) Put(item unsafe.Pointer) {
+func (p *Pool[T]) Put(item *T) {
 	p.Items = append(p.Items, item)
 }

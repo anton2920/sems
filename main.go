@@ -172,15 +172,15 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 		} else if errors.As(err, &panicError) {
 			w.StatusCode = ServerError(nil).StatusCode
 			message = ServerError(nil).DisplayMessage
-			level = LevelPanic
+			level = LevelError
 		} else {
-			panic("unsupported error")
+			Panicf("Unsupported error type %T", err)
 		}
 
 		if Debug {
 			message = err.Error()
 		}
-		ErrorPageHandler(w, r, message)
+		ErrorPageHandler(w, message)
 	}
 
 	Logf(level, "%7s %s -> %d (%v), %v", r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
@@ -207,27 +207,150 @@ func main() {
 		CreateInitialDB()
 	}
 
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		signal := <-sigchan
-		Infof("Received %s, exitting...", signal)
-
-		if err := StoreDBToFile(DBFile); err != nil {
-			Warnf("Failed to store DB to file: %v", err)
-		}
-		if err := StoreSessionsToFile(SessionsFile); err != nil {
-			Warnf("Failed to store sessions to file: %v", err)
-		}
-
-		os.Exit(0)
-	}()
-
-	go SubmissionVerifyWorker()
-
+	l, err := TCPListen(7072)
+	if err != nil {
+		Fatalf("Failed to listen on port: %v", err)
+	}
 	Infof("Listening on 0.0.0.0:7072...")
 
-	if err := ListenAndServe(7072, Router); err != nil {
-		Fatalf("Failed to listen on port: %v", err)
+	q, err := NewEventQueue()
+	if err != nil {
+		Fatalf("Failed to create event queue: %v", err)
+	}
+
+	q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
+
+	signal.Ignore(syscall.Signal(SIGINT), syscall.Signal(SIGTERM))
+	q.AddSignal(SIGINT)
+	q.AddSignal(SIGTERM)
+
+	var tp Timespec
+	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
+		Fatalf("Failed to get current walltime: %v", err)
+	}
+	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
+	dateBuf := make([]byte, 31)
+	SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
+
+	ctxPool := NewPool(NewHTTPContext)
+
+	var quit bool
+	for !quit {
+		switch event := q.GetEvent().(type) {
+		default:
+			Panicf("Unhandled event %T", event)
+		case ErrorEvent:
+			Errorf("Failed to get event: %v", event.Error)
+		case EndOfFileEvent:
+			ctx, check := HTTPContextFromCheckedPointer(event.UserData)
+			if ctx.Check != check {
+				continue
+			}
+			ctx.Reset()
+			ctxPool.Put(ctx)
+			Close(event.Handle)
+		case ReadEvent:
+			switch event.Handle {
+			case l: /* ready to accept new connection. */
+				var addr SockAddrIn
+				var addrLen uint32
+
+				c, err := Accept(l, &addr, &addrLen)
+				if err != nil {
+					Errorf("Failed to accept new connection: %v", err)
+					continue
+				}
+
+				ctx, err := ctxPool.Get()
+				if err != nil {
+					Errorf("Failed to create new HTTP context: %v", err)
+					Close(c)
+					continue
+				}
+
+				q.AddSocket(c, EventRequestRead|EventRequestWrite, EventTriggerEdge, ctx.CheckedPointer())
+			default: /* ready to serve new HTTP request. */
+				ctx, check := HTTPContextFromCheckedPointer(event.UserData)
+				if ctx.Check != check {
+					continue
+				}
+
+				rBuf := &ctx.RequestBuffer
+				parser := &ctx.RequestParser
+				wIovs := &ctx.ResponseIovs
+
+				w := &ctx.Response
+				r := &ctx.Request
+
+				n, err := Read(event.Handle, rBuf.RemainingSlice())
+				if err != nil {
+					Errorf("Failed to read data from socket: %v", err)
+					ctx.Reset()
+					ctxPool.Put(ctx)
+					Close(event.Handle)
+					continue
+				}
+				rBuf.Produce(int(n))
+
+				for {
+					n, err := parser.Parse(rBuf.UnconsumedString(), r)
+					if err != nil {
+						Errorf("Failed to parse HTTP request: %v", err)
+					}
+					if n == 0 {
+						break
+					}
+					rBuf.Consume(n)
+
+					w.Reset()
+					Router(w, r)
+					r.Reset()
+
+					HTTPAppendResponse(wIovs, w, dateBuf)
+
+					/* TODO(anton2920): write only on 'WriteEvent's. */
+					_, err = Writev(event.Handle, *wIovs)
+					if err != nil {
+						Errorf("Failed to write data to socket: %v", err)
+						ctx.Reset()
+						ctxPool.Put(ctx)
+						Close(event.Handle)
+						continue
+					}
+
+					*wIovs = (*wIovs)[:0]
+				}
+			}
+		case WriteEvent:
+			ctx, check := HTTPContextFromCheckedPointer(event.UserData)
+			if ctx.Check != check {
+				continue
+			}
+
+			wIovs := ctx.ResponseIovs
+			if len(wIovs) > 0 {
+				_, err := Writev(event.Handle, wIovs)
+				if err != nil {
+					Errorf("Failed to write data to socket: %v", err)
+					ctx.Reset()
+					ctxPool.Put(ctx)
+					Close(event.Handle)
+					continue
+				}
+			}
+		case SignalEvent:
+			Infof("Received signal %d, exitting...", event.Signal)
+			quit = true
+		}
+	}
+
+	q.Close()
+	Close(l)
+
+	if err := StoreDBToFile(DBFile); err != nil {
+		Warnf("Failed to store DB to file: %v", err)
+	}
+	if err := StoreSessionsToFile(SessionsFile); err != nil {
+		Warnf("Failed to store sessions to file: %v", err)
 	}
 }
