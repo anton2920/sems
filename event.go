@@ -22,25 +22,26 @@ const (
 	EventTriggerEdge
 )
 
-type Event interface{}
+type EventType int32
 
-type ReadEvent struct {
-	Handle    int32
+const (
+	EventNone EventType = iota
+	EventRead
+	EventWrite
+	EventSignal
+)
+
+type Event struct {
+	Type       EventType
+	Identifier int32
+	Available  int
+	UserData   unsafe.Pointer
+
+	/* TODO(anton2920): I don't like this!!! */
 	EndOfFile bool
-	Available int
-	UserData  unsafe.Pointer
 }
 
-type WriteEvent struct {
-	Handle    int32
-	EndOfFile bool
-	Available int
-	UserData  unsafe.Pointer
-}
-
-type SignalEvent struct {
-	Signal int32
-}
+var EmptyEvent Event
 
 func NewEventQueue() (*EventQueue, error) {
 	q := new(EventQueue)

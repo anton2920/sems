@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 )
@@ -21,7 +22,7 @@ var (
 
 var WorkingDirectory string
 
-func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
+func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
 	default:
 		switch path {
@@ -90,7 +91,7 @@ func HandlePageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	return NotFound("requested page does not exist")
 }
 
-func HandleAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
+func IdentifierAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 	switch {
 	case StringStartsWith(path, "/course"):
 		switch path[len("/course"):] {
@@ -137,9 +138,9 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 	path := r.URL.Path
 	switch {
 	default:
-		return HandlePageRequest(w, r, path)
+		return IdentifierPageRequest(w, r, path)
 	case StringStartsWith(path, APIPrefix):
-		return HandleAPIRequest(w, r, path[len(APIPrefix):])
+		return IdentifierAPIRequest(w, r, path[len(APIPrefix):])
 
 	case path == "/plaintext":
 		w.AppendString("Hello, world!\n")
@@ -225,20 +226,21 @@ func main() {
 	q.AddSignal(SIGTERM)
 
 	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
+	var pinner runtime.Pinner
 
 	var quit bool
 	for !quit {
 		event, err := q.GetEvent()
-		if (event == nil) || (err != nil) {
+		if err != nil {
 			Errorf("Failed to get event: %v", err)
 			continue
 		}
 
-		switch event := event.(type) {
+		switch event.Type {
 		default:
-			Panicf("Unhandled event %T", event)
-		case ReadEvent:
-			switch event.Handle {
+			Panicf("Unhandled event %d", event.Type)
+		case EventRead:
+			switch event.Identifier {
 			case l: /* ready to accept new connection. */
 				var addr SockAddrIn
 				var addrLen uint32
@@ -255,6 +257,7 @@ func main() {
 					Close(c)
 					continue
 				}
+				pinner.Pin(ctx)
 
 				q.AddSocket(c, EventRequestRead|EventRequestWrite, EventTriggerEdge, ctx.CheckedPointer())
 			default: /* ready to serve new HTTP request. */
@@ -265,26 +268,26 @@ func main() {
 
 				if event.EndOfFile {
 					ctxPool.Put(ctx)
-					Close(event.Handle)
+					Close(event.Identifier)
 					continue
 				}
 
-				if err := HTTPRead(event.Handle, ctx); err != nil {
+				if err := HTTPRead(event.Identifier, ctx); err != nil {
 					Errorf("Failed to read data from socket: %v", err)
 					ctxPool.Put(ctx)
-					Close(event.Handle)
+					Close(event.Identifier)
 					continue
 				}
 
 				HTTPProcessRequests(ctx, Router, true)
 
-				if err := HTTPWrite(event.Handle, ctx); err != nil {
+				if err := HTTPWrite(event.Identifier, ctx); err != nil {
 					Errorf("Failed to write HTTP response: %v", err)
 					ctxPool.Put(ctx)
-					Close(event.Handle)
+					Close(event.Identifier)
 				}
 			}
-		case WriteEvent:
+		case EventWrite:
 			ctx, check := HTTPContextFromCheckedPointer(event.UserData)
 			if ctx.Check != check {
 				continue
@@ -292,17 +295,17 @@ func main() {
 
 			if event.EndOfFile {
 				ctxPool.Put(ctx)
-				Close(event.Handle)
+				Close(event.Identifier)
 				continue
 			}
 
-			if err := HTTPWrite(event.Handle, ctx); err != nil {
+			if err := HTTPWrite(event.Identifier, ctx); err != nil {
 				Errorf("Failed to write HTTP response: %v", err)
 				ctxPool.Put(ctx)
-				Close(event.Handle)
+				Close(event.Identifier)
 			}
-		case SignalEvent:
-			Infof("Received signal %d, exitting...", event.Signal)
+		case EventSignal:
+			Infof("Received signal %d, exitting...", event.Identifier)
 			quit = true
 		}
 	}

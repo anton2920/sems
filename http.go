@@ -563,7 +563,7 @@ func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
 	w := &ctx.Response
 	r := &ctx.Request
 
-	for i := 0; (i < 1) || (pipelining); i++ {
+	for {
 		n, err := parser.Parse(rBuf.UnconsumedString(), r)
 		if err != nil {
 			Errorf("Failed to parse HTTP request: %v", err)
@@ -578,6 +578,10 @@ func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
 		r.Reset()
 
 		HTTPAppendResponse(wIovs, w, dateBuf)
+
+		if !pipelining {
+			return
+		}
 	}
 }
 

@@ -69,7 +69,7 @@ func platformQueueGetEvent(q *EventQueue) (Event, error) {
 			if err.(ErrorWithCode).Code == EINTR {
 				goto retry
 			}
-			return nil, err
+			return EmptyEvent, err
 		}
 		q.head = 0
 	}
@@ -77,17 +77,22 @@ func platformQueueGetEvent(q *EventQueue) (Event, error) {
 	q.head++
 
 	if (head.Flags & EV_ERROR) == EV_ERROR {
-		return nil, fmt.Errorf("requested event for %v failed with code %v", head.Ident, head.Data)
+		return EmptyEvent, fmt.Errorf("requested event for %v failed with code %v", head.Ident, head.Data)
 	}
 
 	var event Event
+	event.Identifier = int32(head.Ident)
+	event.Available = head.Data
+	event.UserData = head.Udata
+	event.EndOfFile = (head.Flags & EV_EOF) == EV_EOF
+
 	switch head.Filter {
 	case EVFILT_READ:
-		event = ReadEvent{Handle: int32(head.Ident), EndOfFile: (head.Flags & EV_EOF) == EV_EOF, Available: int(head.Data), UserData: head.Udata}
+		event.Type = EventRead
 	case EVFILT_WRITE:
-		event = WriteEvent{Handle: int32(head.Ident), EndOfFile: (head.Flags & EV_EOF) == EV_EOF, Available: int(head.Data), UserData: head.Udata}
+		event.Type = EventWrite
 	case EVFILT_SIGNAL:
-		event = SignalEvent{Signal: int32(head.Ident)}
+		event.Type = EventSignal
 	}
 
 	return event, nil
