@@ -3,12 +3,14 @@ package main
 type Pool[T any] struct {
 	Items   []*T
 	NewItem func() (*T, error)
+	Reset   func(*T)
 }
 
-func NewPool[T any](newItem func() (*T, error)) Pool[T] {
+func NewPool[T any](newItem func() (*T, error), reset func(*T)) Pool[T] {
 	var p Pool[T]
 	p.Items = make([]*T, 0, 1024)
 	p.NewItem = newItem
+	p.Reset = reset
 	return p
 }
 
@@ -23,5 +25,6 @@ func (p *Pool[T]) Get() (*T, error) {
 }
 
 func (p *Pool[T]) Put(item *T) {
+	p.Reset(item)
 	p.Items = append(p.Items, item)
 }

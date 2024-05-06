@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -36,9 +35,8 @@ type HTTPRequest struct {
 }
 
 type HTTPRequestParser struct {
-	State   HTTPState
-	Request HTTPRequest
-	Pos     int
+	State HTTPState
+	Pos   int
 
 	ContentLength int
 }
@@ -121,6 +119,108 @@ var (
 	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page", LogError: NewError("whoops... You have to sign in to see this page")}
 	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient", LogError: NewError("whoops... Your permissions are insufficient")}
 )
+
+func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) {
+	var err error
+
+	for rp.State != HTTPStateDone {
+		switch rp.State {
+		default:
+			Panicf("Unknown HTTP parser state %d", rp.State)
+		case HTTPStateUnknown:
+			if len(request[rp.Pos:]) < 2 {
+				return 0, nil
+			}
+			if request[rp.Pos:rp.Pos+2] == "\r\n" {
+				rp.Pos += len("\r\n")
+
+				if rp.ContentLength != 0 {
+					rp.State = HTTPStateBody
+				} else {
+					rp.State = HTTPStateDone
+				}
+			} else {
+				rp.State = HTTPStateHeader
+			}
+
+		case HTTPStateMethod:
+			if len(request[rp.Pos:]) < 4 {
+				return 0, nil
+			}
+			switch request[rp.Pos : rp.Pos+4] {
+			case "GET ":
+				r.Method = "GET"
+			case "POST":
+				r.Method = "POST"
+			default:
+				return 0, NewError("Method not allowed")
+			}
+			rp.Pos += len(r.Method) + 1
+			rp.State = HTTPStateURI
+		case HTTPStateURI:
+			lineEnd := FindChar(request[rp.Pos:], '\r')
+			if lineEnd == -1 {
+				return 0, nil
+			}
+
+			uriEnd := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
+			if uriEnd == -1 {
+				return 0, NewError("Bad Request")
+			}
+
+			queryStart := FindChar(request[rp.Pos:rp.Pos+lineEnd], '?')
+			if queryStart != -1 {
+				r.URL.Path = request[rp.Pos : rp.Pos+queryStart]
+				r.URL.Query = request[rp.Pos+queryStart+1 : rp.Pos+uriEnd]
+			} else {
+				r.URL.Path = request[rp.Pos : rp.Pos+uriEnd]
+				r.URL.Query = ""
+			}
+
+			const httpVersionPrefix = "HTTP/"
+			httpVersion := request[rp.Pos+uriEnd+1 : rp.Pos+lineEnd]
+			if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
+				return 0, NewError("Bad Request")
+			}
+			r.Version = httpVersion[len(httpVersionPrefix):]
+			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n")
+			rp.State = HTTPStateUnknown
+		case HTTPStateHeader:
+			lineEnd := FindChar(request[rp.Pos:], '\r')
+			if lineEnd == -1 {
+				return 0, nil
+			}
+			header := request[rp.Pos : rp.Pos+lineEnd]
+			r.Headers = append(r.Headers, header)
+			rp.Pos += len(header) + len("\r\n")
+
+			if StringStartsWith(header, "Content-Length: ") {
+				header = header[len("Content-Length: "):]
+				rp.ContentLength, err = strconv.Atoi(header)
+				if err != nil {
+					return 0, NewError("Bad Request")
+				}
+			}
+
+			rp.State = HTTPStateUnknown
+		case HTTPStateBody:
+			if len(request[rp.Pos:]) < rp.ContentLength {
+				return 0, nil
+			}
+
+			r.Body = unsafe.Slice(unsafe.StringData(request[rp.Pos:]), rp.ContentLength)
+			rp.Pos += len(r.Body)
+			rp.State = HTTPStateDone
+		}
+	}
+
+	n := rp.Pos
+	rp.State = HTTPStateMethod
+	rp.ContentLength = 0
+	rp.Pos = 0
+
+	return n, nil
+}
 
 func (r *HTTPRequest) Cookie(name string) string {
 	for i := 0; i < len(r.Headers); i++ {
@@ -342,6 +442,26 @@ func (w *HTTPResponse) WriteHTMLString(s string) {
 	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
+func HTTPAppendResponse(wIovs *[]Iovec, w *HTTPResponse, dateBuf []byte) {
+	var length int
+	for i := 0; i < len(w.Bodies); i++ {
+		length += int(w.Bodies[i].Len)
+	}
+
+	lengthBuf := w.Arena.NewSlice(20)
+	n := SlicePutInt(lengthBuf, length)
+
+	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Headers...)
+	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+	if ContentTypeHTML(w.Bodies) {
+		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
+	}
+	*wIovs = append(*wIovs, IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Bodies...)
+}
+
 func BadRequest(format string, args ...interface{}) HTTPError {
 	message := fmt.Sprintf(format, args...)
 	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
@@ -376,13 +496,6 @@ func (e HTTPError) Error() string {
 		return "<nil>"
 	}
 	return e.LogError.Error()
-}
-
-/* NOTE(anton2920): Noescape hides a pointer from escape analysis. Noescape is the identity function but escape analysis doesn't think the output depends on the input. Noescape is inlined and currently compiles down to zero instructions. */
-//go:nosplit
-func Noescape(p unsafe.Pointer) unsafe.Pointer {
-	x := uintptr(p)
-	return unsafe.Pointer(x ^ 0)
 }
 
 func NewHTTPContext() (*HTTPContext, error) {
@@ -421,282 +534,69 @@ func (ctx *HTTPContext) Reset() {
 	ctx.ResponseIovs = ctx.ResponseIovs[:0]
 }
 
-func HTTPWriteError(wIovs *[]Iovec, arena *Arena, statusCode HTTPStatus) {
-	body := Status2Reason[statusCode]
-
-	lengthBuf := arena.NewSlice(20)
-	n := SlicePutInt(lengthBuf, len(body))
-
-	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[statusCode]), IovecForString(" "), IovecForString(Status2Reason[statusCode]), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString("Connection: close\r\n"))
-	*wIovs = append(*wIovs, IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString(body))
-}
-
-func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) {
-	var err error
-
-	for rp.State != HTTPStateDone {
-		switch rp.State {
-		default:
-			Panicf("Unknown HTTP parser state %d", rp.State)
-		case HTTPStateUnknown:
-			if len(request[rp.Pos:]) < 2 {
-				return 0, nil
-			}
-			if request[rp.Pos:rp.Pos+2] == "\r\n" {
-				rp.Pos += len("\r\n")
-
-				if rp.ContentLength != 0 {
-					rp.State = HTTPStateBody
-				} else {
-					rp.State = HTTPStateDone
-				}
-			} else {
-				rp.State = HTTPStateHeader
-			}
-
-		case HTTPStateMethod:
-			if len(request[rp.Pos:]) < 4 {
-				return 0, nil
-			}
-			switch request[rp.Pos : rp.Pos+4] {
-			case "GET ":
-				r.Method = "GET"
-			case "POST":
-				r.Method = "POST"
-			default:
-				return 0, NewError("Method not allowed")
-			}
-			rp.Pos += len(r.Method) + 1
-			rp.State = HTTPStateURI
-		case HTTPStateURI:
-			lineEnd := FindChar(request[rp.Pos:], '\r')
-			if lineEnd == -1 {
-				return 0, nil
-			}
-
-			uriEnd := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
-			if uriEnd == -1 {
-				return 0, NewError("Bad Request")
-			}
-
-			queryStart := FindChar(request[rp.Pos:rp.Pos+lineEnd], '?')
-			if queryStart != -1 {
-				r.URL.Path = request[rp.Pos : rp.Pos+queryStart]
-				r.URL.Query = request[rp.Pos+queryStart+1 : rp.Pos+uriEnd]
-			} else {
-				r.URL.Path = request[rp.Pos : rp.Pos+uriEnd]
-				r.URL.Query = ""
-			}
-
-			const httpVersionPrefix = "HTTP/"
-			httpVersion := request[rp.Pos+uriEnd+1 : rp.Pos+lineEnd]
-			if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
-				return 0, NewError("Bad Request")
-			}
-			r.Version = httpVersion[len(httpVersionPrefix):]
-			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n")
-			rp.State = HTTPStateUnknown
-		case HTTPStateHeader:
-			lineEnd := FindChar(request[rp.Pos:], '\r')
-			if lineEnd == -1 {
-				return 0, nil
-			}
-			header := request[rp.Pos : rp.Pos+lineEnd]
-			r.Headers = append(r.Headers, header)
-			rp.Pos += len(header) + len("\r\n")
-
-			if StringStartsWith(header, "Content-Length: ") {
-				header = header[len("Content-Length: "):]
-				rp.ContentLength, err = strconv.Atoi(header)
-				if err != nil {
-					return 0, NewError("Bad Request")
-				}
-			}
-
-			rp.State = HTTPStateUnknown
-		case HTTPStateBody:
-			if len(request[rp.Pos:]) < rp.ContentLength {
-				return 0, nil
-			}
-
-			r.Body = unsafe.Slice(unsafe.StringData(request[rp.Pos:]), rp.ContentLength)
-			rp.Pos += len(r.Body)
-			rp.State = HTTPStateDone
-		}
-	}
-
-	n := rp.Pos
-	rp.State = HTTPStateMethod
-	rp.ContentLength = 0
-	rp.Pos = 0
-
-	return n, nil
-}
-
-func HTTPAppendResponse(wIovs *[]Iovec, w *HTTPResponse, dateBuf []byte) {
-	var length int
-	for i := 0; i < len(w.Bodies); i++ {
-		length += int(w.Bodies[i].Len)
-	}
-
-	lengthBuf := w.Arena.NewSlice(20)
-	n := SlicePutInt(lengthBuf, length)
-
-	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Headers...)
-	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
-	if ContentTypeHTML(w.Bodies) {
-		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
-	}
-	*wIovs = append(*wIovs, IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Bodies...)
-}
-
-func HTTPWorker(l int32, router HTTPRouter) {
-	var pinner runtime.Pinner
-	var events [256]Kevent_t
-	var ctx *HTTPContext
-	var check uintptr
-	var tp Timespec
-
-	kq, err := Kqueue()
+func HTTPRead(c int32, ctx *HTTPContext) error {
+	rBuf := &ctx.RequestBuffer
+	n, err := Read(c, rBuf.RemainingSlice())
 	if err != nil {
-		Fatalf("Failed to open kernel queue: %v", err)
+		return err
 	}
-	chlist := [...]Kevent_t{
-		{Ident: uintptr(l), Filter: EVFILT_READ, Flags: EV_ADD | EV_CLEAR},
-		{Ident: 1, Filter: EVFILT_TIMER, Flags: EV_ADD, Fflags: NOTE_SECONDS, Data: 1},
-	}
-	if _, err := Kevent(kq, unsafe.Slice(&chlist[0], len(chlist)), nil, nil); err != nil {
-		Fatalf("Failed to add event for listener socket: %v", err)
-	}
+	rBuf.Produce(int(n))
+	return nil
+}
 
+func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter, pipelining bool) {
+	var tp Timespec
 	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
 		Fatalf("Failed to get current walltime: %v", err)
 	}
 	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
 	dateBuf := make([]byte, 31)
+	SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 
-	ctxPool := NewPool(NewHTTPContext)
+	rBuf := &ctx.RequestBuffer
+	parser := &ctx.RequestParser
+	wIovs := &ctx.ResponseIovs
 
-	for {
-		nevents, err := Kevent(kq, nil, unsafe.Slice(&events[0], len(events)), nil)
+	w := &ctx.Response
+	r := &ctx.Request
+
+	for i := 0; (i < 1) || (pipelining); i++ {
+		n, err := parser.Parse(rBuf.UnconsumedString(), r)
 		if err != nil {
-			code := err.(ErrorWithCode).Code
-			if code == EINTR {
-				continue
-			}
-			println("ERROR: failed to get requested kernel events: ", code)
+			Errorf("Failed to parse HTTP request: %v", err)
 		}
-		for i := 0; i < nevents; i++ {
-			e := events[i]
-			c := int32(e.Ident)
+		if n == 0 {
+			break
+		}
+		rBuf.Consume(n)
 
-			// println("EVENT", e.Ident, e.Filter, e.Fflags&0xF, e.Data)
+		w.Reset()
+		Router(w, r)
+		r.Reset()
 
-			switch c {
-			case l:
-				c, err := Accept(l, nil, nil)
-				if err != nil {
-					code := err.(ErrorWithCode).Code
-					if code == EAGAIN {
-						continue
-					}
-					println("ERROR: failed to accept new connection:", err.Error())
-					continue
-				}
+		HTTPAppendResponse(wIovs, w, dateBuf)
+	}
+}
 
-				ctx, err := ctxPool.Get()
-				if ctx == nil {
-					Fatalf("Failed to acquire new HTTP context")
-				}
-				pinner.Pin(ctx)
+func HTTPWrite(c int32, ctx *HTTPContext) error {
+	wIovs := ctx.ResponseIovs
+	if len(wIovs[ctx.ResponsePos:]) > 0 {
+		n, err := Writev(c, wIovs[ctx.ResponsePos:])
+		if err != nil {
+			return err
+		}
 
-				udata := unsafe.Pointer(uintptr(unsafe.Pointer(ctx)) | ctx.Check)
-				events := [...]Kevent_t{
-					{Ident: uintptr(c), Filter: EVFILT_READ, Flags: EV_ADD | EV_CLEAR, Udata: udata},
-					{Ident: uintptr(c), Filter: EVFILT_WRITE, Flags: EV_ADD | EV_CLEAR, Udata: udata},
-				}
-				if _, err := Kevent(kq, unsafe.Slice(&events[0], len(events)), nil, nil); err != nil {
-					println("ERROR: failed to add new events to kqueue:", err.Error())
-					goto closeConnection
-				}
-				continue
-			case 1:
-				tp.Sec += int64(e.Data)
-				SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
-				continue
-			}
-
-			ctx, check = HTTPContextFromCheckedPointer(e.Udata)
-			if check != ctx.Check {
-				continue
-			}
-
-			if (e.Flags & EV_EOF) != 0 {
-				goto closeConnection
-			}
-
-			switch e.Filter {
-			case EVFILT_READ:
-				arena := &ctx.ResponseArena
-				rBuf := &ctx.RequestBuffer
-				// parser := &ctx.RequestParser
-
-				if rBuf.RemainingSpace() == 0 {
-					Shutdown(c, SHUT_RD)
-					HTTPWriteError(&ctx.ResponseIovs, arena, HTTPStatusRequestEntityTooLarge)
-				} else {
-					n, err := Read(c, rBuf.RemainingSlice())
-					if err != nil {
-						println("ERROR: failed to read data from socket:", err.Error())
-						goto closeConnection
-					}
-					rBuf.Produce(int(n))
-
-					// HTTPHandleRequests(&ctx.ResponseIovs, rBuf, arena, parser, dateBuf, router)
-				}
-
-				fallthrough
-			case EVFILT_WRITE:
-				wIovs := ctx.ResponseIovs
-				if len(wIovs[ctx.ResponsePos:]) > 0 {
-					n, err := Writev(c, wIovs[ctx.ResponsePos:])
-					if err != nil {
-						code := err.(ErrorWithCode).Code
-						if code == EAGAIN {
-							continue
-						}
-						println("ERROR: failed to write data to socket:", err.Error())
-						goto closeConnection
-					}
-
-					for (ctx.ResponsePos < len(wIovs)) && (n >= int64(wIovs[ctx.ResponsePos].Len)) {
-						n -= int64(wIovs[ctx.ResponsePos].Len)
-						ctx.ResponsePos++
-					}
-					if ctx.ResponsePos == len(wIovs) {
-						ctx.ResponsePos = 0
-						ctx.ResponseIovs = ctx.ResponseIovs[:0]
-					} else {
-						wIovs[ctx.ResponsePos].Base = unsafe.Add(wIovs[ctx.ResponsePos].Base, n)
-						wIovs[ctx.ResponsePos].Len -= uint64(n)
-					}
-				}
-			}
-			continue
-
-		closeConnection:
-			ctx.Reset()
-			ctxPool.Put(ctx)
-
-			Shutdown(c, SHUT_WR)
-			Close(c)
-			continue
+		for (ctx.ResponsePos < len(wIovs)) && (n >= int64(wIovs[ctx.ResponsePos].Len)) {
+			n -= int64(wIovs[ctx.ResponsePos].Len)
+			ctx.ResponsePos++
+		}
+		if ctx.ResponsePos == len(wIovs) {
+			ctx.ResponsePos = 0
+			ctx.ResponseIovs = ctx.ResponseIovs[:0]
+		} else {
+			wIovs[ctx.ResponsePos].Base = unsafe.Add(wIovs[ctx.ResponsePos].Base, n)
+			wIovs[ctx.ResponsePos].Len -= uint64(n)
 		}
 	}
+	return nil
 }

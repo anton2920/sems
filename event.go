@@ -24,23 +24,16 @@ const (
 
 type Event interface{}
 
-type ErrorEvent struct {
-	Error error
-}
-
-type EndOfFileEvent struct {
-	Handle   int32
-	UserData unsafe.Pointer
-}
-
 type ReadEvent struct {
 	Handle    int32
+	EndOfFile bool
 	Available int
 	UserData  unsafe.Pointer
 }
 
 type WriteEvent struct {
 	Handle    int32
+	EndOfFile bool
 	Available int
 	UserData  unsafe.Pointer
 }
@@ -69,7 +62,7 @@ func (q *EventQueue) Close() error {
 	return platformQueueClose(q)
 }
 
-func (q *EventQueue) GetEvent() Event {
+func (q *EventQueue) GetEvent() (Event, error) {
 	return platformQueueGetEvent(q)
 }
 

@@ -59,37 +59,33 @@ func platformQueueClose(q *EventQueue) error {
 	return Close(q.kq)
 }
 
-func platformQueueGetEvent(q *EventQueue) Event {
-	if q.head == q.tail {
+func platformQueueGetEvent(q *EventQueue) (Event, error) {
+	if q.head >= q.tail {
 		var err error
 		q.tail, err = Kevent(q.kq, nil, unsafe.Slice(&q.events[0], len(q.events)), nil)
 		if err != nil {
-			return ErrorEvent{err}
+			return nil, err
 		}
 		q.head = 0
 	}
 	head := q.events[q.head]
+	q.head++
 
 	if (head.Flags & EV_ERROR) == EV_ERROR {
-		return ErrorEvent{fmt.Errorf("requested event for %v failed with code %v", head.Ident, head.Data)}
-	}
-
-	if (head.Flags & EV_EOF) == EV_EOF {
-		return EndOfFileEvent{Handle: int32(head.Ident), UserData: head.Udata}
+		return nil, fmt.Errorf("requested event for %v failed with code %v", head.Ident, head.Data)
 	}
 
 	var event Event
 	switch head.Filter {
 	case EVFILT_READ:
-		event = ReadEvent{Handle: int32(head.Ident), Available: int(head.Data), UserData: head.Udata}
+		event = ReadEvent{Handle: int32(head.Ident), EndOfFile: (head.Flags & EV_EOF) == EV_EOF, Available: int(head.Data), UserData: head.Udata}
 	case EVFILT_WRITE:
-		event = ReadEvent{Handle: int32(head.Ident), Available: int(head.Data), UserData: head.Udata}
+		event = WriteEvent{Handle: int32(head.Ident), EndOfFile: (head.Flags & EV_EOF) == EV_EOF, Available: int(head.Data), UserData: head.Udata}
 	case EVFILT_SIGNAL:
 		event = SignalEvent{Signal: int32(head.Ident)}
 	}
-	q.head++
 
-	return event
+	return event, nil
 }
 
 /* TODO(anton2920): think about returning the number of available events instead. */

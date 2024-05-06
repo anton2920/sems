@@ -224,31 +224,19 @@ func main() {
 	q.AddSignal(SIGINT)
 	q.AddSignal(SIGTERM)
 
-	var tp Timespec
-	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
-		Fatalf("Failed to get current walltime: %v", err)
-	}
-	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
-	dateBuf := make([]byte, 31)
-	SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
-
-	ctxPool := NewPool(NewHTTPContext)
+	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
 
 	var quit bool
 	for !quit {
-		switch event := q.GetEvent().(type) {
+		event, err := q.GetEvent()
+		if (event == nil) || (err != nil) {
+			Errorf("Failed to get event: %v", err)
+			continue
+		}
+
+		switch event := event.(type) {
 		default:
 			Panicf("Unhandled event %T", event)
-		case ErrorEvent:
-			Errorf("Failed to get event: %v", event.Error)
-		case EndOfFileEvent:
-			ctx, check := HTTPContextFromCheckedPointer(event.UserData)
-			if ctx.Check != check {
-				continue
-			}
-			ctx.Reset()
-			ctxPool.Put(ctx)
-			Close(event.Handle)
 		case ReadEvent:
 			switch event.Handle {
 			case l: /* ready to accept new connection. */
@@ -275,50 +263,25 @@ func main() {
 					continue
 				}
 
-				rBuf := &ctx.RequestBuffer
-				parser := &ctx.RequestParser
-				wIovs := &ctx.ResponseIovs
-
-				w := &ctx.Response
-				r := &ctx.Request
-
-				n, err := Read(event.Handle, rBuf.RemainingSlice())
-				if err != nil {
-					Errorf("Failed to read data from socket: %v", err)
-					ctx.Reset()
+				if event.EndOfFile {
 					ctxPool.Put(ctx)
 					Close(event.Handle)
 					continue
 				}
-				rBuf.Produce(int(n))
 
-				for {
-					n, err := parser.Parse(rBuf.UnconsumedString(), r)
-					if err != nil {
-						Errorf("Failed to parse HTTP request: %v", err)
-					}
-					if n == 0 {
-						break
-					}
-					rBuf.Consume(n)
+				if err := HTTPRead(event.Handle, ctx); err != nil {
+					Errorf("Failed to read data from socket: %v", err)
+					ctxPool.Put(ctx)
+					Close(event.Handle)
+					continue
+				}
 
-					w.Reset()
-					Router(w, r)
-					r.Reset()
+				HTTPProcessRequests(ctx, Router, true)
 
-					HTTPAppendResponse(wIovs, w, dateBuf)
-
-					/* TODO(anton2920): write only on 'WriteEvent's. */
-					_, err = Writev(event.Handle, *wIovs)
-					if err != nil {
-						Errorf("Failed to write data to socket: %v", err)
-						ctx.Reset()
-						ctxPool.Put(ctx)
-						Close(event.Handle)
-						continue
-					}
-
-					*wIovs = (*wIovs)[:0]
+				if err := HTTPWrite(event.Handle, ctx); err != nil {
+					Errorf("Failed to write HTTP response: %v", err)
+					ctxPool.Put(ctx)
+					Close(event.Handle)
 				}
 			}
 		case WriteEvent:
@@ -327,16 +290,16 @@ func main() {
 				continue
 			}
 
-			wIovs := ctx.ResponseIovs
-			if len(wIovs) > 0 {
-				_, err := Writev(event.Handle, wIovs)
-				if err != nil {
-					Errorf("Failed to write data to socket: %v", err)
-					ctx.Reset()
-					ctxPool.Put(ctx)
-					Close(event.Handle)
-					continue
-				}
+			if event.EndOfFile {
+				ctxPool.Put(ctx)
+				Close(event.Handle)
+				continue
+			}
+
+			if err := HTTPWrite(event.Handle, ctx); err != nil {
+				Errorf("Failed to write HTTP response: %v", err)
+				ctxPool.Put(ctx)
+				Close(event.Handle)
 			}
 		case SignalEvent:
 			Infof("Received signal %d, exitting...", event.Signal)
