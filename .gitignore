@@ -1,4 +1,5 @@
 *.gob
+*.png
 .sam/
 masters*
 mc*

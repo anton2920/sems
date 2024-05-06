@@ -27,9 +27,12 @@ const (
 
 	SOCK_STREAM = 1
 
-	SOL_SOCKET   = 0xFFFF
-	SO_REUSEADDR = 0x00000004
-	SO_RCVTIMEO  = 0x1006
+	SOL_SOCKET = 0xFFFF
+
+	SO_REUSEADDR    = 0x00000004
+	SO_REUSEPORT    = 0x00000200
+	SO_REUSEPORT_LB = 0x00010000
+	SO_RCVTIMEO     = 0x00001006
 
 	SHUT_RD = 0
 	SHUT_WR = 1
@@ -49,7 +52,7 @@ func TCPListen(port uint16) (int32, error) {
 	}
 
 	var enable int32 = 1
-	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEADDR, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
+	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEPORT_LB, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
 		return -1, err
 	}
 

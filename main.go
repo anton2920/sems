@@ -2,11 +2,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -16,8 +19,10 @@ const (
 )
 
 var (
-	DebugMode string
+	BuildMode string
+
 	Debug     bool
+	Profiling bool
 )
 
 var WorkingDirectory string
@@ -142,9 +147,6 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 	case StringStartsWith(path, APIPrefix):
 		return IdentifierAPIRequest(w, r, path[len(APIPrefix):])
 
-	case path == "/plaintext":
-		w.AppendString("Hello, world!\n")
-		return nil
 	case path == "/error":
 		return ServerError(NewError("test error"))
 	case path == "/panic":
@@ -153,6 +155,11 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 }
 
 func Router(w *HTTPResponse, r *HTTPRequest) {
+	if r.URL.Path == "/plaintext" {
+		w.AppendString("Hello, world!\n")
+		return
+	}
+
 	level := LevelDebug
 	start := time.Now()
 
@@ -190,10 +197,16 @@ func Router(w *HTTPResponse, r *HTTPRequest) {
 func main() {
 	var err error
 
-	if DebugMode == "on" {
+	switch BuildMode {
+	default:
+		BuildMode = "Release"
+	case "Debug":
 		Debug = true
 		SetLogLevel(LevelDebug)
+	case "Profiling":
+		Profiling = true
 	}
+	Infof("Starting SEMS in %s mode...", BuildMode)
 
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
@@ -228,6 +241,15 @@ func main() {
 	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
 	var pinner runtime.Pinner
 
+	if Profiling {
+		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
+		if err != nil {
+			Fatalf("Failed to create a profiling file: %v", err)
+		}
+		defer f.Close()
+		pprof.StartCPUProfile(f)
+	}
+
 	var quit bool
 	for !quit {
 		event, err := q.GetEvent()
@@ -247,6 +269,14 @@ func main() {
 					Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
+
+				var tp Timespec
+				if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
+					Fatalf("Failed to get current walltime: %v", err)
+				}
+				tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
+				dateBuf := unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
+				SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 
 				pinner.Pin(ctx)
 				q.AddSocket(c, EventRequestRead|EventRequestWrite, EventTriggerEdge, ctx.CheckedPointer())
@@ -298,6 +328,10 @@ func main() {
 			Infof("Received signal %d, exitting...", event.Identifier)
 			quit = true
 		}
+	}
+
+	if Profiling {
+		pprof.StopCPUProfile()
 	}
 
 	q.Close()

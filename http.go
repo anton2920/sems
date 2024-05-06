@@ -493,12 +493,6 @@ func ServerError(err error) HTTPError {
 	return HTTPError{StatusCode: HTTPStatusInternalServerError, DisplayMessage: "whoops... Something went wrong. Please try again later", LogError: WrapErrorWithTrace(err, 2)}
 }
 
-/*
-func NewHTTPError(statusCode HTTPStatus, message string) HTTPError {
-	return HTTPError{StatusCode: statusCode, DisplayMessage: message, LogError: NewError(message)}
-}
-*/
-
 func (e HTTPError) Error() string {
 	if e.LogError == nil {
 		return "<nil>"
@@ -596,13 +590,7 @@ func HTTPRead(c int32, ctx *HTTPContext) error {
 }
 
 func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter) {
-	var tp Timespec
-	if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
-		Fatalf("Failed to get current walltime: %v", err)
-	}
-	tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
 	dateBuf := unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
-	SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 
 	rBuf := &ctx.RequestBuffer
 	parser := &ctx.RequestParser

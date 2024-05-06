@@ -32,7 +32,7 @@ STARTTIME=`date +%s`
 case $1 in
 	'' | debug)
 		CGO_ENABLED=1; export CGO_ENABLED
-		run go build -o $PROJECT -race -pgo off -gcflags='all=-N -l -d=checkptr=0' -ldflags='-X main.DebugMode=on'
+		run go build -o $PROJECT -race -pgo off -gcflags='all=-N -l -d=checkptr=0' -ldflags='-X main.BuildMode=Debug'
 		;;
 	clean)
 		run rm -f $PROJECT $PROJECT.s $PROJECT.esc $PROJECT.test c.out cpu.pprof cpu.png mem.pprof mem.png
@@ -82,8 +82,11 @@ case $1 in
 		printvv go tool objdump -S -s ^main\. $PROJECT
 		go tool objdump -S -s ^main\. $PROJECT >$PROJECT.s
 		;;
+	profiling)
+		run go build -o $PROJECT -ldflags="-s -w" -ldflags='-X main.BuildMode=Profiling'
+		;;
 	release)
-		run go build -o $PROJECT -ldflags="-s -w"
+		run go build -o $PROJECT -gcflags="-B" -ldflags="-s -w"
 		;;
 	test)
 		run $0 $VERBOSITYFLAGS vet
