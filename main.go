@@ -247,7 +247,9 @@ func main() {
 			Fatalf("Failed to create a profiling file: %v", err)
 		}
 		defer f.Close()
+
 		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 
 	var quit bool
@@ -328,10 +330,6 @@ func main() {
 			Infof("Received signal %d, exitting...", event.Identifier)
 			quit = true
 		}
-	}
-
-	if Profiling {
-		pprof.StopCPUProfile()
 	}
 
 	q.Close()
