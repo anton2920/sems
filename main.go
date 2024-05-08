@@ -226,12 +226,13 @@ func main() {
 		CreateInitialDB()
 	}
 
-	/* TODO(anton2920): I don't like having no control over address or parameters. */
-	l, err := TCPListen(7072)
+	const address = "0.0.0.0:7072"
+	const backlog = 128
+	l, err := TCPListen(address, backlog, ListenFlagReusePortLoadBalancing)
 	if err != nil {
 		Fatalf("Failed to listen on port: %v", err)
 	}
-	Infof("Listening on 0.0.0.0:7072...")
+	Infof("Listening on %s...", address)
 
 	q, err := NewEventQueue()
 	if err != nil {

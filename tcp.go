@@ -1,6 +1,10 @@
 package main
 
-import "unsafe"
+import (
+	"fmt"
+	"strconv"
+	"unsafe"
+)
 
 type SockAddrIn struct {
 	Len    uint8
@@ -19,6 +23,17 @@ type SockAddrIn struct {
  * But because I don't really care, and sizes are the same, I made them synonyms.
  */
 type SockAddr = SockAddrIn
+
+type ListenFlag int
+
+const (
+	ListenFlagNone         ListenFlag = 0
+	ListenFlagReuseAddress            = (1 << iota)
+	ListenFlagReusePort
+	ListenFlagReusePortLoadBalancing
+
+	ListenFlagNoBlock
+)
 
 const (
 	/* From <sys/socket.h>. */
@@ -45,25 +60,85 @@ func SwapBytesInWord(x uint16) uint16 {
 	return ((x << 8) & 0xFF00) | (x >> 8)
 }
 
-func TCPListen(port uint16) (int32, error) {
+func ParseAddressString(address string) (uint32, uint16, error) {
+	var addr uint32
+
+	colon := FindChar(address, ':')
+	if colon == -1 {
+		return 0, 0, NewError("no port specified")
+	}
+
+	part, err := strconv.Atoi(address[colon+1:])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse port value: %w", err)
+	}
+	port := SwapBytesInWord(uint16(part))
+
+	address = address[:colon]
+	dot := FindChar(address, '.')
+	if dot == -1 {
+		return INADDR_ANY, port, nil
+	}
+	part, err = strconv.Atoi(address[:dot])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse first address octet: %w", err)
+	}
+	addr |= uint32(part)
+
+	address = address[dot+1:]
+	dot = FindChar(address, '.')
+	if dot == -1 {
+		return 0, 0, fmt.Errorf("expected second address octet, found nothing")
+	}
+	part, err = strconv.Atoi(address[:dot])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse second address octet: %w", err)
+	}
+	addr |= uint32(part) << 8
+
+	address = address[dot+1:]
+	dot = FindChar(address, '.')
+	if dot == -1 {
+		return 0, 0, fmt.Errorf("expected third address octet, found nothing")
+	}
+	part, err = strconv.Atoi(address[:dot])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse third address octet: %w", err)
+	}
+	addr |= uint32(part) << 16
+
+	address = address[dot+1:]
+	part, err = strconv.Atoi(address)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse fourth address octet: %w", err)
+	}
+	addr |= uint32(part) << 24
+
+	return addr, port, nil
+}
+
+func TCPListen(address string, backlog int, flags ListenFlag) (int32, error) {
 	l, err := Socket(PF_INET, SOCK_STREAM, 0)
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("failed to create new socket: %w", err)
 	}
 
 	var enable int32 = 1
 	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEPORT_LB, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("failed to apply options to socket: %w", err)
 	}
 
-	addr := SockAddrIn{Family: AF_INET, Addr: INADDR_ANY, Port: SwapBytesInWord(port)}
-	if err := Bind(l, &addr, uint32(unsafe.Sizeof(addr))); err != nil {
-		return -1, err
+	addr, port, err := ParseAddressString(address)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse address string: %w", err)
+	}
+	sin := SockAddrIn{Family: AF_INET, Addr: addr, Port: port}
+	if err := Bind(l, &sin, uint32(unsafe.Sizeof(sin))); err != nil {
+		return -1, fmt.Errorf("failed to bind socket to address: %w", err)
 	}
 
-	const backlog = 128
-	if err := Listen(l, backlog); err != nil {
-		return -1, err
+	if err := Listen(l, int32(backlog)); err != nil {
+		return -1, fmt.Errorf("failed to listen for incoming connections: %w", err)
 	}
 
 	return l, nil

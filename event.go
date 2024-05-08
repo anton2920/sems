@@ -13,7 +13,7 @@ type EventQueue struct {
 type EventRequest int
 
 const (
-	EventRequestRead EventRequest = 1 << iota
+	EventRequestRead EventRequest = (1 << iota)
 	EventRequestWrite
 )
 
