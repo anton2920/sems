@@ -232,11 +232,11 @@ func main() {
 		Fatalf("Failed to create event queue: %v", err)
 	}
 
-	q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
+	_ = q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
 
 	signal.Ignore(syscall.Signal(SIGINT), syscall.Signal(SIGTERM))
-	q.AddSignal(SIGINT)
-	q.AddSignal(SIGTERM)
+	_ = q.AddSignal(SIGINT)
+	_ = q.AddSignal(SIGTERM)
 
 	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
 	var pinner runtime.Pinner
@@ -262,7 +262,7 @@ func main() {
 
 		switch event.Type {
 		default:
-			Panicf("Unhandled event %d", event.Type)
+			Panicf("Unhandled event: %d", event.Type)
 		case EventRead:
 			switch event.Identifier {
 			case l: /* ready to accept new connection. */
