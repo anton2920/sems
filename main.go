@@ -20,9 +20,7 @@ const (
 
 var (
 	BuildMode string
-
 	Debug     bool
-	Profiling bool
 )
 
 var WorkingDirectory string
@@ -204,7 +202,14 @@ func main() {
 		Debug = true
 		SetLogLevel(LevelDebug)
 	case "Profiling":
-		Profiling = true
+		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
+		if err != nil {
+			Fatalf("Failed to create a profiling file: %v", err)
+		}
+		defer f.Close()
+
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 	Infof("Starting SEMS in %s mode...", BuildMode)
 
@@ -240,17 +245,6 @@ func main() {
 
 	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
 	var pinner runtime.Pinner
-
-	if Profiling {
-		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
-		if err != nil {
-			Fatalf("Failed to create a profiling file: %v", err)
-		}
-		defer f.Close()
-
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
 
 	var quit bool
 	for !quit {
