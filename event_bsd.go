@@ -9,7 +9,7 @@ type platformEventQueue struct {
 	kq int32
 
 	/* Events buffer */
-	events [256]Kevent_t
+	events [1024]Kevent_t
 	head   int
 	tail   int
 }
@@ -59,19 +59,26 @@ func platformQueueClose(q *EventQueue) error {
 	return Close(q.kq)
 }
 
-func platformQueueGetEvent(q *EventQueue) (Event, error) {
+func platformQueueRequestNewEvents(q *EventQueue, tp *Timespec) error {
 	var err error
+retry:
+	q.tail, err = Kevent(q.kq, nil, unsafe.Slice(&q.events[0], len(q.events)), tp)
+	if err != nil {
+		if err.(ErrorWithCode).Code == EINTR {
+			goto retry
+		}
+		return err
+	}
+	q.head = 0
 
+	return nil
+}
+
+func platformQueueGetEvent(q *EventQueue) (Event, error) {
 	if q.head >= q.tail {
-	retry:
-		q.tail, err = Kevent(q.kq, nil, unsafe.Slice(&q.events[0], len(q.events)), nil)
-		if err != nil {
-			if err.(ErrorWithCode).Code == EINTR {
-				goto retry
-			}
+		if err := platformQueueRequestNewEvents(q, nil); err != nil {
 			return EmptyEvent, err
 		}
-		q.head = 0
 	}
 	head := q.events[q.head]
 	q.head++
@@ -98,17 +105,26 @@ func platformQueueGetEvent(q *EventQueue) (Event, error) {
 	return event, nil
 }
 
-/* TODO(anton2920): think about returning the number of available events instead. */
-/* BUG(anton2920): it doesn't work! */
+/* platformQueueGetTime returns current time in nanoseconds. */
+func platformQueueGetTime() int64 {
+	var tp Timespec
+	ClockGettime(CLOCK_REALTIME, &tp)
+	return tp.Sec*1_000_000_000 + tp.Nsec
+}
+
 func platformQueueHasEvents(q *EventQueue) bool {
 	if q.head < q.tail {
 		return true
 	}
 
-	n, err := Kevent(q.kq, nil, nil, nil)
-	if err != nil {
+	var tp Timespec
+	if err := platformQueueRequestNewEvents(q, &tp); err != nil {
 		return false
 	}
+	return q.tail > 0
+}
 
-	return n > 0
+func platformQueuePause(q *EventQueue, duration int64) {
+	tp := Timespec{Sec: duration / 1_000_000_000, Nsec: duration % 1_000_000_000}
+	platformQueueRequestNewEvents(q, &tp)
 }

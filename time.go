@@ -104,9 +104,3 @@ func TimeToTm(t int) Tm {
 
 	return tm
 }
-
-func SleepFull(time Timespec) {
-	/* NOTE(anton2920): doing it in loop to fight EINTR. */
-	for Nanosleep(&time, &time) == nil {
-	}
-}

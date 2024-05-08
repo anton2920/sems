@@ -6,6 +6,8 @@ import (
 
 type EventQueue struct {
 	platformEventQueue
+
+	LastPause int64
 }
 
 type EventRequest int
@@ -69,4 +71,17 @@ func (q *EventQueue) GetEvent() (Event, error) {
 
 func (q *EventQueue) HasEvents() bool {
 	return platformQueueHasEvents(q)
+}
+
+func (q *EventQueue) Pause(FPS int) {
+	now := platformQueueGetTime()
+	durationBetweenPauses := now - q.LastPause
+	targetRate := int64(1000/FPS) * 1_000_000
+
+	duration := targetRate - durationBetweenPauses
+	if duration > 0 {
+		platformQueuePause(q, duration)
+		now += duration
+	}
+	q.LastPause = now
 }
