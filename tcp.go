@@ -24,17 +24,6 @@ type SockAddrIn struct {
  */
 type SockAddr = SockAddrIn
 
-type ListenFlag int
-
-const (
-	ListenFlagNone         ListenFlag = 0
-	ListenFlagReuseAddress            = (1 << iota)
-	ListenFlagReusePort
-	ListenFlagReusePortLoadBalancing
-
-	ListenFlagNoBlock
-)
-
 const (
 	/* From <sys/socket.h>. */
 	AF_INET = 2
@@ -117,7 +106,8 @@ func ParseAddressString(address string) (uint32, uint16, error) {
 	return addr, port, nil
 }
 
-func TCPListen(address string, backlog int, flags ListenFlag) (int32, error) {
+/* TCPListen creates TCP/IPv4 socket and starts listening on a specified address. */
+func TCPListen(address string, backlog int) (int32, error) {
 	l, err := Socket(PF_INET, SOCK_STREAM, 0)
 	if err != nil {
 		return -1, fmt.Errorf("failed to create new socket: %w", err)

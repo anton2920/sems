@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime"
 	"runtime/pprof"
 	"syscall"
 	"time"
-	"unsafe"
 )
 
 const (
@@ -227,17 +225,19 @@ func main() {
 	}
 
 	const address = "0.0.0.0:7072"
-	const backlog = 128
-	l, err := TCPListen(address, backlog, ListenFlagReusePortLoadBalancing)
+	l, err := TCPListen(address, 128)
 	if err != nil {
 		Fatalf("Failed to listen on port: %v", err)
 	}
+	defer Close(l)
+
 	Infof("Listening on %s...", address)
 
 	q, err := NewEventQueue()
 	if err != nil {
 		Fatalf("Failed to create event queue: %v", err)
 	}
+	defer q.Close()
 
 	_ = q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
 
@@ -245,10 +245,8 @@ func main() {
 	_ = q.AddSignal(SIGINT)
 	_ = q.AddSignal(SIGTERM)
 
-	/* TODO(anton2920): I don't like pinner and function pointers. */
-	ctxPool := NewPool(NewHTTPContext, (*HTTPContext).Reset)
-	var pinner runtime.Pinner
-	defer pinner.Unpin()
+	/* TODO(anton2920): fill with current date. */
+	dateBuf := []byte("Thu, 09 May 2024 16:30:39 +0300")
 
 	var quit bool
 	for !quit {
@@ -265,73 +263,70 @@ func main() {
 			case EventRead:
 				switch event.Identifier {
 				case l: /* ready to accept new connection. */
-
-					/* TODO(anton2920): I don't like 3 return values. */
-					c, ctx, err := HTTPAccept(l, ctxPool)
+					ctx, err := HTTPAccept(l)
 					if err != nil {
 						Errorf("Failed to accept new HTTP connection: %v", err)
 						continue
 					}
 
-					var tp Timespec
-					if err := ClockGettime(CLOCK_REALTIME, &tp); err != nil {
-						Fatalf("Failed to get current walltime: %v", err)
-					}
-					tp.Nsec = 0 /* NOTE(anton2920): we don't care about nanoseconds. */
-					dateBuf := unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
-					SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
-
-					pinner.Pin(ctx)
-
-					/* TODO(anton2920): I don't like CheckedPointer. */
-					q.AddSocket(c, EventRequestRead|EventRequestWrite, EventTriggerEdge, ctx.CheckedPointer())
+					q.AddHTTPClient(ctx, EventRequestRead|EventRequestWrite, EventTriggerEdge)
 				default: /* ready to serve new HTTP request. */
-
-					/* TODO(anton2920): I don't like explicit context retreival. */
-					ctx, check := HTTPContextFromCheckedPointer(event.UserData)
-					if ctx.Check != check {
+					ctx, ok := HTTPContextFromEvent(event)
+					if !ok {
 						continue
 					}
 
-					/* TODO(anton2920): I don't like boolean flag. */
 					if event.EndOfFile {
-						ctxPool.Put(ctx)
-						Close(event.Identifier)
+						HTTPClose(ctx)
 						continue
 					}
 
-					if err := HTTPRead(event.Identifier, ctx); err != nil {
+					if err := HTTPRead(ctx); err != nil {
 						Errorf("Failed to read data from socket: %v", err)
-						ctxPool.Put(ctx)
-						Close(event.Identifier)
+						HTTPClose(ctx)
 						continue
 					}
 
-					/* TODO(anton2920): I don't like function pointer. */
-					HTTPProcessRequests(ctx, Router)
+					for {
+						w := &ctx.Response
+						r := &ctx.Request
 
-					if err := HTTPWrite(event.Identifier, ctx); err != nil {
+						if err := HTTPParseRequest(ctx, r); err != nil {
+							if err == HTTPParseDone {
+								break
+							}
+
+							w.StatusCode = HTTPStatusBadRequest
+							HTTPAppendResponse(ctx, w, dateBuf)
+							HTTPWrite(ctx)
+							HTTPClose(ctx)
+							break
+						}
+
+						Router(w, r)
+
+						HTTPAppendResponse(ctx, w, dateBuf)
+					}
+
+					if err := HTTPWrite(ctx); err != nil {
 						Errorf("Failed to write HTTP response: %v", err)
-						ctxPool.Put(ctx)
-						Close(event.Identifier)
+						HTTPClose(ctx)
 					}
 				}
 			case EventWrite:
-				ctx, check := HTTPContextFromCheckedPointer(event.UserData)
-				if ctx.Check != check {
+				ctx, ok := HTTPContextFromEvent(event)
+				if !ok {
 					continue
 				}
 
 				if event.EndOfFile {
-					ctxPool.Put(ctx)
-					Close(event.Identifier)
+					HTTPClose(ctx)
 					continue
 				}
 
-				if err := HTTPWrite(event.Identifier, ctx); err != nil {
+				if err := HTTPWrite(ctx); err != nil {
 					Errorf("Failed to write HTTP response: %v", err)
-					ctxPool.Put(ctx)
-					Close(event.Identifier)
+					HTTPClose(ctx)
 				}
 			case EventSignal:
 				Infof("Received signal %d, exitting...", event.Identifier)
@@ -343,9 +338,6 @@ func main() {
 		const FPS = 60
 		q.Pause(FPS)
 	}
-
-	q.Close()
-	Close(l)
 
 	if err := StoreDBToFile(DBFile); err != nil {
 		Warnf("Failed to store DB to file: %v", err)

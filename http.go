@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,9 +12,7 @@ import (
 type HTTPState int
 
 const (
-	HTTPStateMethod HTTPState = iota
-	HTTPStateURI
-	HTTPStateVersion
+	HTTPStateRequestLine HTTPState = iota
 	HTTPStateHeader
 	HTTPStateBody
 
@@ -26,9 +25,9 @@ type HTTPRequest struct {
 
 	Address string
 
-	Method  string
-	URL     URL
-	Version string
+	Method string
+	URL    URL
+	Proto  string
 
 	Headers []string
 	Body    []byte
@@ -101,6 +100,7 @@ type HTTPError struct {
 	LogError       error
 }
 
+/* TODO(anton2920): adjust layout to minimize waste on padding. */
 type HTTPContext struct {
 	RequestParser HTTPRequestParser
 	RequestBuffer CircularBuffer
@@ -111,21 +111,22 @@ type HTTPContext struct {
 	ResponsePos   int
 	Response      HTTPResponse
 
+	Connection          int32
 	ClientAddressBuffer [21]byte
 	ClientAddress       string
 
 	DateBuf [31]byte
 
-	/* Check must be the same as pointer's bit, if context is in use. */
+	/* Check must be the same as the last pointer's bit, if context is in use. */
 	Check uintptr
 }
-
-type HTTPRouter func(w *HTTPResponse, r *HTTPRequest)
 
 var (
 	UnauthorizedError = HTTPError{StatusCode: HTTPStatusUnauthorized, DisplayMessage: "whoops... You have to sign in to see this page", LogError: NewError("whoops... You have to sign in to see this page")}
 	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient", LogError: NewError("whoops... Your permissions are insufficient")}
 )
+
+var HTTPParseDone = errors.New("no requests left to parse")
 
 func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) {
 	var err error
@@ -149,30 +150,23 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 			} else {
 				rp.State = HTTPStateHeader
 			}
-
-		case HTTPStateMethod:
-			if len(request[rp.Pos:]) < 4 {
-				return 0, nil
-			}
-			switch request[rp.Pos : rp.Pos+4] {
-			case "GET ":
-				r.Method = "GET"
-			case "POST":
-				r.Method = "POST"
-			default:
-				return 0, NewError("Method not allowed")
-			}
-			rp.Pos += len(r.Method) + 1
-			rp.State = HTTPStateURI
-		case HTTPStateURI:
+		case HTTPStateRequestLine:
 			lineEnd := FindChar(request[rp.Pos:], '\r')
 			if lineEnd == -1 {
 				return 0, nil
 			}
 
+			sp := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
+			if sp == -1 {
+				return 0, fmt.Errorf("expected method, found %q", request[rp.Pos:])
+			}
+
+			r.Method = request[rp.Pos : rp.Pos+sp]
+			rp.Pos += len(r.Method) + 1
+
 			uriEnd := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
 			if uriEnd == -1 {
-				return 0, NewError("Bad Request")
+				return 0, fmt.Errorf("expected space after URI, found %q", request[rp.Pos:rp.Pos+lineEnd])
 			}
 
 			queryStart := FindChar(request[rp.Pos:rp.Pos+lineEnd], '?')
@@ -183,14 +177,14 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 				r.URL.Path = request[rp.Pos : rp.Pos+uriEnd]
 				r.URL.Query = ""
 			}
+			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1
 
-			const httpVersionPrefix = "HTTP/"
-			httpVersion := request[rp.Pos+uriEnd+1 : rp.Pos+lineEnd]
-			if httpVersion[:len(httpVersionPrefix)] != httpVersionPrefix {
-				return 0, NewError("Bad Request")
+			if request[rp.Pos:rp.Pos+len("HTTP/")] != "HTTP/" {
+				return 0, fmt.Errorf("expected HTTP version prefix, found %q", request[rp.Pos:rp.Pos+lineEnd])
 			}
-			r.Version = httpVersion[len(httpVersionPrefix):]
-			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1 + len(httpVersionPrefix) + len(r.Version) + len("\r\n")
+			r.Proto = request[rp.Pos : rp.Pos+lineEnd]
+			rp.Pos += len(r.Proto) + len("\r\n")
+
 			rp.State = HTTPStateUnknown
 		case HTTPStateHeader:
 			lineEnd := FindChar(request[rp.Pos:], '\r')
@@ -205,7 +199,7 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 				header = header[len("Content-Length: "):]
 				rp.ContentLength, err = strconv.Atoi(header)
 				if err != nil {
-					return 0, NewError("Bad Request")
+					return 0, fmt.Errorf("failed to parse Content-Length value: %w", err)
 				}
 			}
 
@@ -222,7 +216,7 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 	}
 
 	n := rp.Pos
-	rp.State = HTTPStateMethod
+	rp.State = HTTPStateRequestLine
 	rp.ContentLength = 0
 	rp.Pos = 0
 
@@ -450,26 +444,6 @@ func (w *HTTPResponse) WriteHTMLString(s string) {
 	w.WriteHTML(unsafe.Slice(unsafe.StringData(s), len(s)))
 }
 
-func HTTPAppendResponse(wIovs *[]Iovec, w *HTTPResponse, dateBuf []byte) {
-	var length int
-	for i := 0; i < len(w.Bodies); i++ {
-		length += int(w.Bodies[i].Len)
-	}
-
-	lengthBuf := w.Arena.NewSlice(20)
-	n := SlicePutInt(lengthBuf, length)
-
-	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Headers...)
-	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
-	if ContentTypeHTML(w.Bodies) {
-		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
-	}
-	*wIovs = append(*wIovs, IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Bodies...)
-}
-
 func BadRequest(format string, args ...interface{}) HTTPError {
 	message := fmt.Sprintf(format, args...)
 	return HTTPError{StatusCode: HTTPStatusBadRequest, DisplayMessage: message, LogError: WrapErrorWithTrace(NewError(message), 2)}
@@ -500,7 +474,9 @@ func (e HTTPError) Error() string {
 	return e.LogError.Error()
 }
 
-func NewHTTPContext() (*HTTPContext, error) {
+func NewHTTPContext(c int32, addr SockAddrIn) (*HTTPContext, error) {
+	var n int
+
 	rb, err := NewCircularBuffer(PageSize)
 	if err != nil {
 		return nil, err
@@ -510,34 +486,11 @@ func NewHTTPContext() (*HTTPContext, error) {
 	ctx.RequestBuffer = rb
 	ctx.ResponseIovs = make([]Iovec, 0, 512)
 
+	ctx.Response.StatusCode = HTTPStatusOK
 	ctx.Response.Headers = make([]Iovec, 0, 32)
 	ctx.Response.Bodies = make([]Iovec, 0, 128)
 
-	return ctx, nil
-}
-
-func HTTPContextFromCheckedPointer(ptr unsafe.Pointer) (*HTTPContext, uintptr) {
-	uptr := uintptr(ptr)
-
-	check := uptr & 0x1
-	ctx := (*HTTPContext)(unsafe.Pointer(uptr - check))
-
-	return ctx, check
-}
-
-func (ctx *HTTPContext) CheckedPointer() unsafe.Pointer {
-	return unsafe.Pointer(uintptr(unsafe.Pointer(ctx)) | ctx.Check)
-}
-
-func (ctx *HTTPContext) Reset() {
-	ctx.Check = 1 - ctx.Check
-	ctx.RequestBuffer.Reset()
-	ctx.ResponsePos = 0
-	ctx.ResponseIovs = ctx.ResponseIovs[:0]
-}
-
-func (ctx *HTTPContext) SetClientAddress(addr SockAddrIn) {
-	var n int
+	ctx.Connection = c
 
 	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x000000FF)>>0))
 	ctx.ClientAddressBuffer[n] = ':'
@@ -556,32 +509,56 @@ func (ctx *HTTPContext) SetClientAddress(addr SockAddrIn) {
 	n++
 
 	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int(SwapBytesInWord(addr.Port)))
-
 	ctx.ClientAddress = unsafe.String(&ctx.ClientAddressBuffer[0], n)
+
+	return ctx, nil
 }
 
-func HTTPAccept(l int32, ctxPool Pool[HTTPContext]) (int32, *HTTPContext, error) {
+func HTTPContextFromEvent(event Event) (*HTTPContext, bool) {
+	if event.UserData == nil {
+		return nil, false
+	}
+	uptr := uintptr(event.UserData)
+
+	check := uptr & 0x1
+	ctx := (*HTTPContext)(unsafe.Pointer(uptr - check))
+
+	return ctx, ctx.Check == check
+}
+
+func (ctx *HTTPContext) Reset() {
+	ctx.Check = 1 - ctx.Check
+	ctx.RequestBuffer.Reset()
+	ctx.ResponsePos = 0
+	ctx.ResponseIovs = ctx.ResponseIovs[:0]
+}
+
+func FreeHTTPContext(ctx *HTTPContext) {
+	ctx.Reset()
+	FreeCircularBuffer(&ctx.RequestBuffer)
+}
+
+func HTTPAccept(l int32) (*HTTPContext, error) {
 	var addr SockAddrIn
 	var addrLen uint32 = uint32(unsafe.Sizeof(addr))
 
 	c, err := Accept(l, &addr, &addrLen)
 	if err != nil {
-		return -1, nil, fmt.Errorf("failed to accept incoming connection: %w", err)
+		return nil, fmt.Errorf("failed to accept incoming connection: %w", err)
 	}
 
-	ctx, err := ctxPool.Get()
+	ctx, err := NewHTTPContext(c, addr)
 	if err != nil {
 		Close(c)
-		return -1, nil, fmt.Errorf("failed to create new HTTP context: %w", err)
+		return nil, fmt.Errorf("failed to create new HTTP context: %w", err)
 	}
-	ctx.SetClientAddress(addr)
 
-	return c, ctx, nil
+	return ctx, nil
 }
 
-func HTTPRead(c int32, ctx *HTTPContext) error {
+func HTTPRead(ctx *HTTPContext) error {
 	rBuf := &ctx.RequestBuffer
-	n, err := Read(c, rBuf.RemainingSlice())
+	n, err := Read(ctx.Connection, rBuf.RemainingSlice())
 	if err != nil {
 		return err
 	}
@@ -589,40 +566,63 @@ func HTTPRead(c int32, ctx *HTTPContext) error {
 	return nil
 }
 
-func HTTPProcessRequests(ctx *HTTPContext, router HTTPRouter) {
-	dateBuf := unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
-
-	rBuf := &ctx.RequestBuffer
+func HTTPParseRequest(ctx *HTTPContext, r *HTTPRequest) error {
 	parser := &ctx.RequestParser
-	wIovs := &ctx.ResponseIovs
+	rBuf := &ctx.RequestBuffer
 
-	w := &ctx.Response
-	r := &ctx.Request
 	r.Address = ctx.ClientAddress
+	r.Reset()
 
-	const pipelining = true
-	for pipelining {
-		n, err := parser.Parse(rBuf.UnconsumedString(), r)
-		if err != nil {
-			Errorf("Failed to parse HTTP request: %v", err)
-		}
-		if n == 0 {
-			break
-		}
-		rBuf.Consume(n)
-
-		w.Reset()
-		Router(w, r)
-		r.Reset()
-
-		HTTPAppendResponse(wIovs, w, dateBuf)
+	n, err := parser.Parse(rBuf.UnconsumedString(), r)
+	if err != nil {
+		return err
 	}
+	rBuf.Consume(n)
+
+	if n == 0 {
+		return HTTPParseDone
+	}
+	return nil
 }
 
-func HTTPWrite(c int32, ctx *HTTPContext) error {
+func HTTPAppendResponse(ctx *HTTPContext, w *HTTPResponse, dateBuf []byte) {
+	wIovs := &ctx.ResponseIovs
+
+	if dateBuf == nil {
+		dateBuf = unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
+
+		var tp Timespec
+		ClockGettime(CLOCK_REALTIME, &tp)
+		SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
+	}
+
+	var length int
+	for i := 0; i < len(w.Bodies); i++ {
+		length += int(w.Bodies[i].Len)
+	}
+
+	lengthBuf := w.Arena.NewSlice(20)
+	n := SlicePutInt(lengthBuf, length)
+
+	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Headers...)
+	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
+	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+	if ContentTypeHTML(w.Bodies) {
+		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
+	} else {
+		*wIovs = append(*wIovs, IovecForString("Content-Type: text/plain; charset=\"UTF-8\"\r\n"))
+	}
+	*wIovs = append(*wIovs, IovecForString("\r\n"))
+	*wIovs = append(*wIovs, w.Bodies...)
+
+	w.Reset()
+}
+
+func HTTPWrite(ctx *HTTPContext) error {
 	wIovs := ctx.ResponseIovs
 	if len(wIovs[ctx.ResponsePos:]) > 0 {
-		n, err := Writev(c, wIovs[ctx.ResponsePos:])
+		n, err := Writev(ctx.Connection, wIovs[ctx.ResponsePos:])
 		if err != nil {
 			return err
 		}
@@ -640,4 +640,10 @@ func HTTPWrite(c int32, ctx *HTTPContext) error {
 		}
 	}
 	return nil
+}
+
+func HTTPClose(ctx *HTTPContext) error {
+	c := ctx.Connection
+	FreeHTTPContext(ctx)
+	return Close(c)
 }

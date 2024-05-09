@@ -3,6 +3,8 @@ package main
 import "unsafe"
 
 type CircularBuffer struct {
+	SourceBuffer unsafe.Pointer
+
 	Buf  []byte
 	Head int
 	Tail int
@@ -35,6 +37,7 @@ func NewCircularBuffer(size int) (CircularBuffer, error) {
 	if err != nil {
 		return cb, err
 	}
+	defer Close(fd)
 
 	if err := Ftruncate(fd, int64(size)); err != nil {
 		return cb, err
@@ -52,6 +55,7 @@ func NewCircularBuffer(size int) (CircularBuffer, error) {
 		return cb, err
 	}
 
+	cb.SourceBuffer = buffer
 	cb.Buf = unsafe.Slice((*byte)(buffer), 2*size)
 
 	/* NOTE(anton2920): sanity checks. */
@@ -98,4 +102,9 @@ func (cb *CircularBuffer) UnconsumedSlice() []byte {
 
 func (cb *CircularBuffer) UnconsumedString() string {
 	return unsafe.String(&cb.Buf[cb.Head], cb.UnconsumedLen())
+}
+
+func FreeCircularBuffer(cb *CircularBuffer) {
+	Munmap(unsafe.Pointer(unsafe.SliceData(cb.Buf)), uint64(len(cb.Buf)))
+	Munmap(cb.SourceBuffer, uint64(len(cb.Buf)))
 }

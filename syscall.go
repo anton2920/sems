@@ -23,6 +23,7 @@ const (
 	SYS_lseek            = 478
 	SYS_mkdir            = 136
 	SYS_mmap             = 477
+	SYS_munmap           = 73
 	SYS_nanosleep        = 240
 	SYS_nmount           = 378
 	SYS_open             = 5
@@ -163,6 +164,11 @@ func Mkdir(path string, mode int16) error {
 func Mmap(addr unsafe.Pointer, len uint64, prot, flags, fd int32, offset int64) (unsafe.Pointer, error) {
 	r1, _, errno := RawSyscall6(SYS_mmap, uintptr(addr), uintptr(len), uintptr(prot), uintptr(flags), uintptr(fd), uintptr(offset))
 	return unsafe.Pointer(r1), NewSyscallError("mmap failed with code", errno)
+}
+
+func Munmap(addr unsafe.Pointer, len uint64) error {
+	_, _, errno := RawSyscall(SYS_munmap, uintptr(addr), uintptr(len), 0)
+	return NewSyscallError("munmap failed with code", errno)
 }
 
 func Nanosleep(rqtp, rmtp *Timespec) error {

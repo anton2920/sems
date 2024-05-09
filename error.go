@@ -6,9 +6,7 @@ import (
 	"runtime/debug"
 )
 
-type Error struct {
-	Message string
-}
+type Error string
 
 type ErrorWithCode struct {
 	Message string
@@ -35,11 +33,11 @@ const (
 )
 
 func NewError(msg string) Error {
-	return Error{Message: msg}
+	return Error(msg)
 }
 
 func (e Error) Error() string {
-	return e.Message
+	return string(e)
 }
 
 func NewErrorWithCode(msg string, code int) ErrorWithCode {
