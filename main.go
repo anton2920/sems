@@ -150,44 +150,49 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 	}
 }
 
-func Router(w *HTTPResponse, r *HTTPRequest) {
-	if r.URL.Path == "/plaintext" {
-		w.AppendString("Hello, world!\n")
-		return
-	}
+func Router(ws []HTTPResponse, rs []HTTPRequest) {
+	for i := 0; i < len(rs); i++ {
+		w := &ws[i]
+		r := &rs[i]
 
-	level := LevelDebug
-	start := time.Now()
+		if r.URL.Path == "/plaintext" {
+			w.AppendString("Hello, world!\n")
+			return
+		}
 
-	err := RouterFunc(w, r)
-	if err != nil {
-		var panicError PanicError
-		var httpError HTTPError
-		var message string
+		level := LevelDebug
+		start := time.Now()
 
-		if errors.As(err, &httpError) {
-			w.StatusCode = httpError.StatusCode
-			message = httpError.DisplayMessage
-			if (w.StatusCode >= HTTPStatusBadRequest) && (w.StatusCode < HTTPStatusInternalServerError) {
-				level = LevelWarn
-			} else {
+		err := RouterFunc(w, r)
+		if err != nil {
+			var panicError PanicError
+			var httpError HTTPError
+			var message string
+
+			if errors.As(err, &httpError) {
+				w.StatusCode = httpError.StatusCode
+				message = httpError.DisplayMessage
+				if (w.StatusCode >= HTTPStatusBadRequest) && (w.StatusCode < HTTPStatusInternalServerError) {
+					level = LevelWarn
+				} else {
+					level = LevelError
+				}
+			} else if errors.As(err, &panicError) {
+				w.StatusCode = ServerError(nil).StatusCode
+				message = ServerError(nil).DisplayMessage
 				level = LevelError
+			} else {
+				Panicf("Unsupported error type %T", err)
 			}
-		} else if errors.As(err, &panicError) {
-			w.StatusCode = ServerError(nil).StatusCode
-			message = ServerError(nil).DisplayMessage
-			level = LevelError
-		} else {
-			Panicf("Unsupported error type %T", err)
+
+			if Debug {
+				message = err.Error()
+			}
+			ErrorPageHandler(w, message)
 		}
 
-		if Debug {
-			message = err.Error()
-		}
-		ErrorPageHandler(w, message)
+		Logf(level, "[%21s] %7s %s -> %v (%v), %v", r.RemoteAddr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 	}
-
-	Logf(level, "[%21s] %7s %s -> %d (%v), %v", r.Address, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 }
 
 func main() {
@@ -195,7 +200,8 @@ func main() {
 
 	switch BuildMode {
 	default:
-		BuildMode = "Release"
+		Fatalf("Build mode %q is not recognized", BuildMode)
+	case "Release", "Unsafe":
 	case "Debug":
 		Debug = true
 		SetLogLevel(LevelDebug)
@@ -239,14 +245,14 @@ func main() {
 	}
 	defer q.Close()
 
-	_ = q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
+	q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
 
 	signal.Ignore(syscall.Signal(SIGINT), syscall.Signal(SIGTERM))
-	_ = q.AddSignal(SIGINT)
-	_ = q.AddSignal(SIGTERM)
+	q.AddSignal(SIGINT)
+	q.AddSignal(SIGTERM)
 
-	/* TODO(anton2920): fill with current date. */
-	dateBuf := []byte("Thu, 09 May 2024 16:30:39 +0300")
+	ws := make([]HTTPResponse, 32)
+	rs := make([]HTTPRequest, 32)
 
 	var quit bool
 	for !quit {
@@ -268,6 +274,7 @@ func main() {
 						Errorf("Failed to accept new HTTP connection: %v", err)
 						continue
 					}
+					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
 					q.AddHTTPClient(ctx, EventRequestRead|EventRequestWrite, EventTriggerEdge)
 				default: /* ready to serve new HTTP request. */
@@ -281,36 +288,17 @@ func main() {
 						continue
 					}
 
-					if err := HTTPRead(ctx); err != nil {
-						Errorf("Failed to read data from socket: %v", err)
+					n, err := HTTPReadRequests(ctx, rs)
+					if err != nil {
 						HTTPClose(ctx)
 						continue
 					}
 
-					for {
-						w := &ctx.Response
-						r := &ctx.Request
+					Router(ws[:n], rs[:n])
 
-						if err := HTTPParseRequest(ctx, r); err != nil {
-							if err == HTTPParseDone {
-								break
-							}
-
-							w.StatusCode = HTTPStatusBadRequest
-							HTTPAppendResponse(ctx, w, dateBuf)
-							HTTPWrite(ctx)
-							HTTPClose(ctx)
-							break
-						}
-
-						Router(w, r)
-
-						HTTPAppendResponse(ctx, w, dateBuf)
-					}
-
-					if err := HTTPWrite(ctx); err != nil {
-						Errorf("Failed to write HTTP response: %v", err)
+					if _, err := HTTPWriteResponses(ctx, ws[:n]); err != nil {
 						HTTPClose(ctx)
+						continue
 					}
 				}
 			case EventWrite:
@@ -324,9 +312,9 @@ func main() {
 					continue
 				}
 
-				if err := HTTPWrite(ctx); err != nil {
-					Errorf("Failed to write HTTP response: %v", err)
+				if _, err := HTTPWriteResponses(ctx, nil); err != nil {
 					HTTPClose(ctx)
+					continue
 				}
 			case EventSignal:
 				Infof("Received signal %d, exitting...", event.Identifier)

@@ -83,10 +83,10 @@ case $1 in
 		go tool objdump -S -s ^main\. $PROJECT >$PROJECT.s
 		;;
 	profiling)
-		run go build -o $PROJECT -ldflags="-s -w" -ldflags='-X main.BuildMode=Profiling'
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags='-X main.BuildMode=Profiling'
 		;;
 	release)
-		run go build -o $PROJECT -gcflags="-B" -ldflags="-s -w"
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags="-s -w" -ldflags='-X main.BuildMode=Release'
 		;;
 	test)
 		run $0 $VERBOSITYFLAGS vet
@@ -96,6 +96,9 @@ case $1 in
 		CGO_ENABLED=1; export CGO_ENABLED
 		run $0 $VERBOSITYFLAGS vet
 		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l -d=checkptr=0'
+		;;
+	unsafe)
+		run go build -o $PROJECT -gcflags="-B -d=checkptr=0 -d=disablenil" -ldflags="-s -w" -ldflags='-X main.BuildMode=Unsafe'
 		;;
 	vet)
 		run go vet $VERBOSITYFLAGS -asmdecl -assign -atomic -bools -buildtag -cgocall -composites -copylocks -directive -errorsas -framepointer -httpresponse -ifaceassert -loopclosure -lostcancel -nilfunc -printf -shift -sigchanyzer -slog -stdmethods -stringintconv -structtag -testinggoroutine -tests -timeformat -unmarshal -unreachable -unusedresult

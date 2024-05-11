@@ -57,7 +57,7 @@ func NewEventQueue() (*EventQueue, error) {
 
 func (q *EventQueue) AddHTTPClient(ctx *HTTPContext, request EventRequest, trigger EventTrigger) error {
 	q.Pinner.Pin(ctx)
-	return platformQueueAddSocket(q, ctx.Connection, request, trigger, unsafe.Pointer(uintptr(unsafe.Pointer(ctx))|ctx.Check))
+	return platformQueueAddSocket(q, ctx.Connection, request, trigger, unsafe.Pointer(uintptr(unsafe.Pointer(ctx))|uintptr(ctx.Check)))
 }
 
 func (q *EventQueue) AddSocket(sock int32, request EventRequest, trigger EventTrigger, userData unsafe.Pointer) error {

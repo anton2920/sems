@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,7 +22,7 @@ const (
 type HTTPRequest struct {
 	Arena Arena
 
-	Address string
+	RemoteAddr string
 
 	Method string
 	URL    URL
@@ -58,7 +57,8 @@ const (
 	HTTPStatusInternalServerError              = 500
 )
 
-var Status2String = [...]string{
+var HTTPStatus2String = [...]string{
+	0:                               "200",
 	HTTPStatusOK:                    "200",
 	HTTPStatusSeeOther:              "303",
 	HTTPStatusBadRequest:            "400",
@@ -72,7 +72,8 @@ var Status2String = [...]string{
 	HTTPStatusInternalServerError:   "500",
 }
 
-var Status2Reason = [...]string{
+var HTTPStatus2Reason = [...]string{
+	0:                               "OK",
 	HTTPStatusOK:                    "OK",
 	HTTPStatusSeeOther:              "See Other",
 	HTTPStatusBadRequest:            "Bad Request",
@@ -86,11 +87,20 @@ var Status2Reason = [...]string{
 	HTTPStatusInternalServerError:   "Internal Server Error",
 }
 
+type HTTPHeaders struct {
+	Values []Iovec
+
+	OmitDate          bool
+	OmitServer        bool
+	OmitContentType   bool
+	OmitContentLength bool
+}
+
 type HTTPResponse struct {
 	Arena Arena
 
 	StatusCode HTTPStatus
-	Headers    []Iovec
+	Headers    HTTPHeaders
 	Bodies     []Iovec
 }
 
@@ -100,25 +110,21 @@ type HTTPError struct {
 	LogError       error
 }
 
-/* TODO(anton2920): adjust layout to minimize waste on padding. */
 type HTTPContext struct {
+	/* Check must be the same as the last pointer's bit, if context is in use. */
+	Check int32
+
+	Connection    int32
+	ClientAddress string
+
 	RequestParser HTTPRequestParser
 	RequestBuffer CircularBuffer
-	Request       HTTPRequest
 
-	ResponseArena Arena
-	ResponseIovs  []Iovec
-	ResponsePos   int
-	Response      HTTPResponse
+	ResponseIovs []Iovec
+	ResponsePos  int
 
-	Connection          int32
-	ClientAddressBuffer [21]byte
-	ClientAddress       string
-
-	DateBuf [31]byte
-
-	/* Check must be the same as the last pointer's bit, if context is in use. */
-	Check uintptr
+	/* DateRFC822 could be set by client to reduce unnecessary syscalls and date formatting. */
+	DateRFC822 []byte
 }
 
 var (
@@ -126,10 +132,16 @@ var (
 	ForbiddenError    = HTTPError{StatusCode: HTTPStatusForbidden, DisplayMessage: "whoops... Your permissions are insufficient", LogError: NewError("whoops... Your permissions are insufficient")}
 )
 
-var HTTPParseDone = errors.New("no requests left to parse")
+func (s HTTPStatus) String() string {
+	return HTTPStatus2String[s]
+}
 
 func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) {
 	var err error
+
+	rp.State = HTTPStateRequestLine
+	rp.ContentLength = 0
+	rp.Pos = 0
 
 	for rp.State != HTTPStateDone {
 		switch rp.State {
@@ -215,12 +227,7 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 		}
 	}
 
-	n := rp.Pos
-	rp.State = HTTPStateRequestLine
-	rp.ContentLength = 0
-	rp.Pos = 0
-
-	return n, nil
+	return rp.Pos, nil
 }
 
 func (r *HTTPRequest) Cookie(name string) string {
@@ -312,7 +319,7 @@ func (w *HTTPResponse) DelCookie(name string) {
 	n += copy(cookie[n:], name)
 	n += copy(cookie[n:], finisher)
 
-	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+	w.SetHeaderUnsafe("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }
 
 func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
@@ -332,7 +339,7 @@ func (w *HTTPResponse) SetCookie(name, value string, expiry time.Time) {
 	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
 	n += copy(cookie[n:], secure)
 
-	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+	w.SetHeaderUnsafe("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }
 
 /* SetCookieUnsafe is useful for debugging purposes. It's also more compatible with older browsers. */
@@ -351,23 +358,38 @@ func (w *HTTPResponse) SetCookieUnsafe(name, value string, expiry time.Time) {
 	n += copy(cookie[n:], expires)
 	n += SlicePutTmRFC822(cookie[n:], TimeToTm(int(expiry.Unix())))
 
-	w.SetHeader("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
+	w.SetHeaderUnsafe("Set-Cookie", unsafe.String(unsafe.SliceData(cookie), n))
 }
 
-func (w *HTTPResponse) SetHeader(header string, value string) {
-	buffer := w.Arena.NewSlice(len(header) + len(": ") + len(value) + len("\r\n"))
+/* SetHeaderUnsafe sets new 'value' for 'header' relying on that memory lives long enough. */
+func (w *HTTPResponse) SetHeaderUnsafe(header string, value string) {
+	switch header {
+	case "Date":
+		w.Headers.OmitDate = true
+	case "Server":
+		w.Headers.OmitServer = true
+	case "ContentType":
+		w.Headers.OmitContentType = true
+	case "ContentLength":
+		w.Headers.OmitContentLength = true
+	}
 
-	var n int
-	n += copy(buffer[n:], header)
-	n += copy(buffer[n:], ": ")
-	n += copy(buffer[n:], value)
-	n += copy(buffer[n:], "\r\n")
+	for i := 0; i < len(w.Headers.Values); i += 4 {
+		key := w.Headers.Values[i]
+		if header == unsafe.String((*byte)(key.Base), key.Len) {
+			w.Headers.Values[i+2] = IovecForString(value)
+			return
+		}
+	}
 
-	w.Headers = append(w.Headers, IovecForByteSlice(buffer[:n]))
+	w.Headers.Values = append(w.Headers.Values, IovecForString(header), IovecForString(": "), IovecForString(value), IovecForString("\r\n"))
 }
 
 func (w *HTTPResponse) Redirect(path string, code HTTPStatus) {
-	w.SetHeader("Location", path)
+	pathBuf := w.Arena.NewSlice(len(path))
+	copy(pathBuf, path)
+
+	w.SetHeaderUnsafe("Location", unsafe.String(unsafe.SliceData(pathBuf), len(pathBuf)))
 	w.Bodies = w.Bodies[:0]
 	w.StatusCode = code
 }
@@ -377,14 +399,18 @@ func (w *HTTPResponse) RedirectID(prefix string, id int, code HTTPStatus) {
 	n := copy(buffer, prefix)
 	n += SlicePutInt(buffer[n:], id)
 
-	w.SetHeader("Location", unsafe.String(unsafe.SliceData(buffer), n))
+	w.SetHeaderUnsafe("Location", unsafe.String(unsafe.SliceData(buffer), n))
 	w.Bodies = w.Bodies[:0]
 	w.StatusCode = code
 }
 
 func (w *HTTPResponse) Reset() {
 	w.StatusCode = HTTPStatusOK
-	w.Headers = w.Headers[:0]
+	w.Headers.Values = w.Headers.Values[:0]
+	w.Headers.OmitDate = false
+	w.Headers.OmitServer = false
+	w.Headers.OmitContentType = false
+	w.Headers.OmitContentLength = false
 	w.Bodies = w.Bodies[:0]
 	w.Arena.Reset()
 }
@@ -474,42 +500,44 @@ func (e HTTPError) Error() string {
 	return e.LogError.Error()
 }
 
-func NewHTTPContext(c int32, addr SockAddrIn) (*HTTPContext, error) {
+func SlicePutAddress(buffer []byte, addr uint32, port uint16) int {
 	var n int
 
+	n += SlicePutInt(buffer[n:], int((addr&0x000000FF)>>0))
+	buffer[n] = ':'
+	n++
+
+	n += SlicePutInt(buffer[n:], int((addr&0x0000FF00)>>8))
+	buffer[n] = '.'
+	n++
+
+	n += SlicePutInt(buffer[n:], int((addr&0x00FF0000)>>16))
+	buffer[n] = '.'
+	n++
+
+	n += SlicePutInt(buffer[n:], int((addr&0xFF000000)>>24))
+	buffer[n] = '.'
+	n++
+
+	n += SlicePutInt(buffer[n:], int(SwapBytesInWord(port)))
+
+	return n
+}
+
+func NewHTTPContext(c int32, addr SockAddrIn) (*HTTPContext, error) {
 	rb, err := NewCircularBuffer(PageSize)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := new(HTTPContext)
-	ctx.RequestBuffer = rb
-	ctx.ResponseIovs = make([]Iovec, 0, 512)
-
-	ctx.Response.StatusCode = HTTPStatusOK
-	ctx.Response.Headers = make([]Iovec, 0, 32)
-	ctx.Response.Bodies = make([]Iovec, 0, 128)
-
 	ctx.Connection = c
+	ctx.RequestBuffer = rb
+	ctx.ResponseIovs = make([]Iovec, 0, 1024)
 
-	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x000000FF)>>0))
-	ctx.ClientAddressBuffer[n] = ':'
-	n++
-
-	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x0000FF00)>>8))
-	ctx.ClientAddressBuffer[n] = '.'
-	n++
-
-	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0x00FF0000)>>16))
-	ctx.ClientAddressBuffer[n] = '.'
-	n++
-
-	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int((addr.Addr&0xFF000000)>>24))
-	ctx.ClientAddressBuffer[n] = '.'
-	n++
-
-	n += SlicePutInt(ctx.ClientAddressBuffer[n:], int(SwapBytesInWord(addr.Port)))
-	ctx.ClientAddress = unsafe.String(&ctx.ClientAddressBuffer[0], n)
+	buffer := make([]byte, 21)
+	n := SlicePutAddress(buffer, addr.Addr, addr.Port)
+	ctx.ClientAddress = string(buffer[:n])
 
 	return ctx, nil
 }
@@ -523,7 +551,7 @@ func HTTPContextFromEvent(event Event) (*HTTPContext, bool) {
 	check := uptr & 0x1
 	ctx := (*HTTPContext)(unsafe.Pointer(uptr - check))
 
-	return ctx, ctx.Check == check
+	return ctx, ctx.Check == int32(check)
 }
 
 func (ctx *HTTPContext) Reset() {
@@ -556,90 +584,111 @@ func HTTPAccept(l int32) (*HTTPContext, error) {
 	return ctx, nil
 }
 
-func HTTPRead(ctx *HTTPContext) error {
+/* HTTPReadRequests reads data from socket and parses HTTP requests. Returns the number of requests parsed. */
+func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
 	rBuf := &ctx.RequestBuffer
+	if rBuf.RemainingSpace() == 0 {
+		return 0, NewError("no space left in the buffer")
+	}
 	n, err := Read(ctx.Connection, rBuf.RemainingSlice())
 	if err != nil {
-		return err
+		return 0, err
 	}
 	rBuf.Produce(int(n))
-	return nil
-}
 
-func HTTPParseRequest(ctx *HTTPContext, r *HTTPRequest) error {
 	parser := &ctx.RequestParser
-	rBuf := &ctx.RequestBuffer
 
-	r.Address = ctx.ClientAddress
-	r.Reset()
+	var i int
+	for i = 0; i < len(rs); i++ {
+		r := &rs[i]
+		r.RemoteAddr = ctx.ClientAddress
+		r.Reset()
 
-	n, err := parser.Parse(rBuf.UnconsumedString(), r)
-	if err != nil {
-		return err
+		n, err := parser.Parse(rBuf.UnconsumedString(), r)
+		if err != nil {
+			return i, err
+		}
+		if n == 0 {
+			break
+		}
+		rBuf.Consume(n)
 	}
-	rBuf.Consume(n)
 
-	if n == 0 {
-		return HTTPParseDone
-	}
-	return nil
+	return i, nil
 }
 
-func HTTPAppendResponse(ctx *HTTPContext, w *HTTPResponse, dateBuf []byte) {
-	wIovs := &ctx.ResponseIovs
-
+/* HTTPWriteResponses generates HTTP responses and writes them on wire. Returns the number of processed responses. */
+func HTTPWriteResponses(ctx *HTTPContext, ws []HTTPResponse) (int, error) {
+	dateBuf := ctx.DateRFC822
 	if dateBuf == nil {
-		dateBuf = unsafe.Slice(&ctx.DateBuf[0], len(ctx.DateBuf))
+		dateBuf := make([]byte, 31)
 
 		var tp Timespec
 		ClockGettime(CLOCK_REALTIME, &tp)
 		SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
 	}
 
-	var length int
-	for i := 0; i < len(w.Bodies); i++ {
-		length += int(w.Bodies[i].Len)
-	}
+	for i := 0; i < len(ws); i++ {
+		w := &ws[i]
 
-	lengthBuf := w.Arena.NewSlice(20)
-	n := SlicePutInt(lengthBuf, length)
+		ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(HTTPStatus2String[w.StatusCode]), IovecForString(" "), IovecForString(HTTPStatus2Reason[w.StatusCode]), IovecForString("\r\n"))
 
-	*wIovs = append(*wIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(Status2String[w.StatusCode]), IovecForString(" "), IovecForString(Status2Reason[w.StatusCode]), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Headers...)
-	*wIovs = append(*wIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
-	*wIovs = append(*wIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
-	if ContentTypeHTML(w.Bodies) {
-		*wIovs = append(*wIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
-	} else {
-		*wIovs = append(*wIovs, IovecForString("Content-Type: text/plain; charset=\"UTF-8\"\r\n"))
-	}
-	*wIovs = append(*wIovs, IovecForString("\r\n"))
-	*wIovs = append(*wIovs, w.Bodies...)
-
-	w.Reset()
-}
-
-func HTTPWrite(ctx *HTTPContext) error {
-	wIovs := ctx.ResponseIovs
-	if len(wIovs[ctx.ResponsePos:]) > 0 {
-		n, err := Writev(ctx.Connection, wIovs[ctx.ResponsePos:])
-		if err != nil {
-			return err
+		if !w.Headers.OmitDate {
+			ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
 		}
 
-		for (ctx.ResponsePos < len(wIovs)) && (n >= int64(wIovs[ctx.ResponsePos].Len)) {
-			n -= int64(wIovs[ctx.ResponsePos].Len)
+		if !w.Headers.OmitServer {
+			ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Server: gofa/http\r\n"))
+		}
+
+		if !w.Headers.OmitContentType {
+			if ContentTypeHTML(w.Bodies) {
+				ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Content-Type: text/html; charset=\"UTF-8\"\r\n"))
+			} else {
+				ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Content-Type: text/plain; charset=\"UTF-8\"\r\n"))
+			}
+		}
+
+		if !w.Headers.OmitContentLength {
+			var length int
+			for i := 0; i < len(w.Bodies); i++ {
+				length += int(w.Bodies[i].Len)
+			}
+
+			lengthBuf := w.Arena.NewSlice(20)
+			n := SlicePutInt(lengthBuf, length)
+
+			ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Content-Length: "), IovecForByteSlice(lengthBuf[:n]), IovecForString("\r\n"))
+		}
+
+		ctx.ResponseIovs = append(ctx.ResponseIovs, w.Headers.Values...)
+		ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("\r\n"))
+		ctx.ResponseIovs = append(ctx.ResponseIovs, w.Bodies...)
+
+		w.Reset()
+	}
+
+	if len(ctx.ResponseIovs[ctx.ResponsePos:]) > 0 {
+		/* TODO(anton2920): think about using CircularBuffer with 'sendfile(2)' to speed up things. */
+		n, err := Writev(ctx.Connection, ctx.ResponseIovs[ctx.ResponsePos:])
+		if err != nil {
+			return 0, err
+		}
+
+		/* TODO(anton2920): if written less than max, do something with memory that is going to be reused outside. */
+		for (ctx.ResponsePos < len(ctx.ResponseIovs)) && (n >= int64(ctx.ResponseIovs[ctx.ResponsePos].Len)) {
+			n -= int64(ctx.ResponseIovs[ctx.ResponsePos].Len)
 			ctx.ResponsePos++
 		}
-		if ctx.ResponsePos == len(wIovs) {
+		if ctx.ResponsePos == len(ctx.ResponseIovs) {
 			ctx.ResponsePos = 0
 			ctx.ResponseIovs = ctx.ResponseIovs[:0]
 		} else {
-			wIovs[ctx.ResponsePos].Base = unsafe.Add(wIovs[ctx.ResponsePos].Base, n)
-			wIovs[ctx.ResponsePos].Len -= uint64(n)
+			ctx.ResponseIovs[ctx.ResponsePos].Base = unsafe.Add(ctx.ResponseIovs[ctx.ResponsePos].Base, n)
+			ctx.ResponseIovs[ctx.ResponsePos].Len -= uint64(n)
 		}
 	}
-	return nil
+	return len(ws), nil
 }
 
 func HTTPClose(ctx *HTTPContext) error {
