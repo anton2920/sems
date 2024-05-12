@@ -55,6 +55,26 @@ func platformQueueAddSignal(q *EventQueue, sig int32) error {
 	return nil
 }
 
+func platformQueueAddTimer(q *EventQueue, identifier int32, timeout int, measurement EventDurationMeasurement, userData unsafe.Pointer) error {
+	var fflags uint32
+	switch measurement {
+	case Seconds:
+		fflags = NOTE_SECONDS
+	case Milliseconds:
+		fflags = NOTE_MSECONDS
+	case Microseconds:
+		fflags = NOTE_USECONDS
+	case Nanoseconds:
+		fflags = NOTE_NSECONDS
+	}
+
+	event := Kevent_t{Ident: uintptr(identifier), Filter: EVFILT_TIMER, Flags: EV_ADD, Fflags: fflags, Udata: userData}
+	if _, err := Kevent(q.kq, unsafe.Slice(&event, 1), nil, nil); err != nil {
+		return fmt.Errorf("failed to request timer event: %w", err)
+	}
+	return nil
+}
+
 func platformQueueClose(q *EventQueue) error {
 	return Close(q.kq)
 }
@@ -100,6 +120,8 @@ func platformQueueGetEvent(q *EventQueue) (Event, error) {
 		event.Type = EventWrite
 	case EVFILT_SIGNAL:
 		event.Type = EventSignal
+	case EVFILT_TIMER:
+		event.Type = EventTimer
 	}
 
 	return event, nil

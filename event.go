@@ -26,6 +26,16 @@ const (
 	EventTriggerEdge
 )
 
+type EventDurationMeasurement int
+
+const (
+	Seconds EventDurationMeasurement = iota
+	Milliseconds
+	Microseconds
+	Nanoseconds
+	Absolute
+)
+
 type EventType int32
 
 const (
@@ -33,7 +43,10 @@ const (
 	EventRead
 	EventWrite
 	EventSignal
+	EventTimer
 )
+
+const HTTPTimer = 0xDEADEAD
 
 type Event struct {
 	Type       EventType
@@ -66,6 +79,10 @@ func (q *EventQueue) AddSocket(sock int32, request EventRequest, trigger EventTr
 
 func (q *EventQueue) AddSignal(sig int32) error {
 	return platformQueueAddSignal(q, sig)
+}
+
+func (q *EventQueue) AddTimer(identifier int32, duration int, measurement EventDurationMeasurement, userData unsafe.Pointer) error {
+	return platformQueueAddTimer(q, identifier, duration, measurement, userData)
 }
 
 func (q *EventQueue) Close() error {
