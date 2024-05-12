@@ -70,6 +70,7 @@ func NewEventQueue() (*EventQueue, error) {
 
 func (q *EventQueue) AddHTTPClient(ctx *HTTPContext, request EventRequest, trigger EventTrigger) error {
 	q.Pinner.Pin(ctx)
+	ctx.EventQueue = q
 	return platformQueueAddSocket(q, ctx.Connection, request, trigger, unsafe.Pointer(uintptr(unsafe.Pointer(ctx))|uintptr(ctx.Check)))
 }
 
@@ -83,6 +84,10 @@ func (q *EventQueue) AddSignal(sig int32) error {
 
 func (q *EventQueue) AddTimer(identifier int32, duration int, measurement EventDurationMeasurement, userData unsafe.Pointer) error {
 	return platformQueueAddTimer(q, identifier, duration, measurement, userData)
+}
+
+func (q *EventQueue) AppendEvent(event Event) {
+	platformQueueAppendEvent(q, event)
 }
 
 func (q *EventQueue) Close() error {

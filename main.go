@@ -157,7 +157,7 @@ func Router(ws []HTTPResponse, rs []HTTPRequest) {
 
 		if r.URL.Path == "/plaintext" {
 			w.AppendString("Hello, world!\n")
-			return
+			continue
 		}
 
 		level := LevelDebug
@@ -290,7 +290,7 @@ func main() {
 
 					n, err := HTTPReadRequests(ctx, rs)
 					if err != nil {
-						Errorf("Failed to read HTTP request: %v", err)
+						Errorf("Failed to read HTTP requests: %v", err)
 						HTTPClose(ctx)
 						continue
 					}
@@ -298,6 +298,7 @@ func main() {
 					Router(ws[:n], rs[:n])
 
 					if _, err := HTTPWriteResponses(ctx, ws[:n]); err != nil {
+						Errorf("Failed to write HTTP responses: %v", err)
 						HTTPClose(ctx)
 						continue
 					}

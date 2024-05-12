@@ -14,6 +14,9 @@ const (
 	SEEK_END = 2
 
 	PATH_MAX = 1024
+
+	/* From <sys/syslimits.h>. */
+	IOV_MAX = 1024
 )
 
 func ReadFull(fd int32, buf []byte) (int64, error) {

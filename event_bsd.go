@@ -14,6 +14,27 @@ type platformEventQueue struct {
 	tail   int
 }
 
+var keventFilter2Type = [...]EventType{
+	-EVFILT_READ:   EventRead,
+	-EVFILT_WRITE:  EventWrite,
+	-EVFILT_SIGNAL: EventSignal,
+	-EVFILT_TIMER:  EventTimer,
+}
+
+var eventType2Filter = [...]int16{
+	EventRead:   EVFILT_READ,
+	EventWrite:  EVFILT_WRITE,
+	EventSignal: EVFILT_SIGNAL,
+	EventTimer:  EVFILT_TIMER,
+}
+
+var measurement2Note = [...]uint32{
+	Seconds:      NOTE_SECONDS,
+	Milliseconds: NOTE_MSECONDS,
+	Microseconds: NOTE_USECONDS,
+	Nanoseconds:  NOTE_NSECONDS,
+}
+
 func platformNewEventQueue(q *EventQueue) error {
 	kq, err := Kqueue()
 	if err != nil {
@@ -51,28 +72,30 @@ func platformQueueAddSignal(q *EventQueue, sig int32) error {
 	if _, err := Kevent(q.kq, unsafe.Slice(&event, 1), nil, nil); err != nil {
 		return fmt.Errorf("failed to request signal event: %w", err)
 	}
-
 	return nil
 }
 
 func platformQueueAddTimer(q *EventQueue, identifier int32, timeout int, measurement EventDurationMeasurement, userData unsafe.Pointer) error {
-	var fflags uint32
-	switch measurement {
-	case Seconds:
-		fflags = NOTE_SECONDS
-	case Milliseconds:
-		fflags = NOTE_MSECONDS
-	case Microseconds:
-		fflags = NOTE_USECONDS
-	case Nanoseconds:
-		fflags = NOTE_NSECONDS
-	}
-
-	event := Kevent_t{Ident: uintptr(identifier), Filter: EVFILT_TIMER, Flags: EV_ADD, Fflags: fflags, Udata: userData}
+	event := Kevent_t{Ident: uintptr(identifier), Filter: EVFILT_TIMER, Flags: EV_ADD, Fflags: measurement2Note[measurement], Udata: userData}
 	if _, err := Kevent(q.kq, unsafe.Slice(&event, 1), nil, nil); err != nil {
 		return fmt.Errorf("failed to request timer event: %w", err)
 	}
 	return nil
+}
+
+func platformQueueAppendEvent(q *EventQueue, event Event) {
+	if q.tail == len(q.events)-1 {
+		panic("no space left for events")
+	}
+
+	var flags uint16
+	if event.EndOfFile {
+		flags = EV_EOF
+	}
+
+	/* TODO(anton2920): this is actually incomplete for timer events. Rework that later. */
+	q.events[q.tail] = Kevent_t{Ident: uintptr(event.Identifier), Filter: eventType2Filter[event.Type], Flags: flags, Data: event.Available, Udata: event.UserData}
+	q.tail++
 }
 
 func platformQueueClose(q *EventQueue) error {
@@ -107,24 +130,7 @@ func platformQueueGetEvent(q *EventQueue) (Event, error) {
 		return EmptyEvent, fmt.Errorf("requested event for %v failed with code %v", head.Ident, head.Data)
 	}
 
-	var event Event
-	event.Identifier = int32(head.Ident)
-	event.Available = head.Data
-	event.UserData = head.Udata
-	event.EndOfFile = (head.Flags & EV_EOF) == EV_EOF
-
-	switch head.Filter {
-	case EVFILT_READ:
-		event.Type = EventRead
-	case EVFILT_WRITE:
-		event.Type = EventWrite
-	case EVFILT_SIGNAL:
-		event.Type = EventSignal
-	case EVFILT_TIMER:
-		event.Type = EventTimer
-	}
-
-	return event, nil
+	return Event{Type: keventFilter2Type[-head.Filter], Identifier: int32(head.Ident), Available: head.Data, UserData: head.Udata, EndOfFile: (head.Flags & EV_EOF) == EV_EOF}, nil
 }
 
 /* platformQueueGetTime returns current time in nanoseconds. */
@@ -147,6 +153,10 @@ func platformQueueHasEvents(q *EventQueue) bool {
 }
 
 func platformQueuePause(q *EventQueue, duration int64) {
+	if q.head < q.tail {
+		return
+	}
+
 	tp := Timespec{Sec: duration / 1_000_000_000, Nsec: duration % 1_000_000_000}
 	platformQueueRequestNewEvents(q, &tp)
 }

@@ -117,14 +117,18 @@ type HTTPContext struct {
 	Connection    int32
 	ClientAddress string
 
-	RequestParser HTTPRequestParser
-	RequestBuffer CircularBuffer
+	RequestPendingBytes int
+	RequestParser       HTTPRequestParser
+	RequestBuffer       CircularBuffer
 
 	ResponseIovs []Iovec
 	ResponsePos  int
 
 	/* DateRFC822 could be set by client to reduce unnecessary syscalls and date formatting. */
 	DateRFC822 []byte
+
+	/* Optional event queue this client is attached to. */
+	EventQueue *EventQueue
 }
 
 var (
@@ -296,13 +300,6 @@ func (r *HTTPRequest) ParseForm() error {
 	return err
 }
 
-func (r *HTTPRequest) Reset() {
-	r.Headers = r.Headers[:0]
-	r.Body = r.Body[:0]
-	r.Form = r.Form[:0]
-	r.Arena.Reset()
-}
-
 func (w *HTTPResponse) Append(b []byte) {
 	w.Bodies = append(w.Bodies, IovecForByteSlice(b))
 }
@@ -403,17 +400,6 @@ func (w *HTTPResponse) RedirectID(prefix string, id int, code HTTPStatus) {
 	w.SetHeaderUnsafe("Location", unsafe.String(unsafe.SliceData(buffer), n))
 	w.Bodies = w.Bodies[:0]
 	w.StatusCode = code
-}
-
-func (w *HTTPResponse) Reset() {
-	w.StatusCode = HTTPStatusOK
-	w.Headers.Values = w.Headers.Values[:0]
-	w.Headers.OmitDate = false
-	w.Headers.OmitServer = false
-	w.Headers.OmitContentType = false
-	w.Headers.OmitContentLength = false
-	w.Bodies = w.Bodies[:0]
-	w.Arena.Reset()
 }
 
 func (w *HTTPResponse) Write(b []byte) (int, error) {
@@ -551,6 +537,7 @@ func HTTPContextFromEvent(event Event) (*HTTPContext, bool) {
 
 	check := uptr & 0x1
 	ctx := (*HTTPContext)(unsafe.Pointer(uptr - check))
+	ctx.RequestPendingBytes = event.Available
 
 	return ctx, ctx.Check == int32(check)
 }
@@ -587,23 +574,30 @@ func HTTPAccept(l int32) (*HTTPContext, error) {
 
 /* HTTPReadRequests reads data from socket and parses HTTP requests. Returns the number of requests parsed. */
 func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
-	rBuf := &ctx.RequestBuffer
-	if rBuf.RemainingSpace() == 0 {
-		return 0, NewError("no space left in the buffer")
-	}
-	n, err := Read(ctx.Connection, rBuf.RemainingSlice())
-	if err != nil {
-		return 0, err
-	}
-	rBuf.Produce(int(n))
-
+	usesQ := ctx.EventQueue != nil
 	parser := &ctx.RequestParser
+	rBuf := &ctx.RequestBuffer
+
+	if (!usesQ) || (ctx.RequestPendingBytes > 0) {
+		if rBuf.RemainingSpace() == 0 {
+			return 0, NewError("no space left in the buffer")
+		}
+		n, err := Read(ctx.Connection, rBuf.RemainingSlice())
+		if err != nil {
+			return 0, err
+		}
+		rBuf.Produce(int(n))
+		ctx.RequestPendingBytes -= int(n)
+	}
 
 	var i int
 	for i = 0; i < len(rs); i++ {
 		r := &rs[i]
 		r.RemoteAddr = ctx.ClientAddress
-		r.Reset()
+		r.Headers = r.Headers[:0]
+		r.Body = r.Body[:0]
+		r.Form = r.Form[:0]
+		r.Arena.Reset()
 
 		n, err := parser.Parse(rBuf.UnconsumedString(), r)
 		if err != nil {
@@ -614,6 +608,9 @@ func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
 		}
 		rBuf.Consume(n)
 	}
+	if (usesQ) && ((ctx.RequestPendingBytes > 0) || (rBuf.UnconsumedLen() > 0)) {
+		ctx.EventQueue.AppendEvent(Event{Type: EventRead, Identifier: ctx.Connection, Available: ctx.RequestPendingBytes, UserData: unsafe.Pointer(ctx)})
+	}
 
 	return i, nil
 }
@@ -621,13 +618,6 @@ func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
 /* HTTPWriteResponses generates HTTP responses and writes them on wire. Returns the number of processed responses. */
 func HTTPWriteResponses(ctx *HTTPContext, ws []HTTPResponse) (int, error) {
 	dateBuf := ctx.DateRFC822
-	if dateBuf == nil {
-		dateBuf := make([]byte, 31)
-
-		var tp Timespec
-		ClockGettime(CLOCK_REALTIME, &tp)
-		SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
-	}
 
 	for i := 0; i < len(ws); i++ {
 		w := &ws[i]
@@ -635,6 +625,14 @@ func HTTPWriteResponses(ctx *HTTPContext, ws []HTTPResponse) (int, error) {
 		ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("HTTP/1.1"), IovecForString(" "), IovecForString(HTTPStatus2String[w.StatusCode]), IovecForString(" "), IovecForString(HTTPStatus2Reason[w.StatusCode]), IovecForString("\r\n"))
 
 		if !w.Headers.OmitDate {
+			if dateBuf == nil {
+				dateBuf := make([]byte, 31)
+
+				var tp Timespec
+				ClockGettime(CLOCK_REALTIME, &tp)
+				SlicePutTmRFC822(dateBuf, TimeToTm(int(tp.Sec)))
+			}
+
 			ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("Date: "), IovecForByteSlice(dateBuf), IovecForString("\r\n"))
 		}
 
@@ -666,29 +664,42 @@ func HTTPWriteResponses(ctx *HTTPContext, ws []HTTPResponse) (int, error) {
 		ctx.ResponseIovs = append(ctx.ResponseIovs, IovecForString("\r\n"))
 		ctx.ResponseIovs = append(ctx.ResponseIovs, w.Bodies...)
 
-		w.Reset()
+		w.StatusCode = HTTPStatusOK
+		w.Headers.Values = w.Headers.Values[:0]
+		w.Headers.OmitDate = false
+		w.Headers.OmitServer = false
+		w.Headers.OmitContentType = false
+		w.Headers.OmitContentLength = false
+		w.Bodies = w.Bodies[:0]
+		w.Arena.Reset()
 	}
 
-	if len(ctx.ResponseIovs[ctx.ResponsePos:]) > 0 {
-		/* TODO(anton2920): think about using CircularBuffer with 'sendfile(2)' to speed up things. */
-		n, err := Writev(ctx.Connection, ctx.ResponseIovs[ctx.ResponsePos:])
+	/* IOV_MAX is 1024, so F**CK ME for not sending large pipelines with one syscall!!! */
+	for len(ctx.ResponseIovs[ctx.ResponsePos:]) > 0 {
+		end := min(len(ctx.ResponseIovs[ctx.ResponsePos:]), IOV_MAX)
+		n, err := Writev(ctx.Connection, ctx.ResponseIovs[ctx.ResponsePos:ctx.ResponsePos+end])
 		if err != nil {
 			return 0, err
 		}
 
-		/* TODO(anton2920): if written less than max, do something with memory that is going to be reused outside. */
+		prevPos := ctx.ResponsePos
 		for (ctx.ResponsePos < len(ctx.ResponseIovs)) && (n >= int64(ctx.ResponseIovs[ctx.ResponsePos].Len)) {
 			n -= int64(ctx.ResponseIovs[ctx.ResponsePos].Len)
 			ctx.ResponsePos++
 		}
 		if ctx.ResponsePos == len(ctx.ResponseIovs) {
-			ctx.ResponsePos = 0
 			ctx.ResponseIovs = ctx.ResponseIovs[:0]
-		} else {
+			ctx.ResponsePos = 0
+		} else if ctx.ResponsePos-prevPos < end {
+			Panicf("Written %d iovs out of %d", ctx.ResponsePos-prevPos, end)
 			ctx.ResponseIovs[ctx.ResponsePos].Base = unsafe.Add(ctx.ResponseIovs[ctx.ResponsePos].Base, n)
 			ctx.ResponseIovs[ctx.ResponsePos].Len -= uint64(n)
+			break
+
+			/* TODO(anton2920): as an option, gather buffers manually into some local arena. */
 		}
 	}
+
 	return len(ws), nil
 }
 
