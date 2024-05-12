@@ -43,7 +43,11 @@ const (
 	SHUT_WR = 1
 
 	/* From <netinet/in.h>. */
-	INADDR_ANY = 0
+	INADDR_ANY  = 0
+	IPPROTO_TCP = 6
+
+	/* From <netinet/tcp.h>. */
+	TCP_NODELAY = 1
 )
 
 func SwapBytesInWord(x uint16) uint16 {
@@ -116,6 +120,10 @@ func TCPListen(address string, backlog int) (int32, error) {
 
 	var enable int32 = 1
 	if err := Setsockopt(l, SOL_SOCKET, SO_REUSEPORT_LB, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
+		return -1, fmt.Errorf("failed to apply options to socket: %w", err)
+	}
+
+	if err := Setsockopt(l, IPPROTO_TCP, TCP_NODELAY, unsafe.Pointer(&enable), uint32(unsafe.Sizeof(enable))); err != nil {
 		return -1, fmt.Errorf("failed to apply options to socket: %w", err)
 	}
 
