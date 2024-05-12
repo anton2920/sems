@@ -128,7 +128,8 @@ type HTTPContext struct {
 	DateRFC822 []byte
 
 	/* Optional event queue this client is attached to. */
-	EventQueue *EventQueue
+	EventQueue        *EventQueue
+	EventQueueTrigger EventTrigger
 }
 
 var (
@@ -587,7 +588,7 @@ func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
 			return 0, err
 		}
 		rBuf.Produce(int(n))
-		ctx.RequestPendingBytes -= int(n)
+		ctx.RequestPendingBytes = max(0, ctx.RequestPendingBytes-int(n))
 	}
 
 	var i int
@@ -608,7 +609,7 @@ func HTTPReadRequests(ctx *HTTPContext, rs []HTTPRequest) (int, error) {
 		}
 		rBuf.Consume(n)
 	}
-	if (usesQ) && ((ctx.RequestPendingBytes > 0) || (rBuf.UnconsumedLen() > 0)) {
+	if (usesQ) && (((ctx.EventQueueTrigger == EventTriggerEdge) && (ctx.RequestPendingBytes > 0)) || (i == len(rs))) {
 		ctx.EventQueue.AppendEvent(Event{Type: EventRead, Identifier: ctx.Connection, Available: ctx.RequestPendingBytes, UserData: unsafe.Pointer(ctx)})
 	}
 

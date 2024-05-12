@@ -84,6 +84,10 @@ func platformQueueAddTimer(q *EventQueue, identifier int32, timeout int, measure
 }
 
 func platformQueueAppendEvent(q *EventQueue, event Event) {
+	if q.head == q.tail {
+		q.head = 0
+		q.tail = 0
+	}
 	if q.tail == len(q.events)-1 {
 		panic("no space left for events")
 	}
