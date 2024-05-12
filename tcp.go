@@ -6,6 +6,7 @@ import (
 	"unsafe"
 )
 
+/* From <netinet/in.h>. */
 type SockAddrIn struct {
 	Len    uint8
 	Family uint8
