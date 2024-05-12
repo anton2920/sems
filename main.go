@@ -151,7 +151,7 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 }
 
 func Router(ws []HTTPResponse, rs []HTTPRequest) {
-	for i := 0; i < len(rs); i++ {
+	for i := 0; i < min(len(ws), len(rs)); i++ {
 		w := &ws[i]
 		r := &rs[i]
 
@@ -290,6 +290,7 @@ func main() {
 
 					n, err := HTTPReadRequests(ctx, rs)
 					if err != nil {
+						Errorf("Failed to read HTTP request: %v", err)
 						HTTPClose(ctx)
 						continue
 					}

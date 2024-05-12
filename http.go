@@ -172,16 +172,16 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 			if sp == -1 {
 				return 0, fmt.Errorf("expected method, found %q", request[rp.Pos:])
 			}
-
 			r.Method = request[rp.Pos : rp.Pos+sp]
 			rp.Pos += len(r.Method) + 1
+			lineEnd -= len(r.Method) + 1
 
 			uriEnd := FindChar(request[rp.Pos:rp.Pos+lineEnd], ' ')
 			if uriEnd == -1 {
-				return 0, fmt.Errorf("expected space after URI, found %q", request[rp.Pos:rp.Pos+lineEnd])
+				return 0, fmt.Errorf("expected space after URI, found %q", request[rp.Pos:lineEnd])
 			}
 
-			queryStart := FindChar(request[rp.Pos:rp.Pos+lineEnd], '?')
+			queryStart := FindChar(request[rp.Pos:rp.Pos+uriEnd], '?')
 			if queryStart != -1 {
 				r.URL.Path = request[rp.Pos : rp.Pos+queryStart]
 				r.URL.Query = request[rp.Pos+queryStart+1 : rp.Pos+uriEnd]
@@ -190,13 +190,14 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 				r.URL.Query = ""
 			}
 			rp.Pos += len(r.URL.Path) + len(r.URL.Query) + 1
+			lineEnd -= len(r.URL.Path) + len(r.URL.Query) + 1
 
 			if request[rp.Pos:rp.Pos+len("HTTP/")] != "HTTP/" {
 				return 0, fmt.Errorf("expected HTTP version prefix, found %q", request[rp.Pos:rp.Pos+lineEnd])
 			}
 			r.Proto = request[rp.Pos : rp.Pos+lineEnd]
-			rp.Pos += len(r.Proto) + len("\r\n")
 
+			rp.Pos += len(r.Proto) + len("\r\n")
 			rp.State = HTTPStateUnknown
 		case HTTPStateHeader:
 			lineEnd := FindChar(request[rp.Pos:], '\r')
@@ -205,7 +206,6 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 			}
 			header := request[rp.Pos : rp.Pos+lineEnd]
 			r.Headers = append(r.Headers, header)
-			rp.Pos += len(header) + len("\r\n")
 
 			if StringStartsWith(header, "Content-Length: ") {
 				header = header[len("Content-Length: "):]
@@ -215,6 +215,7 @@ func (rp *HTTPRequestParser) Parse(request string, r *HTTPRequest) (int, error) 
 				}
 			}
 
+			rp.Pos += len(header) + len("\r\n")
 			rp.State = HTTPStateUnknown
 		case HTTPStateBody:
 			if len(request[rp.Pos:]) < rp.ContentLength {
