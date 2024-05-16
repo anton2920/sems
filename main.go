@@ -276,9 +276,11 @@ func main() {
 				case l: /* ready to accept new connection. */
 					ctx, err := http.Accept(l, PageSize)
 					if err != nil {
-						log.Errorf("Failed to accept new http. connection: %v", err)
+						log.Errorf("Failed to accept new HTTP connection: %v", err)
 						continue
 					}
+
+					/* TODO(anton2920): remove this. */
 					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
 					http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
