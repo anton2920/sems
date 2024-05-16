@@ -265,12 +265,19 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.UnauthorizedError
 	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
 
 	if err := r.ParseForm(); err != nil {
 		return http.ClientError(err)
+	}
+
+	id := r.Form.Get("ID")
+	userID, err := GetValidIndex(id, DB.Users)
+	if err != nil {
+		return http.ClientError(err)
+	}
+
+	if (session.ID != userID) && (session.ID != AdminID) {
+		return http.ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -285,7 +292,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
+	w.WriteHTMLString(id)
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>First name:<br>`)
