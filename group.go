@@ -2,6 +2,9 @@ package main
 
 import (
 	"time"
+
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
 )
 
 const (
@@ -24,7 +27,7 @@ func UserInGroup(userID int, group *Group) bool {
 	return false
 }
 
-func DisplayGroupLink(w *HTTPResponse, group *Group) {
+func DisplayGroupLink(w *http.Response, group *Group) {
 	w.AppendString(`<a href="/group/`)
 	w.WriteInt(group.ID)
 	w.AppendString(`">`)
@@ -35,23 +38,23 @@ func DisplayGroupLink(w *HTTPResponse, group *Group) {
 	w.AppendString(`</a>`)
 }
 
-func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func GroupPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(r.URL, "/group/")
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Groups)) {
-		return NotFound("group with this ID does not exist")
+		return http.NotFound("group with this ID does not exist")
 	}
 	group := &DB.Groups[id]
 
 	if !UserInGroup(session.ID, group) {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -135,7 +138,7 @@ func GroupPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func DisplayStudentsSelect(w *HTTPResponse, ids []string) {
+func DisplayStudentsSelect(w *http.Response, ids []string) {
 	w.AppendString(`<select name="StudentID" multiple>`)
 	for i := AdminID + 1; i < len(DB.Users); i++ {
 		student := &DB.Users[i]
@@ -161,17 +164,17 @@ func DisplayStudentsSelect(w *HTTPResponse, ids []string) {
 	w.AppendString(`</select>`)
 }
 
-func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -204,17 +207,17 @@ func GroupCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func GroupEditPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -250,22 +253,22 @@ func GroupEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+func GroupCreateHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	name := r.Form.Get("Name")
-	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupCreatePageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
+	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
+		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	sids := r.Form.GetMany("StudentID")
@@ -273,38 +276,38 @@ func GroupCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := GetValidIndex(sids[i], DB.Users)
 		if (err != nil) || (id == AdminID) {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		students[i] = &DB.Users[id]
 	}
 	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: students, CreatedOn: time.Now()})
 
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.Redirect("/", http.StatusSeeOther)
 	return nil
 }
 
-func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
+func GroupEditHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	groupID, err := GetValidIndex(r.Form.Get("ID"), DB.Groups)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
 	name := r.Form.Get("Name")
-	if !StringLengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupEditPageHandler, BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
+	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
+		return WritePage(w, r, GroupEditPageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	sids := r.Form.GetMany("StudentID")
@@ -312,13 +315,13 @@ func GroupEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	for i := 0; i < len(sids); i++ {
 		id, err := GetValidIndex(sids[i], DB.Users)
 		if (err != nil) || (id == AdminID) {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		students = append(students, &DB.Users[id])
 	}
 	group.Name = name
 	group.Students = students
 
-	w.RedirectID("/group/", groupID, HTTPStatusSeeOther)
+	w.RedirectID("/group/", groupID, http.StatusSeeOther)
 	return nil
 }

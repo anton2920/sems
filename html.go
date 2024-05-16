@@ -2,34 +2,15 @@ package main
 
 import (
 	"time"
-	"unsafe"
+
+	"github.com/anton2920/gofa/net/http"
 )
 
-const HTMLHeader = `<!DOCTYPE html>`
-
-var (
-	HTMLQuot = "&#34;" // shorter than "&quot;"
-	HTMLApos = "&#39;" // shorter than "&apos;" and apos was not in HTML until HTML5
-	HTMLAmp  = "&amp;"
-	HTMLLt   = "&lt;"
-	HTMLGt   = "&gt;"
-	HTMLNull = "\uFFFD"
-)
-
-func ContentTypeHTML(bodies []Iovec) bool {
-	if len(bodies) == 0 {
-		return false
-	}
-
-	header := unsafe.String((*byte)(bodies[0].Base), int(bodies[0].Len))
-	return header == HTMLHeader
-}
-
-func DisplayFormattedTime(w *HTTPResponse, t time.Time) {
+func DisplayFormattedTime(w *http.Response, t time.Time) {
 	w.Write(t.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }
 
-func DisplayConstraintInput(w *HTTPResponse, t string, minLength, maxLength int, name, value string, required bool) {
+func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int, name, value string, required bool) {
 	w.AppendString(` <input type="`)
 	w.AppendString(t)
 	w.AppendString(`" minlength="`)
@@ -47,7 +28,7 @@ func DisplayConstraintInput(w *HTTPResponse, t string, minLength, maxLength int,
 	w.AppendString(`>`)
 }
 
-func DisplayConstraintIndexedInput(w *HTTPResponse, t string, minLength, maxLength int, name string, index int, value string, required bool) {
+func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLength int, name string, index int, value string, required bool) {
 	w.AppendString(` <input type="`)
 	w.AppendString(t)
 	w.AppendString(`" minlength="`)
@@ -66,7 +47,7 @@ func DisplayConstraintIndexedInput(w *HTTPResponse, t string, minLength, maxLeng
 	w.AppendString(`>`)
 }
 
-func DisplayConstraintTextarea(w *HTTPResponse, cols, rows string, minLength, maxLength int, name, value string, required bool) {
+func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, maxLength int, name, value string, required bool) {
 	w.AppendString(` <textarea cols="`)
 	w.AppendString(cols)
 	w.AppendString(`" rows="`)
@@ -86,7 +67,7 @@ func DisplayConstraintTextarea(w *HTTPResponse, cols, rows string, minLength, ma
 	w.AppendString(`</textarea>`)
 }
 
-func DisplayIndexedCommand(w *HTTPResponse, index int, command string) {
+func DisplayIndexedCommand(w *http.Response, index int, command string) {
 	w.AppendString(` <input type="submit" name="Command`)
 	w.WriteInt(index)
 	w.AppendString(`" value="`)
@@ -94,7 +75,7 @@ func DisplayIndexedCommand(w *HTTPResponse, index int, command string) {
 	w.AppendString(`" formnovalidate>`)
 }
 
-func DisplayDoublyIndexedCommand(w *HTTPResponse, pindex, sindex int, command string) {
+func DisplayDoublyIndexedCommand(w *http.Response, pindex, sindex int, command string) {
 	w.AppendString(` <input type="submit" name="Command`)
 	w.WriteInt(pindex)
 	w.AppendString(`.`)

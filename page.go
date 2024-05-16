@@ -1,14 +1,16 @@
 package main
 
-func WritePage(w *HTTPResponse, r *HTTPRequest, page func(*HTTPResponse, *HTTPRequest) error, err error) error {
-	e := err.(HTTPError)
+import "github.com/anton2920/gofa/net/http"
+
+func WritePage(w *http.Response, r *http.Request, page func(*http.Response, *http.Request) error, err error) error {
+	e := err.(http.Error)
 	r.Form.Set("Error", e.DisplayMessage)
 	w.StatusCode = e.StatusCode
 	return page(w, r)
 }
 
-func WritePageEx[T any](w *HTTPResponse, r *HTTPRequest, page func(*HTTPResponse, *HTTPRequest, *T) error, extra *T, err error) error {
-	e := err.(HTTPError)
+func WritePageEx[T any](w *http.Response, r *http.Request, page func(*http.Response, *http.Request, *T) error, extra *T, err error) error {
+	e := err.(http.Error)
 	r.Form.Set("Error", e.DisplayMessage)
 	w.StatusCode = e.StatusCode
 	return page(w, r, extra)

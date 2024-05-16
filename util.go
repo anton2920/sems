@@ -3,13 +3,18 @@ package main
 import (
 	"strconv"
 	"unicode/utf8"
+
+	"github.com/anton2920/gofa/errors"
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/net/url"
+	"github.com/anton2920/gofa/strings"
 )
 
-func DisplayShortenedString(w *HTTPResponse, s string, maxVisibleLen int) {
+func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 	if utf8.RuneCountInString(s) < maxVisibleLen {
 		w.WriteHTMLString(s)
 	} else {
-		space := FindCharReverse(s[:maxVisibleLen], ' ')
+		space := strings.FindCharReverse(s[:maxVisibleLen], ' ')
 		if space == -1 {
 			w.WriteHTMLString(s[:maxVisibleLen])
 		} else {
@@ -19,16 +24,16 @@ func DisplayShortenedString(w *HTTPResponse, s string, maxVisibleLen int) {
 	}
 }
 
-func GetIDFromURL(u URL, prefix string) (int, error) {
+func GetIDFromURL(u url.URL, prefix string) (int, error) {
 	path := u.Path
 
-	if !StringStartsWith(path, prefix) {
-		return 0, NotFound("requested page does not exist")
+	if !strings.StartsWith(path, prefix) {
+		return 0, http.NotFound("requested page does not exist")
 	}
 
 	id, err := strconv.Atoi(path[len(prefix):])
 	if err != nil {
-		return 0, BadRequest("invalid ID for '%s'", prefix)
+		return 0, http.BadRequest("invalid ID for '%s'", prefix)
 	}
 
 	return id, nil
@@ -40,7 +45,7 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 	}
 
 	spindex = indicies
-	if i := FindChar(indicies, '.'); i != -1 {
+	if i := strings.FindChar(indicies, '.'); i != -1 {
 		ssindex = indicies[i+1:]
 		sindex, err = strconv.Atoi(ssindex)
 		if err != nil {
@@ -59,7 +64,7 @@ func GetValidIndex[T any](si string, ts []T) (int, error) {
 	}
 
 	if (i < 0) || (i >= len(ts)) {
-		return 0, NewError("slice index out of range")
+		return 0, errors.New("slice index out of range")
 	}
 
 	return i, nil
@@ -86,12 +91,4 @@ func RemoveAtIndex[T any](ts []T, i int) []T {
 		copy(ts[i:], ts[i+1:])
 	}
 	return ts[:len(ts)-1]
-}
-
-func StringLengthInRange(s string, min, max int) bool {
-	return (utf8.RuneCountInString(s) >= min) && (utf8.RuneCountInString(s) <= max)
-}
-
-func StringStartsWith(s, prefix string) bool {
-	return (len(s) >= len(prefix)) && (s[:len(prefix)] == prefix)
 }

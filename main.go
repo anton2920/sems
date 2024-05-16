@@ -1,13 +1,20 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"syscall"
+	sys "syscall"
 	"time"
+
+	"github.com/anton2920/gofa/errors"
+	"github.com/anton2920/gofa/event"
+	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/net/tcp"
+	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/syscall"
 )
 
 const (
@@ -23,14 +30,14 @@ var (
 
 var WorkingDirectory string
 
-func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
+func IdentifierPageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
 	default:
 		switch path {
 		case "/":
 			return IndexPageHandler(w, r)
 		}
-	case StringStartsWith(path, "/course"):
+	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
 		default:
 			return CoursePageHandler(w, r)
@@ -39,7 +46,7 @@ func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/lesson":
 			return CourseLessonPageHandler(w, r)
 		}
-	case StringStartsWith(path, "/group"):
+	case strings.StartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		default:
 			return GroupPageHandler(w, r)
@@ -48,7 +55,7 @@ func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		case "/edit":
 			return GroupEditPageHandler(w, r)
 		}
-	case StringStartsWith(path, "/subject"):
+	case strings.StartsWith(path, "/subject"):
 		path = path[len("/subject"):]
 
 		switch {
@@ -61,7 +68,7 @@ func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 			case "/edit":
 				return SubjectEditPageHandler(w, r)
 			}
-		case StringStartsWith(path, "/lesson"):
+		case strings.StartsWith(path, "/lesson"):
 			switch path[len("/lesson"):] {
 			default:
 				return SubjectLessonPageHandler(w, r)
@@ -69,14 +76,14 @@ func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 				return SubjectLessonEditPageHandler(w, r)
 			}
 		}
-	case StringStartsWith(path, "/submission"):
+	case strings.StartsWith(path, "/submission"):
 		switch path[len("/submission"):] {
 		default:
 			return SubmissionPageHandler(w, r)
 		case "/new":
 			return SubmissionNewPageHandler(w, r)
 		}
-	case StringStartsWith(path, "/user"):
+	case strings.StartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		default:
 			return UserPageHandler(w, r)
@@ -89,31 +96,31 @@ func IdentifierPageRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	}
 
-	return NotFound("requested page does not exist")
+	return http.NotFound("requested page does not exist")
 }
 
-func IdentifierAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
+func IdentifierAPIRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
-	case StringStartsWith(path, "/course"):
+	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
 		case "/delete":
 			return CourseDeleteHandler(w, r)
 		}
-	case StringStartsWith(path, "/group"):
+	case strings.StartsWith(path, "/group"):
 		switch path[len("/group"):] {
 		case "/create":
 			return GroupCreateHandler(w, r)
 		case "/edit":
 			return GroupEditHandler(w, r)
 		}
-	case StringStartsWith(path, "/subject"):
+	case strings.StartsWith(path, "/subject"):
 		switch path[len("/subject"):] {
 		case "/create":
 			return SubjectCreateHandler(w, r)
 		case "/edit":
 			return SubjectEditHandler(w, r)
 		}
-	case StringStartsWith(path, "/user"):
+	case strings.StartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		case "/create":
 			return UserCreateHandler(w, r)
@@ -126,13 +133,13 @@ func IdentifierAPIRequest(w *HTTPResponse, r *HTTPRequest, path string) error {
 		}
 	}
 
-	return NotFound("requested API endpoint does not exist")
+	return http.NotFound("requested API endpoint does not exist")
 }
 
-func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
+func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			err = NewPanicError(p)
+			err = errors.NewPanic(p)
 		}
 	}()
 
@@ -140,17 +147,17 @@ func RouterFunc(w *HTTPResponse, r *HTTPRequest) (err error) {
 	switch {
 	default:
 		return IdentifierPageRequest(w, r, path)
-	case StringStartsWith(path, APIPrefix):
+	case strings.StartsWith(path, APIPrefix):
 		return IdentifierAPIRequest(w, r, path[len(APIPrefix):])
 
 	case path == "/error":
-		return ServerError(NewError("test error"))
+		return http.ServerError(errors.New("test error"))
 	case path == "/panic":
 		panic("test panic")
 	}
 }
 
-func Router(ws []HTTPResponse, rs []HTTPRequest) {
+func Router(ws []http.Response, rs []http.Request) {
 	for i := 0; i < min(len(ws), len(rs)); i++ {
 		w := &ws[i]
 		r := &rs[i]
@@ -160,29 +167,27 @@ func Router(ws []HTTPResponse, rs []HTTPRequest) {
 			continue
 		}
 
-		level := LevelDebug
+		level := log.LevelDebug
 		start := time.Now()
 
 		err := RouterFunc(w, r)
 		if err != nil {
-			var panicError PanicError
-			var httpError HTTPError
 			var message string
 
-			if errors.As(err, &httpError) {
+			if httpError, ok := err.(http.Error); ok {
 				w.StatusCode = httpError.StatusCode
 				message = httpError.DisplayMessage
-				if (w.StatusCode >= HTTPStatusBadRequest) && (w.StatusCode < HTTPStatusInternalServerError) {
-					level = LevelWarn
+				if (w.StatusCode >= http.StatusBadRequest) && (w.StatusCode < http.StatusInternalServerError) {
+					level = log.LevelWarn
 				} else {
-					level = LevelError
+					level = log.LevelError
 				}
-			} else if errors.As(err, &panicError) {
-				w.StatusCode = ServerError(nil).StatusCode
-				message = ServerError(nil).DisplayMessage
-				level = LevelError
+			} else if _, ok := err.(errors.Panic); ok {
+				w.StatusCode = http.ServerError(nil).StatusCode
+				message = http.ServerError(nil).DisplayMessage
+				level = log.LevelError
 			} else {
-				Panicf("Unsupported error type %T", err)
+				log.Panicf("Unsupported error type %T", err)
 			}
 
 			if Debug {
@@ -191,7 +196,7 @@ func Router(ws []HTTPResponse, rs []HTTPRequest) {
 			ErrorPageHandler(w, message)
 		}
 
-		Logf(level, "[%21s] %7s %s -> %v (%v), %v", r.RemoteAddr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
+		log.Logf(level, "[%21s] %7s %s -> %v (%v), %v", r.RemoteAddr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 	}
 }
 
@@ -200,126 +205,126 @@ func main() {
 
 	switch BuildMode {
 	default:
-		Fatalf("Build mode %q is not recognized", BuildMode)
+		log.Fatalf("Build mode %q is not recognized", BuildMode)
 	case "Release", "Unsafe":
 	case "Debug":
 		Debug = true
-		SetLogLevel(LevelDebug)
+		log.SetLogLevel(log.LevelDebug)
 	case "Profiling":
 		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
 		if err != nil {
-			Fatalf("Failed to create a profiling file: %v", err)
+			log.Fatalf("Failed to create a profiling file: %v", err)
 		}
 		defer f.Close()
 
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	Infof("Starting SEMS in %s mode...", BuildMode)
+	log.Infof("Starting SEMS in %s mode...", BuildMode)
 
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
-		Fatalf("Failed to get current working directory: %v", err)
+		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
-		Warnf("Failed to restore sessions from file: %v", err)
+		log.Warnf("Failed to restore sessions from file: %v", err)
 	}
 	if err := RestoreDBFromFile(DBFile); err != nil {
-		Warnf("Failed to restore DB from file: %v", err)
+		log.Warnf("Failed to restore DB from file: %v", err)
 		CreateInitialDB()
 	}
 
 	const address = "0.0.0.0:7072"
-	l, err := TCPListen(address, 128)
+	l, err := tcp.Listen(address, 128)
 	if err != nil {
-		Fatalf("Failed to listen on port: %v", err)
+		log.Fatalf("Failed to listen on port: %v", err)
 	}
-	defer Close(l)
+	defer syscall.Close(l)
 
-	Infof("Listening on %s...", address)
+	log.Infof("Listening on %s...", address)
 
-	q, err := NewEventQueue()
+	q, err := event.NewQueue()
 	if err != nil {
-		Fatalf("Failed to create event queue: %v", err)
+		log.Fatalf("Failed to create event queue: %v", err)
 	}
 	defer q.Close()
 
-	q.AddSocket(l, EventRequestRead, EventTriggerEdge, nil)
+	q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
 
-	signal.Ignore(syscall.Signal(SIGINT), syscall.Signal(SIGTERM))
-	q.AddSignal(SIGINT)
-	q.AddSignal(SIGTERM)
+	signal.Ignore(sys.Signal(syscall.SIGINT), sys.Signal(syscall.SIGTERM))
+	q.AddSignal(syscall.SIGINT)
+	q.AddSignal(syscall.SIGTERM)
 
-	ws := make([]HTTPResponse, 32)
-	rs := make([]HTTPRequest, 32)
+	ws := make([]http.Response, 32)
+	rs := make([]http.Request, 32)
 
 	var quit bool
 	for !quit {
 		for q.HasEvents() {
-			event, err := q.GetEvent()
+			e, err := q.GetEvent()
 			if err != nil {
-				Errorf("Failed to get event: %v", err)
+				log.Errorf("Failed to get event: %v", err)
 				continue
 			}
 
-			switch event.Type {
+			switch e.Type {
 			default:
-				Panicf("Unhandled event: %#v", event)
-			case EventRead:
-				switch event.Identifier {
+				log.Panicf("Unhandled event: %#v", e)
+			case event.Read:
+				switch e.Identifier {
 				case l: /* ready to accept new connection. */
-					ctx, err := HTTPAccept(l)
+					ctx, err := http.Accept(l, PageSize)
 					if err != nil {
-						Errorf("Failed to accept new HTTP connection: %v", err)
+						log.Errorf("Failed to accept new http. connection: %v", err)
 						continue
 					}
 					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
-					q.AddHTTPClient(ctx, EventRequestRead|EventRequestWrite, EventTriggerEdge)
-				default: /* ready to serve new HTTP request. */
-					ctx, ok := HTTPContextFromEvent(event)
+					http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
+				default: /* ready to serve new http. request. */
+					ctx, ok := http.ContextFromEvent(e)
 					if !ok {
 						continue
 					}
 
-					if event.EndOfFile {
-						HTTPClose(ctx)
+					if e.EndOfFile {
+						http.Close(ctx)
 						continue
 					}
 
-					n, err := HTTPReadRequests(ctx, rs)
+					n, err := http.ReadRequests(ctx, rs)
 					if err != nil {
-						Errorf("Failed to read HTTP requests: %v", err)
-						HTTPClose(ctx)
+						log.Errorf("Failed to read http. requests: %v", err)
+						http.Close(ctx)
 						continue
 					}
 
 					Router(ws[:n], rs[:n])
 
-					if _, err := HTTPWriteResponses(ctx, ws[:n]); err != nil {
-						Errorf("Failed to write HTTP responses: %v", err)
-						HTTPClose(ctx)
+					if _, err := http.WriteResponses(ctx, ws[:n]); err != nil {
+						log.Errorf("Failed to write http. responses: %v", err)
+						http.Close(ctx)
 						continue
 					}
 				}
-			case EventWrite:
-				ctx, ok := HTTPContextFromEvent(event)
+			case event.Write:
+				ctx, ok := http.ContextFromEvent(e)
 				if !ok {
 					continue
 				}
 
-				if event.EndOfFile {
-					HTTPClose(ctx)
+				if e.EndOfFile {
+					http.Close(ctx)
 					continue
 				}
 
-				if _, err := HTTPWriteResponses(ctx, nil); err != nil {
-					HTTPClose(ctx)
+				if _, err := http.WriteResponses(ctx, nil); err != nil {
+					http.Close(ctx)
 					continue
 				}
-			case EventSignal:
-				Infof("Received signal %d, exitting...", event.Identifier)
+			case event.Signal:
+				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
 				break
 			}
@@ -330,9 +335,9 @@ func main() {
 	}
 
 	if err := StoreDBToFile(DBFile); err != nil {
-		Warnf("Failed to store DB to file: %v", err)
+		log.Warnf("Failed to store DB to file: %v", err)
 	}
 	if err := StoreSessionsToFile(SessionsFile); err != nil {
-		Warnf("Failed to store sessions to file: %v", err)
+		log.Warnf("Failed to store sessions to file: %v", err)
 	}
 }

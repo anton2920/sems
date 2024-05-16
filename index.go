@@ -1,6 +1,8 @@
 package main
 
-func DisplayIndexAdminPage(w *HTTPResponse, user *User) {
+import "github.com/anton2920/gofa/net/http"
+
+func DisplayIndexAdminPage(w *http.Response, user *User) {
 	w.AppendString(`<h2>Users</h2>`)
 	w.AppendString(`<ul>`)
 	for i := 0; i < min(len(DB.Users), 10); i++ {
@@ -58,7 +60,7 @@ func DisplayIndexAdminPage(w *HTTPResponse, user *User) {
 	w.AppendString(`</form>`)
 }
 
-func DisplayIndexUserPage(w *HTTPResponse, user *User) {
+func DisplayIndexUserPage(w *http.Response, user *User) {
 	userID := user.ID
 
 	var displayGroups bool
@@ -124,7 +126,7 @@ func DisplayIndexUserPage(w *HTTPResponse, user *User) {
 	}
 }
 
-func IndexPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func IndexPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Master's degree</title></head>`)
 	w.AppendString(`<body>`)

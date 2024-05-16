@@ -2,6 +2,9 @@ package main
 
 import (
 	"time"
+
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
 )
 
 type SubjectUserType int
@@ -37,7 +40,7 @@ func WhoIsUserInSubject(userID int, subject *Subject) SubjectUserType {
 	return SubjectUserNone
 }
 
-func DisplaySubjectLink(w *HTTPResponse, subject *Subject) {
+func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	w.AppendString(`<a href="/subject/`)
 	w.WriteInt(subject.ID)
 	w.AppendString(`">`)
@@ -52,24 +55,24 @@ func DisplaySubjectLink(w *HTTPResponse, subject *Subject) {
 	w.AppendString(`</a>`)
 }
 
-func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(r.URL, "/subject/")
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Subjects)) {
-		return NotFound("subject with this ID does not exist")
+		return http.NotFound("subject with this ID does not exist")
 	}
 	subject := &DB.Subjects[id]
 
 	who := WhoIsUserInSubject(session.ID, subject)
 	if who == SubjectUserNone {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -272,17 +275,17 @@ func SubjectPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -313,7 +316,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
-				return ClientError(err)
+				return http.ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -341,7 +344,7 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Groups)
 			if err != nil {
-				return ClientError(err)
+				return http.ClientError(err)
 			}
 			if id == group.ID {
 				w.AppendString(` selected`)
@@ -364,17 +367,17 @@ func SubjectCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -409,7 +412,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
-				return ClientError(err)
+				return http.ClientError(err)
 			}
 			if id == user.ID {
 				w.AppendString(` selected`)
@@ -437,7 +440,7 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Groups)
 			if err != nil {
-				return ClientError(err)
+				return http.ClientError(err)
 			}
 			if id == group.ID {
 				w.AppendString(` selected`)
@@ -460,75 +463,75 @@ func SubjectEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	name := r.Form.Get("Name")
-	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
+	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
+		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
 	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
 	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now()})
 
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.Redirect("/", http.StatusSeeOther)
 	return nil
 }
 
-func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectEditHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 
 	name := r.Form.Get("Name")
-	if !StringLengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
+	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
+		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	teacher := &DB.Users[teacherID]
 
 	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
@@ -536,6 +539,6 @@ func SubjectEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	subject.Teacher = teacher
 	subject.Group = group
 
-	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 	return nil
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/gob"
+
+	"github.com/anton2920/gofa/net/http"
 )
 
 type (
@@ -111,7 +113,7 @@ func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 	}
 }
 
-func DisplayLessonsEditableList(w *HTTPResponse, lessons []*Lesson) {
+func DisplayLessonsEditableList(w *http.Response, lessons []*Lesson) {
 	for i := 0; i < len(lessons); i++ {
 		lesson := lessons[i]
 

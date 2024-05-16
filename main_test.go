@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"testing"
+
+	"github.com/anton2920/gofa/log"
 )
 
 func testWaitForJails() {
@@ -14,7 +16,7 @@ func TestMain(m *testing.M) {
 
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
-		Fatalf("Failed to get current working directory: %v", err)
+		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
 	code := m.Run()

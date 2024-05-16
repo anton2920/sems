@@ -1,30 +1,35 @@
 package main
 
-func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+import (
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
+)
+
+func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 
 	li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	lesson := subject.Lessons[li]
 
 	who := WhoIsUserInSubject(session.ID, subject)
 	if who == SubjectUserNone {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -131,7 +136,7 @@ func SubjectLessonPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *Subject) error {
+func SubjectLessonEditMainPageHandler(w *http.Response, r *http.Request, subject *Subject) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Edit subject lessons</title></head>`)
 	w.AppendString(`<body>`)
@@ -165,10 +170,10 @@ func SubjectLessonEditMainPageHandler(w *HTTPResponse, r *HTTPRequest, subject *
 	return nil
 }
 
-func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Subject, currentPage, k, command string) error {
+func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *Subject, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	switch currentPage {
@@ -180,7 +185,7 @@ func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Su
 			subject.Lessons = RemoveAtIndex(subject.Lessons, pindex)
 		case "Edit":
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			lesson := subject.Lessons[pindex]
 			lesson.Draft = true
@@ -197,15 +202,15 @@ func SubjectLessonEditHandleCommand(w *HTTPResponse, r *HTTPRequest, subject *Su
 	}
 }
 
-func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	user := &DB.Users[session.ID]
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
@@ -213,30 +218,30 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	switch r.Form.Get("Action") {
 	case "create from":
 		courseID, err := GetValidIndex(r.Form.Get("CourseID"), user.Courses)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 
 		LessonsDeepCopy(&subject.Lessons, user.Courses[courseID].Lessons)
 	case "give as is":
 		courseID, err := GetValidIndex(r.Form.Get("CourseID"), user.Courses)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 
 		LessonsDeepCopy(&subject.Lessons, user.Courses[courseID].Lessons)
 
-		w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
+		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 		return nil
 	}
 
@@ -245,7 +250,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 		v := r.Form[i].Values[0]
 
 		/* 'command' is button, which modifies content of a current page. */
-		if StringStartsWith(k, "Command") {
+		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
 			return SubjectLessonEditHandleCommand(w, r, subject, currentPage, k, v)
 		}
@@ -256,7 +261,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Lesson":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 
@@ -264,17 +269,17 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
-			return ClientError(nil)
+			return http.ClientError(nil)
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
@@ -286,17 +291,17 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
-			return ClientError(nil)
+			return http.ClientError(nil)
 		}
 
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
@@ -313,7 +318,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Next":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 
@@ -333,13 +338,13 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Continue":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		switch step := lesson.Steps[si].(type) {
 		default:
@@ -354,7 +359,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Add test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 		lesson.Draft = true
@@ -368,7 +373,7 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	case "Add programming task":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), subject.Lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := subject.Lessons[li]
 		lesson.Draft = true
@@ -384,35 +389,35 @@ func SubjectLessonEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	}
 }
 
-func SubjectLessonEditHandler(w *HTTPResponse, r *HTTPRequest) error {
+func SubjectLessonEditHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
 	if (session.ID != AdminID) && (session.ID != subject.Teacher.ID) {
-		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, ForbiddenError)
+		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.ForbiddenError)
 	}
 
 	if len(subject.Lessons) == 0 {
-		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, BadRequest("create at least one lesson"))
+		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("create at least one lesson"))
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
 		lesson := subject.Lessons[li]
 		if lesson.Draft {
-			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, BadRequest("lesson %d is a draft", li+1))
+			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("lesson %d is a draft", li+1))
 		}
 	}
 
-	w.RedirectID("/subject/", subjectID, HTTPStatusSeeOther)
+	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 	return nil
 }

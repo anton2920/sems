@@ -2,6 +2,12 @@ package main
 
 import (
 	"unsafe"
+
+	"github.com/anton2920/gofa/net/url"
+	"github.com/anton2920/gofa/slices"
+
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
 )
 
 const (
@@ -32,29 +38,29 @@ var CheckKeys = [2][3]string{
 	CheckTypeTest:    {CheckKeyDisplay: "test", CheckKeyInput: "TestInput", CheckKeyOutput: "TestOutput"},
 }
 
-func LessonFillFromRequest(vs URLValues, lesson *Lesson) {
+func LessonFillFromRequest(vs url.Values, lesson *Lesson) {
 	lesson.Name = vs.Get("Name")
 	lesson.Theory = vs.Get("Theory")
 }
 
 func LessonVerify(lesson *Lesson) error {
-	if !StringLengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
-		return BadRequest("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
+	if !strings.LengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
+		return http.BadRequest("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
 	}
 
-	if !StringLengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
-		return BadRequest("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen)
+	if !strings.LengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
+		return http.BadRequest("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen)
 	}
 
 	for si := 0; si < len(lesson.Steps); si++ {
 		switch step := lesson.Steps[si].(type) {
 		case *StepTest:
 			if step.Draft {
-				return BadRequest("test %d is a draft", si+1)
+				return http.BadRequest("test %d is a draft", si+1)
 			}
 		case *StepProgramming:
 			if step.Draft {
-				return BadRequest("programming task %d is a draft", si+1)
+				return http.BadRequest("programming task %d is a draft", si+1)
 			}
 		}
 	}
@@ -62,7 +68,7 @@ func LessonVerify(lesson *Lesson) error {
 	return nil
 }
 
-func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
+func LessonTestFillFromRequest(vs url.Values, test *StepTest) error {
 	test.Name = vs.Get("Name")
 
 	answerKey := make([]byte, 30)
@@ -79,7 +85,7 @@ func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
 		question := &test.Questions[i]
 		question.Name = questions[i]
 
-		n := SlicePutInt(answerKey[len("Answer"):], i)
+		n := slices.PutInt(answerKey[len("Answer"):], i)
 		answers := vs.GetMany(unsafe.String(unsafe.SliceData(answerKey), len("Answer")+n))
 		for j := 0; j < len(answers); j++ {
 			if j >= len(question.Answers) {
@@ -89,7 +95,7 @@ func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
 		}
 		question.Answers = question.Answers[:len(answers)]
 
-		n = SlicePutInt(correctAnswerKey[len("CorrectAnswer"):], i)
+		n = slices.PutInt(correctAnswerKey[len("CorrectAnswer"):], i)
 		correctAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(correctAnswerKey), len("CorrectAnswer")+n))
 		for j := 0; j < len(correctAnswers); j++ {
 			if j >= len(question.CorrectAnswers) {
@@ -99,7 +105,7 @@ func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
 			var err error
 			question.CorrectAnswers[j], err = GetValidIndex(correctAnswers[j], question.Answers)
 			if err != nil {
-				return ClientError(err)
+				return http.ClientError(err)
 			}
 		}
 		question.CorrectAnswers = question.CorrectAnswers[:len(correctAnswers)]
@@ -110,32 +116,32 @@ func LessonTestFillFromRequest(vs URLValues, test *StepTest) error {
 }
 
 func LessonTestVerify(test *StepTest) error {
-	if !StringLengthInRange(test.Name, MinStepNameLen, MaxStepNameLen) {
-		return BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
+	if !strings.LengthInRange(test.Name, MinStepNameLen, MaxStepNameLen) {
+		return http.BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
 	}
 
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 
-		if !StringLengthInRange(question.Name, MinQuestionLen, MaxQuestionLen) {
-			return BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
+		if !strings.LengthInRange(question.Name, MinQuestionLen, MaxQuestionLen) {
+			return http.BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
 		}
 
 		for j := 0; j < len(question.Answers); j++ {
-			if !StringLengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen) {
-				return BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
+			if !strings.LengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen) {
+				return http.BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
 			}
 		}
 
 		if len(question.CorrectAnswers) == 0 {
-			return BadRequest("question %d: select at least one correct answer", i+1)
+			return http.BadRequest("question %d: select at least one correct answer", i+1)
 		}
 	}
 
 	return nil
 }
 
-func LessonProgrammingFillFromRequest(vs URLValues, task *StepProgramming) error {
+func LessonProgrammingFillFromRequest(vs url.Values, task *StepProgramming) error {
 	task.Name = vs.Get("Name")
 	task.Description = vs.Get("Description")
 
@@ -146,7 +152,7 @@ func LessonProgrammingFillFromRequest(vs URLValues, task *StepProgramming) error
 		outputs := vs.GetMany(CheckKeys[i][CheckKeyOutput])
 
 		if len(inputs) != len(outputs) {
-			return ClientError(nil)
+			return http.ClientError(nil)
 		}
 
 		for j := 0; j < len(inputs); j++ {
@@ -166,12 +172,12 @@ func LessonProgrammingFillFromRequest(vs URLValues, task *StepProgramming) error
 }
 
 func LessonProgrammingVerify(task *StepProgramming) error {
-	if !StringLengthInRange(task.Name, MinStepNameLen, MaxStepNameLen) {
-		return BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
+	if !strings.LengthInRange(task.Name, MinStepNameLen, MaxStepNameLen) {
+		return http.BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
 	}
 
-	if !StringLengthInRange(task.Description, MinDescriptionLen, MaxDescriptionLen) {
-		return BadRequest("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen)
+	if !strings.LengthInRange(task.Description, MinDescriptionLen, MaxDescriptionLen) {
+		return http.BadRequest("programming task description length must be between %d and %d characters long", MinDescriptionLen, MaxDescriptionLen)
 	}
 
 	for i := 0; i < len(task.Checks); i++ {
@@ -180,12 +186,12 @@ func LessonProgrammingVerify(task *StepProgramming) error {
 		for j := 0; j < len(checks); j++ {
 			check := &checks[j]
 
-			if !StringLengthInRange(check.Input, MinCheckLen, MaxCheckLen) {
-				return BadRequest("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
+			if !strings.LengthInRange(check.Input, MinCheckLen, MaxCheckLen) {
+				return http.BadRequest("%s %d: input length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 
-			if !StringLengthInRange(check.Output, MinCheckLen, MaxCheckLen) {
-				return BadRequest("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
+			if !strings.LengthInRange(check.Output, MinCheckLen, MaxCheckLen) {
+				return http.BadRequest("%s %d: output length must be between %d and %d characters long", CheckKeys[i][CheckKeyDisplay], j+1, MinCheckLen, MaxCheckLen)
 			}
 		}
 	}
@@ -193,7 +199,7 @@ func LessonProgrammingVerify(task *StepProgramming) error {
 	return nil
 }
 
-func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error {
+func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Create lesson</title></head>`)
 	w.AppendString(`<body>`)
@@ -290,7 +296,7 @@ func LessonAddPageHandler(w *HTTPResponse, r *HTTPRequest, lesson *Lesson) error
 	return nil
 }
 
-func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) error {
+func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Test</title></head>`)
 	w.AppendString(`<body>`)
@@ -414,7 +420,7 @@ func LessonAddTestPageHandler(w *HTTPResponse, r *HTTPRequest, test *StepTest) e
 	return nil
 }
 
-func LessonAddProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, checkType CheckType) {
+func LessonAddProgrammingDisplayChecks(w *http.Response, task *StepProgramming, checkType CheckType) {
 	checks := task.Checks[checkType]
 
 	w.AppendString(`<ol>`)
@@ -446,7 +452,7 @@ func LessonAddProgrammingDisplayChecks(w *HTTPResponse, task *StepProgramming, c
 	w.AppendString(`</ol>`)
 }
 
-func LessonAddProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *StepProgramming) error {
+func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *StepProgramming) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Programming task</title></head>`)
 	w.AppendString(`<body>`)
@@ -503,19 +509,19 @@ func LessonAddProgrammingPageHandler(w *HTTPResponse, r *HTTPRequest, task *Step
 	return nil
 }
 
-func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson, currentPage, k, command string) error {
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	switch currentPage {
 	default:
-		return ClientError(nil)
+		return http.ClientError(nil)
 	case "Lesson":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := lessons[li]
 
@@ -524,7 +530,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			lesson.Steps = RemoveAtIndex(lesson.Steps, pindex)
 		case "Edit":
 			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			step := lesson.Steps[pindex]
 
@@ -549,38 +555,38 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		test, ok := lesson.Steps[si].(*StepTest)
 		if !ok {
-			return ClientError(nil)
+			return http.ClientError(nil)
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 
 		switch command {
 		case "Add another answer":
 			if (pindex < 0) || (pindex >= len(test.Questions)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			question := &test.Questions[pindex]
 			question.Answers = append(question.Answers, "")
 		case "-": /* remove answer */
 			if (pindex < 0) || (pindex >= len(test.Questions)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			question := &test.Questions[pindex]
 
 			if (sindex < 0) || (sindex >= len(question.Answers)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			question.Answers = RemoveAtIndex(question.Answers, sindex)
 
@@ -601,7 +607,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 				MoveUp(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
-					return ClientError(nil)
+					return http.ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
@@ -627,7 +633,7 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 				MoveDown(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
-					return ClientError(nil)
+					return http.ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
@@ -655,21 +661,21 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		lesson := lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
 		if err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 		task, ok := lesson.Steps[si].(*StepProgramming)
 		if !ok {
-			return ClientError(nil)
+			return http.ClientError(nil)
 		}
 
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
-			return ClientError(err)
+			return http.ClientError(err)
 		}
 
 		switch command {
@@ -679,17 +685,17 @@ func LessonAddHandleCommand(w *HTTPResponse, r *HTTPRequest, lessons []*Lesson, 
 			task.Checks[CheckTypeTest] = append(task.Checks[CheckTypeTest], Check{})
 		case "-":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			task.Checks[sindex] = RemoveAtIndex(task.Checks[sindex], pindex)
 		case "↑", "^|":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			MoveUp(task.Checks[sindex], pindex)
 		case "↓", "|v":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
-				return ClientError(nil)
+				return http.ClientError(nil)
 			}
 			MoveDown(task.Checks[sindex], pindex)
 		}

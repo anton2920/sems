@@ -6,6 +6,10 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/anton2920/gofa/errors"
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/syscall"
 )
 
 type Session struct {
@@ -28,7 +32,7 @@ func GetSessionFromToken(token string) (*Session, error) {
 	session, ok := Sessions[token]
 	SessionsLock.RUnlock()
 	if !ok {
-		return nil, NewError("session for this token does not exist")
+		return nil, errors.New("session for this token does not exist")
 	}
 
 	session.Lock()
@@ -39,14 +43,14 @@ func GetSessionFromToken(token string) (*Session, error) {
 		SessionsLock.Lock()
 		delete(Sessions, token)
 		SessionsLock.Unlock()
-		return nil, NewError("session for this token has expired")
+		return nil, errors.New("session for this token has expired")
 	}
 
 	session.Expiry = now.Add(OneWeek)
 	return session, nil
 }
 
-func GetSessionFromRequest(r *HTTPRequest) (*Session, error) {
+func GetSessionFromRequest(r *http.Request) (*Session, error) {
 	return GetSessionFromToken(r.Cookie("Token"))
 }
 
@@ -57,7 +61,7 @@ func GenerateSessionToken() (string, error) {
 	/* NOTE(anton2920): see encoding/base64/base64.go:294. */
 	token := make([]byte, (n+2)/3*4)
 
-	if _, err := Getrandom(buffer, 0); err != nil {
+	if _, err := syscall.Getrandom(buffer, 0); err != nil {
 		return "", err
 	}
 

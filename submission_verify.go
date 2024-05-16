@@ -8,9 +8,13 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-	"syscall"
+	sys "syscall"
 	"time"
 	"unsafe"
+
+	"github.com/anton2920/gofa/jail"
+	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/syscall"
 )
 
 var SubmissionVerifyChannel = make(chan *Submission)
@@ -52,10 +56,10 @@ func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
 	return nil
 }
 
-func SlicePutProgrammingSource(buffer []byte, jail Jail, lang *ProgrammingLanguage) int {
+func PutProgrammingSource(buffer []byte, j jail.Jail, lang *ProgrammingLanguage) int {
 	var n int
 
-	n += SlicePutJailEnv(buffer[n:], int(jail.Index))
+	n += jail.PutEnv(buffer[n:], j)
 
 	buffer[n] = '/'
 	n++
@@ -65,10 +69,10 @@ func SlicePutProgrammingSource(buffer []byte, jail Jail, lang *ProgrammingLangua
 	return n
 }
 
-func SlicePutProgrammingExecutable(buffer []byte, jail Jail, lang *ProgrammingLanguage) int {
+func PutProgrammingExecutable(buffer []byte, j jail.Jail, lang *ProgrammingLanguage) int {
 	var n int
 
-	n += SlicePutJailEnv(buffer[n:], int(jail.Index))
+	n += jail.PutEnv(buffer[n:], j)
 
 	buffer[n] = '/'
 	n++
@@ -78,49 +82,49 @@ func SlicePutProgrammingExecutable(buffer []byte, jail Jail, lang *ProgrammingLa
 	return n
 }
 
-func SubmissionVerifyProgrammingCreateSource(jail Jail, lang *ProgrammingLanguage, solution string) error {
-	buffer := make([]byte, PATH_MAX)
-	n := SlicePutProgrammingSource(buffer, jail, lang)
+func SubmissionVerifyProgrammingCreateSource(j jail.Jail, lang *ProgrammingLanguage, solution string) error {
+	buffer := make([]byte, syscall.PATH_MAX)
+	n := PutProgrammingSource(buffer, j, lang)
 	source := unsafe.String(unsafe.SliceData(buffer), n)
 
-	fd, err := Open(source, O_WRONLY|O_CREAT, 0644)
+	fd, err := syscall.Open(source, syscall.O_WRONLY|syscall.O_CREAT, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create source file: %w", err)
 	}
 
-	if _, err := Write(fd, unsafe.Slice(unsafe.StringData(solution), len(solution))); err != nil {
-		if err := Close(fd); err != nil {
-			Warnf("Failed to close source file: %v", err)
+	if _, err := syscall.Write(fd, unsafe.Slice(unsafe.StringData(solution), len(solution))); err != nil {
+		if err := syscall.Close(fd); err != nil {
+			log.Warnf("Failed to close source file: %v", err)
 		}
 		return fmt.Errorf("failed to write data to a source file: %w", err)
 	}
 
-	if err := Close(fd); err != nil {
-		Warnf("Failed to close a source file: %v", err)
+	if err := syscall.Close(fd); err != nil {
+		log.Warnf("Failed to close a source file: %v", err)
 	}
 
 	return nil
 }
 
-func SubmissionVerifyProgrammingCleanup(jail Jail, lang *ProgrammingLanguage) error {
+func SubmissionVerifyProgrammingCleanup(j jail.Jail, lang *ProgrammingLanguage) error {
 	var err error
 
-	buffer := make([]byte, PATH_MAX)
-	n := SlicePutProgrammingSource(buffer, jail, lang)
+	buffer := make([]byte, syscall.PATH_MAX)
+	n := PutProgrammingSource(buffer, j, lang)
 	source := unsafe.String(unsafe.SliceData(buffer), n)
 
-	if err1 := Unlink(source); err1 != nil {
-		if err1.(ErrorWithCode).Code != ENOENT {
+	if err1 := syscall.Unlink(source); err1 != nil {
+		if err1.(syscall.Error).Errno != syscall.ENOENT {
 			err = errors.Join(err, fmt.Errorf("failed to remove source file: %w", err1))
 		}
 	}
 
 	if lang.Executable != "" {
-		n = SlicePutProgrammingExecutable(buffer, jail, lang)
+		n = PutProgrammingExecutable(buffer, j, lang)
 		executable := unsafe.String(unsafe.SliceData(buffer), n)
 
-		if err1 := Unlink(executable); err1 != nil {
-			if err1.(ErrorWithCode).Code != ENOENT {
+		if err1 := syscall.Unlink(executable); err1 != nil {
+			if err1.(syscall.Error).Errno != syscall.ENOENT {
 				err = errors.Join(err, fmt.Errorf("failed to remove executable: %w", err1))
 			}
 		}
@@ -130,7 +134,7 @@ func SubmissionVerifyProgrammingCleanup(jail Jail, lang *ProgrammingLanguage) er
 }
 
 /* TODO(anton2920): rewrite without using standard library. */
-func SubmissionVerifyProgrammingCompile(jail Jail, lang *ProgrammingLanguage) error {
+func SubmissionVerifyProgrammingCompile(j jail.Jail, lang *ProgrammingLanguage) error {
 	var buffer bytes.Buffer
 
 	const timeout = 5
@@ -139,9 +143,9 @@ func SubmissionVerifyProgrammingCompile(jail Jail, lang *ProgrammingLanguage) er
 
 	cmd := exec.CommandContext(ctx, lang.Compiler, append(lang.CompilerArgs, lang.SourceFile)...)
 	cmd.Dir = "/tmp"
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Jail: int(jail.ID)}
+	cmd.SysProcAttr = &sys.SysProcAttr{Setsid: true, Jail: int(j.ID)}
 	cmd.Cancel = func() error {
-		return Kill(int32(-cmd.Process.Pid), SIGKILL)
+		return syscall.Kill(int32(-cmd.Process.Pid), syscall.SIGKILL)
 	}
 	cmd.Stdout = &buffer
 	cmd.Stderr = &buffer
@@ -156,7 +160,7 @@ func SubmissionVerifyProgrammingCompile(jail Jail, lang *ProgrammingLanguage) er
 	return nil
 }
 
-func SubmissionVerifyProgrammingRun(jail Jail, lang *ProgrammingLanguage, input string, output *bytes.Buffer) error {
+func SubmissionVerifyProgrammingRun(j jail.Jail, lang *ProgrammingLanguage, input string, output *bytes.Buffer) error {
 	var exe string
 	var args []string
 	if lang.Executable != "" {
@@ -172,9 +176,9 @@ func SubmissionVerifyProgrammingRun(jail Jail, lang *ProgrammingLanguage, input 
 
 	cmd := exec.CommandContext(ctx, exe, args...)
 	cmd.Dir = "/tmp"
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Jail: int(jail.ID)}
+	cmd.SysProcAttr = &sys.SysProcAttr{Setsid: true, Jail: int(j.ID)}
 	cmd.Cancel = func() error {
-		return Kill(int32(-cmd.Process.Pid), SIGKILL)
+		return syscall.Kill(int32(-cmd.Process.Pid), syscall.SIGKILL)
 	}
 	cmd.Stdout = output
 	cmd.Stderr = output
@@ -198,7 +202,7 @@ func SubmissionVerifyProgrammingRun(jail Jail, lang *ProgrammingLanguage, input 
 	return nil
 }
 
-func SubmissionVerifyProgrammingCheck(jail Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
+func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
 	var output bytes.Buffer
 
 	task := submittedTask.Task
@@ -211,7 +215,7 @@ func SubmissionVerifyProgrammingCheck(jail Jail, submittedTask *SubmittedProgram
 
 		check := &task.Checks[checkType][i]
 		input := strings.Replace(strings.TrimSpace(check.Input), "\r\n", "\n", -1)
-		if err := SubmissionVerifyProgrammingRun(jail, lang, input, &output); err != nil {
+		if err := SubmissionVerifyProgrammingRun(j, lang, input, &output); err != nil {
 			messages[i] = err.Error()
 			continue
 		}
@@ -233,36 +237,36 @@ func SubmissionVerifyProgrammingCheck(jail Jail, submittedTask *SubmittedProgram
 func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType CheckType) error {
 	lang := submittedTask.Language
 
-	jail, err := NewJail()
+	j, err := jail.New("/usr/local/jails/templates/workster", WorkingDirectory)
 	if err != nil {
 		return err
 	}
-	defer func(jail Jail) {
-		if err := RemoveJail(jail); err != nil {
-			Warnf("Failed to remove jail: %v", err)
+	defer func(j jail.Jail) {
+		if err := jail.Remove(j); err != nil {
+			log.Warnf("Failed to remove jail: %v", err)
 		}
-	}(jail)
+	}(j)
 
-	if err := SubmissionVerifyProgrammingCreateSource(jail, lang, submittedTask.Solution); err != nil {
+	if err := SubmissionVerifyProgrammingCreateSource(j, lang, submittedTask.Solution); err != nil {
 		return err
 	}
-	defer func(jail Jail, lang *ProgrammingLanguage) {
-		if err := SubmissionVerifyProgrammingCleanup(jail, lang); err != nil {
-			Warnf("Failed to cleanup jail environment: %v", err)
+	defer func(j jail.Jail, lang *ProgrammingLanguage) {
+		if err := SubmissionVerifyProgrammingCleanup(j, lang); err != nil {
+			log.Warnf("Failed to cleanup jail environment: %v", err)
 		}
-	}(jail, lang)
+	}(j, lang)
 
 	if lang.Compiler != "" {
-		if err := SubmissionVerifyProgrammingCompile(jail, lang); err != nil {
+		if err := SubmissionVerifyProgrammingCompile(j, lang); err != nil {
 			return err
 		}
 	}
 
-	if err := ProtectJail(jail); err != nil {
+	if err := jail.Protect(j); err != nil {
 		return err
 	}
 
-	SubmissionVerifyProgrammingCheck(jail, submittedTask, checkType)
+	SubmissionVerifyProgrammingCheck(j, submittedTask, checkType)
 	return nil
 }
 

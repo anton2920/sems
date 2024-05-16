@@ -5,6 +5,10 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
 )
 
 const (
@@ -16,20 +20,20 @@ const (
 )
 
 func UserNameValid(name string) error {
-	if !StringLengthInRange(name, MinUserNameLen, MaxUserNameLen) {
-		return BadRequest("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen)
+	if !strings.LengthInRange(name, MinUserNameLen, MaxUserNameLen) {
+		return http.BadRequest("length of the name must be between %d and %d characters", MinUserNameLen, MaxUserNameLen)
 	}
 
 	/* Fist character must be a letter. */
 	r, nbytes := utf8.DecodeRuneInString(name)
 	if !unicode.IsLetter(r) {
-		return BadRequest("first character of the name must be a letter")
+		return http.BadRequest("first character of the name must be a letter")
 	}
 
 	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
 	for _, r := range name[nbytes:] {
 		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
-			return BadRequest("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
+			return http.BadRequest("second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes")
 		}
 	}
 
@@ -48,7 +52,7 @@ func GetUserByEmail(email string) *User {
 	return nil
 }
 
-func DisplayUserLink(w *HTTPResponse, user *User) {
+func DisplayUserLink(w *http.Response, user *User) {
 	w.AppendString(`<a href="/user/`)
 	w.WriteInt(user.ID)
 	w.AppendString(`">`)
@@ -61,18 +65,18 @@ func DisplayUserLink(w *HTTPResponse, user *User) {
 	w.AppendString(`</a>`)
 }
 
-func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(r.URL, "/user/")
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 	if (id < 0) || (id >= len(DB.Users)) {
-		return NotFound("user with this ID does not exist")
+		return http.NotFound("user with this ID does not exist")
 	}
 	user := &DB.Users[id]
 
@@ -199,13 +203,13 @@ func UserPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -256,17 +260,17 @@ func UserCreatePageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -321,7 +325,7 @@ func UserEditPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserSigninPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Sign in</title></head>`)
 	w.AppendString(`<body>`)
@@ -355,17 +359,17 @@ func UserSigninPageHandler(w *HTTPResponse, r *HTTPRequest) error {
 	return nil
 }
 
-func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserCreateHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -380,47 +384,47 @@ func UserCreateHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserCreatePageHandler, BadRequest("provided email is not valid"))
+		return WritePage(w, r, UserCreatePageHandler, http.BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
-	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserCreatePageHandler, BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
+	if !strings.LengthInRange(password, MinPasswordLen, MaxPasswordLen) {
+		return WritePage(w, r, UserCreatePageHandler, http.BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserCreatePageHandler, BadRequest("passwords do not match each other"))
+		return WritePage(w, r, UserCreatePageHandler, http.BadRequest("passwords do not match each other"))
 	}
 
 	if GetUserByEmail(email) != nil {
-		return WritePage(w, r, UserCreatePageHandler, Conflict("user with this email already exists"))
+		return WritePage(w, r, UserCreatePageHandler, http.Conflict("user with this email already exists"))
 	}
 
 	DB.Users = append(DB.Users, User{ID: len(DB.Users), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
 
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.Redirect("/", http.StatusSeeOther)
 	return nil
 
 }
 
-func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserEditHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	userID, err := GetValidIndex(r.Form.Get("ID"), DB.Users)
 	if err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	if (session.ID != userID) && (session.ID != AdminID) {
-		return ForbiddenError
+		return http.ForbiddenError
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -435,22 +439,22 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
+		return WritePage(w, r, UserEditPageHandler, http.BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
-	if !StringLengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserEditPageHandler, BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
+	if !strings.LengthInRange(password, MinPasswordLen, MaxPasswordLen) {
+		return WritePage(w, r, UserEditPageHandler, http.BadRequest("password length must be between %d and %d characters long", MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserEditPageHandler, BadRequest("passwords do not match each other"))
+		return WritePage(w, r, UserEditPageHandler, http.BadRequest("passwords do not match each other"))
 	}
 
 	user := GetUserByEmail(email)
 	if (user != nil) && (user.ID != userID) {
-		return WritePage(w, r, UserEditPageHandler, Conflict("user with this email already exists"))
+		return WritePage(w, r, UserEditPageHandler, http.Conflict("user with this email already exists"))
 	}
 
 	user = &DB.Users[userID]
@@ -459,34 +463,35 @@ func UserEditHandler(w *HTTPResponse, r *HTTPRequest) error {
 	user.Email = email
 	user.Password = password
 
-	w.RedirectID("/user/", userID, HTTPStatusSeeOther)
+	w.RedirectID("/user/", userID, http.StatusSeeOther)
 	return nil
 }
 
-func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserSigninHandler(w *http.Response, r *http.Request) error {
 	if err := r.ParseForm(); err != nil {
-		return ClientError(err)
+		return http.ClientError(err)
 	}
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, BadRequest("provided email is not valid"))
+		return WritePage(w, r, UserEditPageHandler, http.BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 
 	user := GetUserByEmail(email)
 	if user == nil {
-		return WritePage(w, r, UserSigninPageHandler, NotFound("user with this email does not exist"))
+		return WritePage(w, r, UserSigninPageHandler, http.NotFound("user with this email does not exist"))
 	}
 
 	password := r.Form.Get("Password")
+	log.Infof("Pass: %s", password)
 	if user.Password != password {
-		return WritePage(w, r, UserSigninPageHandler, Conflict("provided password is incorrect"))
+		return WritePage(w, r, UserSigninPageHandler, http.Conflict("provided password is incorrect"))
 	}
 
 	token, err := GenerateSessionToken()
 	if err != nil {
-		return ServerError(err)
+		return http.ServerError(err)
 	}
 	expiry := time.Now().Add(OneWeek)
 
@@ -498,22 +503,22 @@ func UserSigninHandler(w *HTTPResponse, r *HTTPRequest) error {
 	SessionsLock.Unlock()
 
 	if Debug {
-		w.SetCookieUnsafe("Token", token, expiry)
+		w.SetCookieUnsafe("Token", token, expiry.Unix())
 	} else {
-		w.SetCookie("Token", token, expiry)
+		w.SetCookie("Token", token, expiry.Unix())
 	}
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.Redirect("/", http.StatusSeeOther)
 	return nil
 }
 
-func UserSignoutHandler(w *HTTPResponse, r *HTTPRequest) error {
+func UserSignoutHandler(w *http.Response, r *http.Request) error {
 	token := r.Cookie("Token")
 	if token == "" {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	if _, err := GetSessionFromToken(token); err != nil {
-		return UnauthorizedError
+		return http.UnauthorizedError
 	}
 
 	SessionsLock.Lock()
@@ -521,6 +526,6 @@ func UserSignoutHandler(w *HTTPResponse, r *HTTPRequest) error {
 	SessionsLock.Unlock()
 
 	w.DelCookie("Token")
-	w.Redirect("/", HTTPStatusSeeOther)
+	w.Redirect("/", http.StatusSeeOther)
 	return nil
 }
