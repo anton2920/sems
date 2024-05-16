@@ -30,7 +30,7 @@ var (
 
 var WorkingDirectory string
 
-func IdentifierPageRequest(w *http.Response, r *http.Request, path string) error {
+func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
 	default:
 		switch path {
@@ -99,7 +99,7 @@ func IdentifierPageRequest(w *http.Response, r *http.Request, path string) error
 	return http.NotFound("requested page does not exist")
 }
 
-func IdentifierAPIRequest(w *http.Response, r *http.Request, path string) error {
+func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
 	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
@@ -146,9 +146,9 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	path := r.URL.Path
 	switch {
 	default:
-		return IdentifierPageRequest(w, r, path)
+		return HandlePageRequest(w, r, path)
 	case strings.StartsWith(path, APIPrefix):
-		return IdentifierAPIRequest(w, r, path[len(APIPrefix):])
+		return HandleAPIRequest(w, r, path[len(APIPrefix):])
 
 	case path == "/error":
 		return http.ServerError(errors.New("test error"))
