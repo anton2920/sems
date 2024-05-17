@@ -284,7 +284,7 @@ func main() {
 					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
 					http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
-				default: /* ready to serve new http. request. */
+				default: /* ready to serve new HTTP request. */
 					ctx, ok := http.ContextFromEvent(e)
 					if !ok {
 						continue
@@ -297,7 +297,7 @@ func main() {
 
 					n, err := http.ReadRequests(ctx, rs)
 					if err != nil {
-						log.Errorf("Failed to read http. requests: %v", err)
+						log.Errorf("Failed to read HTTP requests: %v", err)
 						http.Close(ctx)
 						continue
 					}
@@ -305,7 +305,7 @@ func main() {
 					Router(ws[:n], rs[:n])
 
 					if _, err := http.WriteResponses(ctx, ws[:n]); err != nil {
-						log.Errorf("Failed to write http. responses: %v", err)
+						log.Errorf("Failed to write HTTP responses: %v", err)
 						http.Close(ctx)
 						continue
 					}
