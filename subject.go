@@ -7,6 +7,16 @@ import (
 	"github.com/anton2920/gofa/strings"
 )
 
+type Subject struct {
+	ID        int
+	Name      string
+	Teacher   *User
+	Group     *Group
+	CreatedOn time.Time
+
+	Lessons []*Lesson
+}
+
 type SubjectUserType int
 
 const (

@@ -7,6 +7,13 @@ import (
 	"github.com/anton2920/gofa/strings"
 )
 
+type Group struct {
+	ID        int
+	Name      string
+	Students  []*User
+	CreatedOn time.Time
+}
+
 const (
 	MinGroupNameLen = 5
 	MaxGroupNameLen = 15

@@ -7,36 +7,6 @@ import (
 	"time"
 )
 
-type (
-	Group struct {
-		ID        int
-		Name      string
-		Students  []*User
-		CreatedOn time.Time
-	}
-
-	Subject struct {
-		ID        int
-		Name      string
-		Teacher   *User
-		Group     *Group
-		CreatedOn time.Time
-
-		Lessons []*Lesson
-	}
-
-	User struct {
-		ID        int
-		FirstName string
-		LastName  string
-		Email     string
-		Password  string
-		CreatedOn time.Time
-
-		Courses []*Course
-	}
-)
-
 const AdminID = 0
 
 const DBFile = "db.gob"

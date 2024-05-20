@@ -10,6 +10,17 @@ import (
 	"github.com/anton2920/gofa/strings"
 )
 
+type User struct {
+	ID        int
+	FirstName string
+	LastName  string
+	Email     string
+	Password  string
+	CreatedOn time.Time
+
+	Courses []*Course
+}
+
 const (
 	MinUserNameLen = 1
 	MaxUserNameLen = 45
