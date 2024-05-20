@@ -6,7 +6,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 )
@@ -491,7 +490,6 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 	}
 
 	password := r.Form.Get("Password")
-	log.Infof("Pass: %s", password)
 	if user.Password != password {
 		return WritePage(w, r, UserSigninPageHandler, http.Conflict("provided password is incorrect"))
 	}
