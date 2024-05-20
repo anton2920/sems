@@ -42,6 +42,7 @@ type (
 
 		Submissions []*Submission
 
+		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
 	}
 )

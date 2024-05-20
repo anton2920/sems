@@ -766,9 +766,7 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Test">`)
 
