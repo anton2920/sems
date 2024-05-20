@@ -235,6 +235,8 @@ func main() {
 		CreateInitialDB()
 	}
 
+	go SubmissionVerifyWorker()
+
 	const address = "0.0.0.0:7072"
 	l, err := tcp.Listen(address, 128)
 	if err != nil {

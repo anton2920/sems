@@ -21,6 +21,8 @@ type (
 		SubmittedQuestions []SubmittedQuestion
 
 		Scores []int
+		
+		Status SubmissionCheckStatus
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
@@ -45,6 +47,8 @@ type (
 		Messages [2][]string
 		Error    error
 
+		Status SubmissionCheckStatus
+
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
 	}
@@ -57,6 +61,8 @@ type (
 		StartedAt      time.Time
 		SubmittedSteps []interface{}
 		FinishedAt     time.Time
+
+		Status SubmissionCheckStatus
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
@@ -200,17 +206,46 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 		w.AppendString(`</p>`)
 
 		submittedStep := submission.SubmittedSteps[i]
-		score, maximum := GetSubmittedStepScore(step, submittedStep)
-		w.AppendString(`<p>Score: `)
-		w.WriteInt(score)
-		w.AppendString(`/`)
-		w.WriteInt(maximum)
-		w.AppendString(`</p>`)
-
 		if submittedStep == nil {
+			score, maximum := GetSubmittedStepScore(step, submittedStep)
+			w.AppendString(`<p>Score: `)
+			w.WriteInt(score)
+			w.AppendString(`/`)
+			w.WriteInt(maximum)
+			w.AppendString(`</p>`)
+
 			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
 		} else {
-			DisplayIndexedCommand(w, i, "Open")
+			var status SubmissionCheckStatus
+			var err error
+
+			switch submittedStep := submittedStep.(type) {
+			case *SubmittedTest:
+				status = submittedStep.Status
+			case *SubmittedProgramming:
+				status = submittedStep.Status
+				err = submittedStep.Error
+			}
+
+			switch status {
+			case SubmissionCheckPending:
+				w.AppendString(`<p><i>Verification is pending...</i></p>`)
+			case SubmissionCheckInProgress:
+				w.AppendString(`<p><i>Verification is in progress...</i></p>`)
+			case SubmissionCheckDone:
+				score, maximum := GetSubmittedStepScore(step, submittedStep)
+				w.AppendString(`<p>Score: `)
+				w.WriteInt(score)
+				w.AppendString(`/`)
+				w.WriteInt(maximum)
+				w.AppendString(`</p>`)
+
+				if err != nil {
+					w.AppendString(`<p>ERROR!! :)</p>`)
+				} else {
+					DisplayIndexedCommand(w, i, "Open")
+				}
+			}
 		}
 
 		w.AppendString(`</fieldset>`)
@@ -218,9 +253,16 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 
 	w.AppendString(`</form>`)
 
-	w.AppendString(`<p>Total score: `)
-	DisplaySubmissionTotalScore(w, submission)
-	w.AppendString(`</p>`)
+	switch submission.Status {
+	case SubmissionCheckPending:
+		w.AppendString(`<p><i>Verification is pending...</i></p>`)
+	case SubmissionCheckInProgress:
+		w.AppendString(`<p><i>Verification is in progress...</i></p>`)
+	case SubmissionCheckDone:
+		w.AppendString(`<p>Total score: `)
+		DisplaySubmissionTotalScore(w, submission)
+		w.AppendString(`</p>`)
+	}
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
@@ -1140,8 +1182,7 @@ func SubmissionNewHandler(w *http.Response, r *http.Request) error {
 	submission.Draft = false
 	submission.FinishedAt = time.Now()
 
-	// SubmissionVerifyChannel <- submission
-	SubmissionVerify(submission)
+	SubmissionVerifyChannel <- submission
 
 	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 	return nil

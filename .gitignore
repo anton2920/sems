@@ -1,6 +1,7 @@
 *.gob
 *.png
 .sam/
+jails/
 masters*
 mc*
 r

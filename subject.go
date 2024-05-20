@@ -191,9 +191,12 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 					w.WriteHTMLString(submission.User.LastName)
 					w.AppendString(` `)
 					w.WriteHTMLString(submission.User.FirstName)
-					w.AppendString(` (`)
-					DisplaySubmissionTotalScore(w, submission)
-					w.AppendString(`)`)
+					
+					if submission.Status == SubmissionCheckDone {
+						w.AppendString(` (`)
+						DisplaySubmissionTotalScore(w, submission)
+						w.AppendString(`)`)
+					}
 					w.AppendString(`</option>`)
 				}
 				w.AppendString(`</select>`)

@@ -17,7 +17,15 @@ import (
 	"github.com/anton2920/gofa/syscall"
 )
 
-var SubmissionVerifyChannel = make(chan *Submission)
+type SubmissionCheckStatus = int
+
+const (
+	SubmissionCheckPending SubmissionCheckStatus = iota
+	SubmissionCheckInProgress
+	SubmissionCheckDone
+)
+
+var SubmissionVerifyChannel = make(chan *Submission, 128)
 
 func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
 	test := submittedTest.Test
@@ -279,9 +287,13 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 func SubmissionVerifyStep(step interface{}) {
 	switch step := step.(type) {
 	case *SubmittedTest:
+		step.Status = SubmissionCheckInProgress
 		SubmissionVerifyTest(step)
+		step.Status = SubmissionCheckDone
 	case *SubmittedProgramming:
+		step.Status = SubmissionCheckInProgress
 		step.Error = SubmissionVerifyProgramming(step, CheckTypeTest)
+		step.Status = SubmissionCheckDone
 	}
 }
 
@@ -293,6 +305,8 @@ func SubmissionVerify(submission *Submission) {
 
 func SubmissionVerifyWorker() {
 	for submission := range SubmissionVerifyChannel {
+		submission.Status = SubmissionCheckInProgress
 		SubmissionVerify(submission)
+		submission.Status = SubmissionCheckDone
 	}
 }
