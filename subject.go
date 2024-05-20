@@ -191,7 +191,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 					w.WriteHTMLString(submission.User.LastName)
 					w.AppendString(` `)
 					w.WriteHTMLString(submission.User.FirstName)
-					
+
 					if submission.Status == SubmissionCheckDone {
 						w.AppendString(` (`)
 						DisplaySubmissionTotalScore(w, submission)

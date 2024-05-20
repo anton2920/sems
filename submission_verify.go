@@ -287,13 +287,17 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 func SubmissionVerifyStep(step interface{}) {
 	switch step := step.(type) {
 	case *SubmittedTest:
-		step.Status = SubmissionCheckInProgress
-		SubmissionVerifyTest(step)
-		step.Status = SubmissionCheckDone
+		if step.Status == SubmissionCheckPending {
+			step.Status = SubmissionCheckInProgress
+			SubmissionVerifyTest(step)
+			step.Status = SubmissionCheckDone
+		}
 	case *SubmittedProgramming:
-		step.Status = SubmissionCheckInProgress
-		step.Error = SubmissionVerifyProgramming(step, CheckTypeTest)
-		step.Status = SubmissionCheckDone
+		if step.Status == SubmissionCheckPending {
+			step.Status = SubmissionCheckInProgress
+			step.Error = SubmissionVerifyProgramming(step, CheckTypeTest)
+			step.Status = SubmissionCheckDone
+		}
 	}
 }
 
@@ -305,8 +309,10 @@ func SubmissionVerify(submission *Submission) {
 
 func SubmissionVerifyWorker() {
 	for submission := range SubmissionVerifyChannel {
-		submission.Status = SubmissionCheckInProgress
-		SubmissionVerify(submission)
-		submission.Status = SubmissionCheckDone
+		if submission.Status == SubmissionCheckPending {
+			submission.Status = SubmissionCheckInProgress
+			SubmissionVerify(submission)
+			submission.Status = SubmissionCheckDone
+		}
 	}
 }

@@ -21,7 +21,7 @@ type (
 		SubmittedQuestions []SubmittedQuestion
 
 		Scores []int
-		
+
 		Status SubmissionCheckStatus
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
@@ -134,6 +134,8 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 }
 
 func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
+	teacher := r.Form.Get("Teacher") != ""
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Submission for `)
@@ -154,9 +156,7 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 	w.WriteHTMLString(submission.User.FirstName)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Main">`)
 
@@ -241,17 +241,19 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 				w.AppendString(`</p>`)
 
 				if err != nil {
-					w.AppendString(`<p>ERROR!! :)</p>`)
-				} else {
-					DisplayIndexedCommand(w, i, "Open")
+					w.AppendString(`<p>Error: `)
+					w.WriteHTMLString(err.Error())
+					w.AppendString(`</p>`)
+				}
+				DisplayIndexedCommand(w, i, "Open")
+				if teacher {
+					DisplayIndexedCommand(w, i, "Re-check")
 				}
 			}
 		}
 
 		w.AppendString(`</fieldset>`)
 	}
-
-	w.AppendString(`</form>`)
 
 	switch submission.Status {
 	case SubmissionCheckPending:
@@ -262,7 +264,11 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 		w.AppendString(`<p>Total score: `)
 		DisplaySubmissionTotalScore(w, submission)
 		w.AppendString(`</p>`)
+		if teacher {
+			w.AppendString(`<input type="submit" name="Command" value="Re-check">`)
+		}
 	}
+	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
@@ -473,7 +479,7 @@ func SubmissionProgrammingPageHandler(w *http.Response, r *http.Request, submitt
 }
 
 func SubmissionHandleCommand(w *http.Response, r *http.Request, submission *Submission, currentPage, k, command string) error {
-	pindex, _, _, _, err := GetIndicies(k[len("Command"):])
+	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -498,6 +504,42 @@ func SubmissionHandleCommand(w *http.Response, r *http.Request, submission *Subm
 			case *SubmittedProgramming:
 				return SubmissionProgrammingPageHandler(w, r, submittedStep)
 			}
+		case "Re-check":
+			if spindex != "" {
+				if (pindex < 0) || (pindex >= len(submission.Steps)) {
+					return http.ClientError(nil)
+				}
+				submission.Status = SubmissionCheckPending
+
+				switch submittedStep := submission.SubmittedSteps[pindex].(type) {
+				default:
+					panic("invaid step type")
+				case *SubmittedTest:
+					submittedStep.Status = SubmissionCheckPending
+				case *SubmittedProgramming:
+					submittedStep.Status = SubmissionCheckPending
+				}
+			} else {
+				submission.Status = SubmissionCheckPending
+
+				for i := 0; i < len(submission.SubmittedSteps); i++ {
+					submittedStep := submission.SubmittedSteps[i]
+					if submittedStep != nil {
+						switch submittedStep := submittedStep.(type) {
+						default:
+							panic("invaid step type")
+						case *SubmittedTest:
+							submittedStep.Status = SubmissionCheckPending
+						case *SubmittedProgramming:
+							submittedStep.Status = SubmissionCheckPending
+						}
+					}
+				}
+			}
+
+			SubmissionVerifyChannel <- submission
+
+			return SubmissionMainPageHandler(w, r, submission)
 		}
 	}
 }
