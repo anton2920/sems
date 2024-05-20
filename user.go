@@ -79,6 +79,10 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	}
 	user := &DB.Users[id]
 
+	if (session.ID != AdminID) && (session.ID != user.ID) {
+		return http.ForbiddenError
+	}
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(user.LastName)
