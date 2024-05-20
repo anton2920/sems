@@ -217,6 +217,9 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 		input := strings.Replace(strings.TrimSpace(check.Input), "\r\n", "\n", -1)
 		if err := SubmissionVerifyProgrammingRun(j, lang, input, &output); err != nil {
 			messages[i] = err.Error()
+			if checkType == CheckTypeExample {
+				break
+			}
 			continue
 		}
 
@@ -224,6 +227,9 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 		actualOutput := strings.Replace(strings.TrimSpace(output.String()), "\r\n", "\n", -1)
 		if actualOutput != expectedOutput {
 			messages[i] = fmt.Sprintf("expected %q, got %q", expectedOutput, actualOutput)
+			if checkType == CheckTypeExample {
+				break
+			}
 			continue
 		}
 
