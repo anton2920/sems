@@ -206,7 +206,7 @@ func main() {
 	switch BuildMode {
 	default:
 		log.Fatalf("Build mode %q is not recognized", BuildMode)
-	case "Release", "Unsafe":
+	case "Release":
 	case "Debug":
 		Debug = true
 		log.SetLogLevel(log.LevelDebug)
