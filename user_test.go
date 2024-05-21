@@ -227,3 +227,35 @@ func TestUserSigninHandler(t *testing.T) {
 		testPost(t, endpoint, test, http.StatusConflict)
 	}
 }
+
+func TestUserSignoutHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/user/signout"
+
+	backup := make(map[string]*Session)
+	for k, v := range Sessions {
+		backup[k] = v
+	}
+
+	t.Run("expectedOK", func(t *testing.T) {
+		for i, token := range testTokens {
+			i := i
+			token := token
+
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+
+				testGetAuth(t, endpoint, token, http.StatusSeeOther)
+				if _, err := GetSessionFromToken(token); err == nil {
+					t.Errorf("User with ID=%d is still authorized", i)
+				}
+			})
+		}
+	})
+
+	testGet(t, endpoint, http.StatusUnauthorized)
+	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
+
+	for k, v := range backup {
+		Sessions[k] = v
+	}
+}
