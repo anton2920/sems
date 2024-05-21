@@ -209,7 +209,7 @@ func main() {
 	case "Release":
 	case "Debug":
 		Debug = true
-		log.SetLogLevel(log.LevelDebug)
+		log.SetLevel(log.LevelDebug)
 	case "Profiling":
 		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
 		if err != nil {
