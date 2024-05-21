@@ -78,7 +78,17 @@ func CreateInitialDB() {
 				},
 			},
 		}},
-		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now()},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now(), Courses: []*Course{
+			&Course{
+				Name: "Test course",
+				Lessons: []*Lesson{
+					&Lesson{
+						Name:   "Test lesson",
+						Theory: "This is a test lesson.",
+					},
+				},
+			},
+		}},
 		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
 	}
