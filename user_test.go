@@ -60,7 +60,10 @@ func TestUserPageHandler(t *testing.T) {
 		for i, id := range expectedOK {
 			i := i
 			id := id
-			t.Run(id, func(t *testing.T) { t.Parallel(); testGetAuth(t, endpoint+id, testTokens[i], http.StatusOK) })
+			t.Run(id, func(t *testing.T) {
+				t.Parallel()
+				testGetAuth(t, endpoint+id, testTokens[i], http.StatusOK)
+			})
 		}
 	})
 
