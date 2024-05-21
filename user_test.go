@@ -91,18 +91,18 @@ func TestUserCreatePageHandler(t *testing.T) {
 	testGet(t, endpoint, http.StatusUnauthorized)
 	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
 
-	for i := AdminID + 1; i < len(testTokens); i++ {
-		testGetAuth(t, endpoint, testTokens[i], http.StatusForbidden)
+	for _, token := range testTokens[AdminID+1:] {
+		testGetAuth(t, endpoint, token, http.StatusForbidden)
 	}
 }
 
 func TestUserEditPageHandler(t *testing.T) {
 	const endpoint = "/user/edit"
 
-	for i := 0; i < len(testTokens); i++ {
+	for i, token := range testTokens {
 		var vs url.Values
 		vs.SetInt("ID", i)
-		testPostAuth(t, endpoint, testTokens[i], vs, http.StatusOK)
+		testPostAuth(t, endpoint, token, vs, http.StatusOK)
 	}
 
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{Key: "ID", Values: []string{"a"}}}, http.StatusBadRequest)
@@ -111,8 +111,8 @@ func TestUserEditPageHandler(t *testing.T) {
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
 
-	for i := AdminID + 1; i < len(testTokens); i++ {
-		testPostAuth(t, endpoint, testTokens[i], url.Values{{Key: "ID", Values: []string{"0"}}}, http.StatusForbidden)
+	for _, token := range testTokens[AdminID+1:] {
+		testPostAuth(t, endpoint, token, url.Values{{Key: "ID", Values: []string{"0"}}}, http.StatusForbidden)
 	}
 }
 

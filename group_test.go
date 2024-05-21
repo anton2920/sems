@@ -33,3 +33,22 @@ func TestGroupPageHandler(t *testing.T) {
 		testGetAuth(t, endpoint+id, testTokens[0], http.StatusNotFound)
 	}
 }
+
+func testGroupCreateEditPageHandler(t *testing.T, endpoint string) {
+	testGetAuth(t, endpoint, testTokens[AdminID], http.StatusOK)
+
+	testGet(t, endpoint, http.StatusUnauthorized)
+	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
+
+	for _, token := range testTokens[AdminID+1:] {
+		testGetAuth(t, endpoint, token, http.StatusForbidden)
+	}
+}
+
+func TestGroupCreatePageHandler(t *testing.T) {
+	testGroupCreateEditPageHandler(t, "/group/create")
+}
+
+func TestGroupEditPageHandler(t *testing.T) {
+	testGroupCreateEditPageHandler(t, "/group/edit")
+}
