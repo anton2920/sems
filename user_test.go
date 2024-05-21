@@ -7,6 +7,44 @@ import (
 	"github.com/anton2920/gofa/net/url"
 )
 
+func TestUserNameValid(t *testing.T) {
+	expectedOK := [...]string{
+		/* Make sure basic English works. */
+		"Admin",
+		"Ivan",
+		"Anton",
+		"Sidorov",
+
+		/* TODO(anton2920): make sure basic Russian works. */
+
+		/* Make sure less common cases also work. */
+		"St. Peter",
+		"Mr. Smith",
+		"Von Neumann",
+		"Adelson-Velskii",
+		"De'Wayne",
+	}
+
+	expectedError := [...]string{
+		"",
+		"AntonAntonAntonAntonAntonAntonAntonAntonAntonA",
+		"Anton1",
+		" Anton",
+	}
+
+	for _, test := range expectedOK {
+		if err := UserNameValid(test); err != nil {
+			t.Errorf("Expected name %q to be valid, but got error %v", test, err)
+		}
+	}
+
+	for _, test := range expectedError {
+		if err := UserNameValid(test); err == nil {
+			t.Errorf("Expected name %q to be invalid, but got no error", test)
+		}
+	}
+}
+
 func TestUserPageHandler(t *testing.T) {
 	const endpoint = "/user/"
 
@@ -64,6 +102,7 @@ func TestUserEditPageHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[i], vs, http.StatusOK)
 	}
 
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{Key: "ID", Values: []string{"a"}}}, http.StatusBadRequest)
 	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
@@ -137,6 +176,7 @@ func TestUserEditHandler(t *testing.T) {
 	}
 
 	expectedBadRequest := [...]url.Values{
+		{{Key: "ID", Values: []string{"a"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
 		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{""}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
 		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"TestTestTestTestTestTestTestTestTestTestTestTe"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
 		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{""}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
