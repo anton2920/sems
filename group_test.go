@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/net/url"
 )
 
 func TestGroupPageHandler(t *testing.T) {
@@ -51,4 +52,41 @@ func TestGroupCreatePageHandler(t *testing.T) {
 
 func TestGroupEditPageHandler(t *testing.T) {
 	testGroupCreateEditPageHandler(t, "/group/edit")
+}
+
+func TestGroupCreateHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/group/create"
+
+	expectedOK := [...]url.Values{
+		{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{Key: "Name", Values: []string{"Test"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+		{{Key: "Name", Values: []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+		{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"0"}}},
+		{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"a"}}},
+	}
+
+	expectedForbidden := expectedOK[0]
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+	}
+
+	t.Run("expectedBadRequest", func(t *testing.T) {
+		for _, test := range expectedBadRequest {
+			test := test
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+				testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+			})
+		}
+	})
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	testPostAuth(t, endpoint, testTokens[1], expectedForbidden, http.StatusForbidden)
 }
