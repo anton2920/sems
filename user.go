@@ -284,8 +284,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	id := r.Form.Get("ID")
-	userID, err := GetValidIndex(id, DB.Users)
+	userID, err := GetValidIndex(r.Form.Get("ID"), DB.Users)
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -306,7 +305,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	//w.WriteHTMLString(id)
+	w.WriteInt(userID)
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>First name:<br>`)
