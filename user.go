@@ -306,7 +306,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(id)
+	//w.WriteHTMLString(id)
 	w.AppendString(`">`)
 
 	w.AppendString(`<label>First name:<br>`)
