@@ -16,6 +16,8 @@ import (
 var (
 	testInvalidToken = "invalid-token"
 	testTokens       [4]string
+
+	testInvalidForm = []byte("a=1;b=2")
 )
 
 func testGet(t *testing.T, endpoint string, expectedStatus http.Status) {
@@ -87,6 +89,25 @@ func testPostAuth(t *testing.T, endpoint string, token string, form url.Values, 
 
 	if w.StatusCode != expectedStatus {
 		t.Errorf("POST %s -> %d (with form %v), expected %d", endpoint, w.StatusCode, form, expectedStatus)
+	}
+}
+
+func testPostInvalidFormAuth(t *testing.T, endpoint string, token string) {
+	t.Helper()
+
+	var w http.Response
+	var r http.Request
+
+	r.Headers = []string{fmt.Sprintf("Cookie: Token=%s", token)}
+	r.Body = testInvalidForm
+	r.URL.Path = endpoint
+
+	w.StatusCode = http.StatusOK
+
+	Router(unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+
+	if w.StatusCode != http.StatusBadRequest {
+		t.Errorf("POST %s -> %d (with invalid payload), expected 400", endpoint, w.StatusCode)
 	}
 }
 

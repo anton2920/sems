@@ -64,6 +64,8 @@ func TestUserEditPageHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[i], vs, http.StatusOK)
 	}
 
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
 
@@ -102,9 +104,16 @@ func TestUserCreateHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
 	}
 
-	for _, test := range expectedBadRequest {
-		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
-	}
+	t.Run("expectedBadRequest", func(t *testing.T) {
+		for _, test := range expectedBadRequest {
+			test := test
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+				testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+			})
+		}
+	})
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
@@ -114,6 +123,59 @@ func TestUserCreateHandler(t *testing.T) {
 	}
 
 	for _, test := range expectedConflict {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusConflict)
+	}
+}
+
+func TestUserEditHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/user/edit"
+
+	CreateInitialDB()
+
+	expectedOK := [...]url.Values{
+		{{Key: "ID", Values: []string{"2"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{""}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"TestTestTestTestTestTestTestTestTestTestTestTe"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{""}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"TestovichTestovichTestovichTestovichTestovichT"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"testmasters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtest"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"test"}}, {Key: "RepeatPassword", Values: []string{"test"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtesttesttesttesttesttesttesttesttesttestte"}}, {Key: "RepeatPassword", Values: []string{"testtesttesttesttesttesttesttesttesttesttestte"}}},
+		{{Key: "ID", Values: []string{"0"}}, {Key: "FirstName", Values: []string{"Test"}}, {Key: "LastName", Values: []string{"Testovich"}}, {Key: "Email", Values: []string{"test@masters.com"}}, {Key: "Password", Values: []string{"testtest"}}, {Key: "RepeatPassword", Values: []string{"testtesttest"}}},
+	}
+
+	expectedForbidden := expectedOK
+
+	expectedConflict := expectedOK
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+		testPostAuth(t, endpoint, testTokens[2], test, http.StatusSeeOther)
+	}
+
+	t.Run("expectedBadRequest", func(t *testing.T) {
+		for _, test := range expectedBadRequest {
+			test := test
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+				testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+			})
+		}
+	})
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	for _, test := range expectedForbidden {
+		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+	}
+
+	for i, test := range expectedConflict {
+		test.SetInt("ID", i)
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusConflict)
 	}
 }
