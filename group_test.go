@@ -37,6 +37,9 @@ func TestGroupPageHandler(t *testing.T) {
 
 func testGroupCreateEditPageHandler(t *testing.T, endpoint string) {
 	testGetAuth(t, endpoint, testTokens[AdminID], http.StatusOK)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"a"}}}, http.StatusOK)
+
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
 	testGet(t, endpoint, http.StatusUnauthorized)
 	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
@@ -66,6 +69,44 @@ func TestGroupCreateHandler(t *testing.T) {
 		{{Key: "Name", Values: []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
 		{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"0"}}},
 		{{Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"a"}}},
+	}
+
+	expectedForbidden := expectedOK[0]
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+	}
+
+	t.Run("expectedBadRequest", func(t *testing.T) {
+		for _, test := range expectedBadRequest {
+			test := test
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+				testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+			})
+		}
+	})
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	testPostAuth(t, endpoint, testTokens[1], expectedForbidden, http.StatusForbidden)
+}
+
+func TestGroupEditHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/group/edit"
+
+	expectedOK := [...]url.Values{
+		{{Key: "ID", Values: []string{"1"}}, {Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{Key: "ID", Values: []string{"a"}}, {Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+		{{Key: "ID", Values: []string{"1"}}, {Key: "Name", Values: []string{"Test"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+		{{Key: "ID", Values: []string{"1"}}, {Key: "Name", Values: []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {Key: "StudentID", Values: []string{"1", "2", "3"}}},
+		{{Key: "ID", Values: []string{"1"}}, {Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"0"}}},
+		{{Key: "ID", Values: []string{"1"}}, {Key: "Name", Values: []string{"Test group"}}, {Key: "StudentID", Values: []string{"a"}}},
 	}
 
 	expectedForbidden := expectedOK[0]
