@@ -50,7 +50,7 @@ func TestUserCreatePageHandler(t *testing.T) {
 	testGet(t, endpoint, http.StatusUnauthorized)
 	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
 
-	for i := AdminID + 1; i < len(DB.Users); i++ {
+	for i := AdminID + 1; i < len(testTokens); i++ {
 		testGetAuth(t, endpoint, testTokens[i], http.StatusForbidden)
 	}
 }
@@ -58,7 +58,7 @@ func TestUserCreatePageHandler(t *testing.T) {
 func TestUserEditPageHandler(t *testing.T) {
 	const endpoint = "/user/edit"
 
-	for i := 0; i < len(DB.Users); i++ {
+	for i := 0; i < len(testTokens); i++ {
 		var vs url.Values
 		vs.SetInt("ID", i)
 		testPostAuth(t, endpoint, testTokens[i], vs, http.StatusOK)
@@ -69,7 +69,7 @@ func TestUserEditPageHandler(t *testing.T) {
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
 
-	for i := AdminID + 1; i < len(DB.Users); i++ {
+	for i := AdminID + 1; i < len(testTokens); i++ {
 		testPostAuth(t, endpoint, testTokens[i], url.Values{{Key: "ID", Values: []string{"0"}}}, http.StatusForbidden)
 	}
 }
@@ -177,5 +177,53 @@ func TestUserEditHandler(t *testing.T) {
 	for i, test := range expectedConflict {
 		test.SetInt("ID", i)
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusConflict)
+	}
+}
+
+func TestUserSigninHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/user/signin"
+
+	CreateInitialDB()
+
+	expectedOK := [...]url.Values{
+		{{Key: "Email", Values: []string{"admin@masters.com"}}, {Key: "Password", Values: []string{"admin"}}},
+		{{Key: "Email", Values: []string{"teacher@masters.com"}}, {Key: "Password", Values: []string{"teacher"}}},
+		{{Key: "Email", Values: []string{"student@masters.com"}}, {Key: "Password", Values: []string{"student"}}},
+		{{Key: "Email", Values: []string{"student2@masters.com"}}, {Key: "Password", Values: []string{"student2"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{Key: "Email", Values: []string{"adminmasters.com"}}, {Key: "Password", Values: []string{"admin"}}},
+	}
+
+	expectedNotFound := [...]url.Values{
+		{{Key: "Email", Values: []string{"uncle-bob@masters.com"}}, {Key: "Password", Values: []string{"uncle-bob"}}},
+	}
+
+	expectedConflict := [...]url.Values{
+		{{Key: "Email", Values: []string{"admin@masters.com"}}, {Key: "Password", Values: []string{"not-admin"}}},
+	}
+
+	t.Run("expectedOK", func(t *testing.T) {
+		for _, test := range expectedOK {
+			test := test
+			t.Run("", func(t *testing.T) {
+				t.Parallel()
+				testPost(t, endpoint, test, http.StatusSeeOther)
+			})
+		}
+	})
+
+	for _, test := range expectedBadRequest {
+		testPost(t, endpoint, test, http.StatusBadRequest)
+	}
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	for _, test := range expectedNotFound {
+		testPost(t, endpoint, test, http.StatusNotFound)
+	}
+
+	for _, test := range expectedConflict {
+		testPost(t, endpoint, test, http.StatusConflict)
 	}
 }

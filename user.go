@@ -495,7 +495,7 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, http.BadRequest("provided email is not valid"))
+		return WritePage(w, r, UserSigninPageHandler, http.BadRequest("provided email is not valid"))
 	}
 	email := address.Address
 

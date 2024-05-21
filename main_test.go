@@ -130,7 +130,7 @@ func TestMain(m *testing.M) {
 	jail.JailsRootDir = "./jails_test"
 
 	now := time.Now()
-	for i := 0; i < len(DB.Users); i++ {
+	for i := 0; i < len(testTokens); i++ {
 		testTokens[i], err = GenerateSessionToken()
 		if err != nil {
 			log.Fatalf("Failed to generate session token: %v", err)
