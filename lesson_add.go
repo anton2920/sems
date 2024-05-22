@@ -163,9 +163,7 @@ func LessonProgrammingFillFromRequest(vs url.Values, task *StepProgramming) erro
 
 			check.Input = inputs[j]
 			check.Output = outputs[j]
-
 		}
-
 	}
 
 	return nil
@@ -492,11 +490,11 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 
 	w.AppendString(`<h3>Examples</h3>`)
 	LessonAddProgrammingDisplayChecks(w, task, CheckTypeExample)
-	w.AppendString(`<input type="submit" name="Command" value="Add example">`)
+	w.AppendString(`<input type="submit" name="Command" value="Add example" formnovalidate>`)
 
 	w.AppendString(`<h3>Tests</h3>`)
 	LessonAddProgrammingDisplayChecks(w, task, CheckTypeTest)
-	w.AppendString(`<input type="submit" name="Command" value="Add test">`)
+	w.AppendString(`<input type="submit" name="Command" value="Add test" formnovalidate>`)
 
 	w.AppendString(`<br><br>`)
 	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
