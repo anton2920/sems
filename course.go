@@ -480,6 +480,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 	}
 }
 
+/* TODO(anton2920): think about removing this function. */
 func CourseCreateEditHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
