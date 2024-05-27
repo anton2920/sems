@@ -3,9 +3,21 @@ package main
 
 import (
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"os"
 	"time"
+	"unsafe"
+
+	"github.com/anton2920/gofa/syscall"
 )
+
+type Database struct {
+	UsersFile    int32
+	GroupsFile   int32
+	CoursesFile  int32
+	SubjectsFile int32
+}
 
 const AdminID = 0
 
@@ -15,6 +27,31 @@ var DB struct {
 	Users    []User
 	Groups   []Group
 	Subjects []Subject
+}
+
+//go:noescape
+//go:nosplit
+func DBString(ptr *byte, len int) string
+
+//go:noescape
+//go:nosplit
+func DBSlice(ptr *byte, len int) []byte
+
+func Offset2String(s string, base *byte) string {
+	return unsafe.String((*byte)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.StringData(s))))), len(s))
+}
+
+func Offset2Slice[T any](s []T, base *byte) []T {
+	return unsafe.Slice((*T)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.SliceData(s))))), len(s))
+}
+
+func String2Offset(s string, offset int) string {
+	return DBString((*byte)(unsafe.Pointer(uintptr(offset-len(s)))), len(s))
+}
+
+func Slice2Offset[T any](s []T, offset int) []T {
+	var t T
+	return unsafe.Slice((*T)(unsafe.Pointer((unsafe.SliceData(DBSlice((*byte)(unsafe.Pointer(uintptr(offset-len(s)*int(unsafe.Sizeof(t))))), len(s)))))), len(s))
 }
 
 func CreateInitialDB() {
@@ -137,4 +174,73 @@ func RestoreDBFromFile(filename string) error {
 	}
 
 	return nil
+}
+
+func SlicePutDBPath(buf []byte, dir string, name string) int {
+	var n int
+
+	n += copy(buf[n:], dir)
+
+	buf[n] = '/'
+	n++
+
+	n += copy(buf[n:], name)
+
+	return n
+}
+
+func OpenDBFile(dir string, name string) (int32, error) {
+	buf := make([]byte, syscall.PATH_MAX)
+	n := SlicePutDBPath(buf, dir, name)
+	path := unsafe.String(unsafe.SliceData(buf), n)
+	return syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0644)
+}
+
+func OpenDB(dir string) (Database, error) {
+	var db Database
+	var err error
+
+	db.UsersFile, err = OpenDBFile(dir, "Users.db")
+	if err != nil {
+		return db, fmt.Errorf("failed to open users DB file: %w", err)
+	}
+
+	db.GroupsFile, err = OpenDBFile(dir, "Groups.db")
+	if err != nil {
+		return db, fmt.Errorf("failed to open groups DB file: %w", err)
+	}
+
+	db.CoursesFile, err = OpenDBFile(dir, "Courses.db")
+	if err != nil {
+		return db, fmt.Errorf("failed to open courses DB file: %w", err)
+	}
+
+	db.SubjectsFile, err = OpenDBFile(dir, "Subjects.db")
+	if err != nil {
+		return db, fmt.Errorf("failed to open subjects DB file: %w", err)
+	}
+
+	return db, nil
+}
+
+func CloseDB(db *Database) error {
+	var err error
+
+	if err1 := syscall.Close(db.UsersFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
+	if err1 := syscall.Close(db.GroupsFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
+	if err1 := syscall.Close(db.CoursesFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
+	if err1 := syscall.Close(db.SubjectsFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
+	return err
 }

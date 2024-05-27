@@ -30,6 +30,8 @@ var (
 
 var WorkingDirectory string
 
+var DB2 Database
+
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
 	default:
@@ -235,6 +237,11 @@ func main() {
 		CreateInitialDB()
 	}
 
+	DB2, err = OpenDB("db")
+	if err != nil {
+		log.Fatalf("Failed to open DB: %v", err)
+	}
+
 	go SubmissionVerifyWorker()
 
 	const address = "0.0.0.0:7072"
@@ -336,6 +343,10 @@ func main() {
 
 		const FPS = 60
 		q.Pause(FPS)
+	}
+
+	if err := CloseDB(&DB2); err != nil {
+		log.Warnf("Failed to close DB: %v", err)
 	}
 
 	if err := StoreDBToFile(DBFile); err != nil {

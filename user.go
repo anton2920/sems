@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"net/mail"
 	"time"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/syscall"
 )
 
 type User struct {
@@ -19,6 +22,18 @@ type User struct {
 	CreatedOn time.Time
 
 	Courses []*Course
+}
+
+type User2 struct {
+	ID        int
+	FirstName string
+	LastName  string
+	Email     string
+	Password  string
+	Courses   []int
+	CreatedOn int64
+
+	Data [1024]byte
 }
 
 const (
@@ -57,6 +72,54 @@ func GetUserByEmail(email string) *User {
 		if user.Email == email {
 			return user
 		}
+	}
+
+	return nil
+}
+
+func GetUserByID(db *Database, id int, user *User2) error {
+	size := int(unsafe.Sizeof(*user))
+	offset := int64(id * size)
+
+	n, err := syscall.Pread(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(user)), size), offset)
+	if (err != nil) || (n < size) {
+		return fmt.Errorf("failed to read user from DB: %w", err)
+	}
+
+	user.FirstName = Offset2String(user.FirstName, &user.Data[0])
+	user.LastName = Offset2String(user.LastName, &user.Data[0])
+	user.Email = Offset2String(user.Email, &user.Data[0])
+	user.Password = Offset2String(user.Password, &user.Data[0])
+	user.Courses = Offset2Slice(user.Courses, &user.Data[0])
+
+	return nil
+}
+
+func SaveUser(db *Database, user User2) error {
+	size := int(unsafe.Sizeof(user))
+	offset := int64(user.ID * size)
+
+	var n int
+
+	/* TODO(anton2920): saving up to a sizeof(user.Data). */
+	n += copy(user.Data[n:], user.FirstName)
+	user.FirstName = String2Offset(user.FirstName, n)
+
+	n += copy(user.Data[n:], user.LastName)
+	user.LastName = String2Offset(user.LastName, n)
+
+	n += copy(user.Data[n:], user.Email)
+	user.Email = String2Offset(user.Email, n)
+
+	n += copy(user.Data[n:], user.Password)
+	user.Password = String2Offset(user.Password, n)
+
+	n += copy(user.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(n))))
+	user.Courses = Slice2Offset(user.Courses, n)
+
+	n, err := syscall.Pwrite(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(&user)), size), offset)
+	if (err != nil) || (n < size) {
+		return fmt.Errorf("failed to write user to DB: %w", err)
 	}
 
 	return nil
