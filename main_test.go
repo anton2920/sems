@@ -127,6 +127,12 @@ func TestMain(m *testing.M) {
 
 	CreateInitialDB()
 
+	DB2, err = OpenDB("db_test")
+	if err != nil {
+		log.Fatalf("Failed to open DB: %v", err)
+	}
+	defer CloseDB(&DB2)
+
 	jail.JailsRootDir = "./jails_test"
 
 	now := time.Now()
@@ -141,5 +147,6 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	testWaitForJails()
+	os.RemoveAll("db_test")
 	os.Exit(code)
 }

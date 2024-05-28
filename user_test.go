@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/anton2920/gofa/net/http"
@@ -18,19 +17,14 @@ func TestUser2(t *testing.T) {
 	user2.LastName = user.LastName
 	user2.Email = user.Email
 	user2.Password = user.Password
-	user2.Courses = []int{0}
+	user2.Courses = []int32{0}
 	user2.CreatedOn = user.CreatedOn.Unix()
 
-	db, err := OpenDB("db_test")
-	if err != nil {
-		t.Fatal("Failed to open DB: ", err)
-	}
-
-	if err := SaveUser(&db, user2); err != nil {
+	if err := CreateUser(&DB2, &user2); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := GetUserByID(&db, 0, &user3); err != nil {
+	if err := GetUserByID(&DB2, 0, &user3); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,7 +47,13 @@ func TestUser2(t *testing.T) {
 		t.Errorf("CreatedOn: %d != %d", user2.CreatedOn, user3.CreatedOn)
 	}
 
-	os.RemoveAll("./db_test")
+	if err := GetUserByID(&DB2, 100, &user3); err == nil {
+		t.Fatal("expected error, got nothing")
+	}
+
+	if err := DeleteUserByID(&DB2, 0); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestUserNameValid(t *testing.T) {

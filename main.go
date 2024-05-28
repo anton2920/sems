@@ -198,7 +198,15 @@ func Router(ws []http.Response, rs []http.Request) {
 			ErrorPageHandler(w, message)
 		}
 
-		log.Logf(level, "[%21s] %7s %s -> %v (%v), %v", r.RemoteAddr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
+		var addr string
+		for i := 0; i < len(r.Headers); i++ {
+			header := r.Headers[i]
+			if strings.StartsWith(header, "X-Forwarded-For: ") {
+				addr = header[len("X-Forwarded-For: "):]
+				break
+			}
+		}
+		log.Logf(level, "[%15s] %7s %s -> %v (%v), %v", addr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 	}
 }
 

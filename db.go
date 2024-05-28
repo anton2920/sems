@@ -19,6 +19,14 @@ type Database struct {
 	SubjectsFile int32
 }
 
+const (
+	Version int32 = 0x0
+
+	VersionOffset = 0
+	NextIDOffset  = VersionOffset + 4
+	DataOffset    = NextIDOffset + 4
+)
+
 const AdminID = 0
 
 const DBFile = "db.gob"
@@ -193,12 +201,44 @@ func OpenDBFile(dir string, name string) (int32, error) {
 	buf := make([]byte, syscall.PATH_MAX)
 	n := SlicePutDBPath(buf, dir, name)
 	path := unsafe.String(unsafe.SliceData(buf), n)
-	return syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0644)
+
+	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CREAT, 0644)
+	if err != nil {
+		return -1, err
+	}
+
+	var version int32
+
+	n, err = syscall.Pread(fd, unsafe.Slice((*byte)(unsafe.Pointer(&version)), unsafe.Sizeof(version)), VersionOffset)
+	if err != nil {
+		syscall.Close(fd)
+		return -1, err
+	}
+	if n < int(unsafe.Sizeof(version)) {
+		version = Version
+
+		_, err := syscall.Pwrite(fd, unsafe.Slice((*byte)(unsafe.Pointer(&version)), unsafe.Sizeof(version)), VersionOffset)
+		if err != nil {
+			syscall.Close(fd)
+			return -1, err
+		}
+	} else if version != Version {
+		syscall.Close(fd)
+		return -1, fmt.Errorf("incompatible DB file version %d, expected %d", version, Version)
+	}
+
+	return fd, nil
 }
 
 func OpenDB(dir string) (Database, error) {
 	var db Database
 	var err error
+
+	if err := syscall.Mkdir(dir, 0755); err != nil {
+		if err.(syscall.Error).Errno != syscall.EEXIST {
+			return db, fmt.Errorf("failed to create DB directory: %w", err)
+		}
+	}
 
 	db.UsersFile, err = OpenDBFile(dir, "Users.db")
 	if err != nil {
@@ -243,4 +283,35 @@ func CloseDB(db *Database) error {
 	}
 
 	return err
+}
+
+func GetNextID(fd int32) (int32, error) {
+	var id int32
+
+	_, err := syscall.Pread(fd, unsafe.Slice((*byte)(unsafe.Pointer(&id)), unsafe.Sizeof(id)), NextIDOffset)
+	if err != nil {
+		return -1, fmt.Errorf("failed to read next ID: %w", err)
+	}
+
+	return id, nil
+}
+
+func SetNextID(fd int32, id int32) error {
+	_, err := syscall.Pwrite(fd, unsafe.Slice((*byte)(unsafe.Pointer(&id)), unsafe.Sizeof(id)), NextIDOffset)
+	if err != nil {
+		return fmt.Errorf("failed to write next ID in users DB: %w", err)
+	}
+	return nil
+}
+
+/* TODO(anton2920): make that atomic. */
+func IncrementNextID(fd int32) (int32, error) {
+	id, err := GetNextID(fd)
+	if err != nil {
+		return -1, err
+	}
+	if err := SetNextID(fd, id+1); err != nil {
+		return -1, err
+	}
+	return id, nil
 }

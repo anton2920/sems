@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
+	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
@@ -25,16 +26,23 @@ type User struct {
 }
 
 type User2 struct {
-	ID        int
+	ID    int32
+	Flags int32
+
 	FirstName string
 	LastName  string
 	Email     string
 	Password  string
-	Courses   []int
+	Courses   []int32
 	CreatedOn int64
 
 	Data [1024]byte
 }
+
+const (
+	UserActive  int32 = 0
+	UserDeleted       = 1
+)
 
 const (
 	MinUserNameLen = 1
@@ -77,13 +85,27 @@ func GetUserByEmail(email string) *User {
 	return nil
 }
 
-func GetUserByID(db *Database, id int, user *User2) error {
+func CreateUser(db *Database, user *User2) error {
+	var err error
+
+	user.ID, err = IncrementNextID(db.UsersFile)
+	if err != nil {
+		return fmt.Errorf("failed to increment user ID: %w", err)
+	}
+
+	return SaveUser(db, user)
+}
+
+func GetUserByID(db *Database, id int32, user *User2) error {
 	size := int(unsafe.Sizeof(*user))
-	offset := int64(id * size)
+	offset := int64(int(id)*size) + DataOffset
 
 	n, err := syscall.Pread(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(user)), size), offset)
-	if (err != nil) || (n < size) {
+	if err != nil {
 		return fmt.Errorf("failed to read user from DB: %w", err)
+	}
+	if n < size {
+		return errors.New("failed to read user from DB: user with this ID does not exists")
 	}
 
 	user.FirstName = Offset2String(user.FirstName, &user.Data[0])
@@ -95,30 +117,50 @@ func GetUserByID(db *Database, id int, user *User2) error {
 	return nil
 }
 
-func SaveUser(db *Database, user User2) error {
-	size := int(unsafe.Sizeof(user))
-	offset := int64(user.ID * size)
+func DeleteUserByID(db *Database, id int32) error {
+	flags := UserDeleted
+	var user User2
+
+	offset := int64(int(id)*int(unsafe.Sizeof(user))) + DataOffset + int64(unsafe.Offsetof(user.Flags))
+	_, err := syscall.Pwrite(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
+	if err != nil {
+		return fmt.Errorf("failed to delete user from DB: %w", err)
+	}
+
+	return nil
+}
+
+func SaveUser(db *Database, user *User2) error {
+	var userDB User2
+
+	size := int(unsafe.Sizeof(*user))
+	offset := int64(int(user.ID)*size) + DataOffset
 
 	var n int
 
+	userDB.ID = user.ID
+	userDB.Flags = user.Flags
+
 	/* TODO(anton2920): saving up to a sizeof(user.Data). */
-	n += copy(user.Data[n:], user.FirstName)
-	user.FirstName = String2Offset(user.FirstName, n)
+	n += copy(userDB.Data[n:], user.FirstName)
+	userDB.FirstName = String2Offset(user.FirstName, n)
 
-	n += copy(user.Data[n:], user.LastName)
-	user.LastName = String2Offset(user.LastName, n)
+	n += copy(userDB.Data[n:], user.LastName)
+	userDB.LastName = String2Offset(user.LastName, n)
 
-	n += copy(user.Data[n:], user.Email)
-	user.Email = String2Offset(user.Email, n)
+	n += copy(userDB.Data[n:], user.Email)
+	userDB.Email = String2Offset(user.Email, n)
 
-	n += copy(user.Data[n:], user.Password)
-	user.Password = String2Offset(user.Password, n)
+	n += copy(userDB.Data[n:], user.Password)
+	userDB.Password = String2Offset(user.Password, n)
 
-	n += copy(user.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(n))))
-	user.Courses = Slice2Offset(user.Courses, n)
+	n += copy(userDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(n))))
+	userDB.Courses = Slice2Offset(user.Courses, n)
 
-	n, err := syscall.Pwrite(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(&user)), size), offset)
-	if (err != nil) || (n < size) {
+	userDB.CreatedOn = user.CreatedOn
+
+	_, err := syscall.Pwrite(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(&userDB)), size), offset)
+	if err != nil {
 		return fmt.Errorf("failed to write user to DB: %w", err)
 	}
 
