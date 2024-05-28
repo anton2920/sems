@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/anton2920/gofa/net/http"
@@ -10,7 +11,7 @@ import (
 type Subject struct {
 	ID        int
 	Name      string
-	Teacher   *User
+	TeacherID int32
 	Group     *Group
 	CreatedOn int64
 
@@ -36,13 +37,12 @@ func WhoIsUserInSubject(userID int32, subject *Subject) SubjectUserType {
 		return SubjectUserAdmin
 	}
 
-	if userID == subject.Teacher.ID {
+	if userID == subject.TeacherID {
 		return SubjectUserTeacher
 	}
 
 	for i := 0; i < len(subject.Group.Students); i++ {
-		student := subject.Group.Students[i]
-		if userID == student.ID {
+		if userID == subject.Group.Students[i] {
 			return SubjectUserStudent
 		}
 	}
@@ -51,14 +51,20 @@ func WhoIsUserInSubject(userID int32, subject *Subject) SubjectUserType {
 }
 
 func DisplaySubjectLink(w *http.Response, subject *Subject) {
+	var teacher User
+	if err := GetUserByID(DB2, subject.TeacherID, &teacher); err != nil {
+		/* TODO(anton2920): report error. */
+		return
+	}
+
 	w.AppendString(`<a href="/subject/`)
 	w.WriteInt(subject.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
-	w.WriteHTMLString(subject.Teacher.LastName)
+	w.WriteHTMLString(teacher.LastName)
 	w.AppendString(` `)
-	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.WriteHTMLString(teacher.FirstName)
 	w.AppendString(` (ID: `)
 	w.WriteInt(subject.ID)
 	w.AppendString(`)`)
@@ -85,13 +91,18 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
+	var teacher User
+	if err := GetUserByID(DB2, subject.TeacherID, &teacher); err != nil {
+		return http.ServerError(err)
+	}
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
-	w.WriteHTMLString(subject.Teacher.LastName)
+	w.WriteHTMLString(teacher.LastName)
 	w.AppendString(` `)
-	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.WriteHTMLString(teacher.FirstName)
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)
@@ -99,9 +110,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h1>`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
-	w.WriteHTMLString(subject.Teacher.LastName)
+	w.WriteHTMLString(teacher.LastName)
 	w.AppendString(` `)
-	w.WriteHTMLString(subject.Teacher.FirstName)
+	w.WriteHTMLString(teacher.FirstName)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<p>ID: `)
@@ -109,7 +120,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Teacher: `)
-	DisplayUserLink(w, subject.Teacher)
+	DisplayUserLink(w, &teacher)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Group: `)
@@ -132,11 +143,11 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="TeacherID" value="`)
-		w.WriteInt(int(subject.Teacher.ID))
+		w.WriteInt(int(subject.TeacherID))
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="GroupID" value="`)
-		w.WriteInt(subject.Group.ID)
+		w.WriteInt(int(subject.Group.ID))
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="submit" value="Edit">`)
@@ -167,7 +178,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		if (session.ID == AdminID) || (session.ID == subject.Teacher.ID) {
+		if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
 			var displaySubmissions bool
 			for j := 0; j < len(lesson.Submissions); j++ {
 				submission := lesson.Submissions[j]
@@ -195,12 +206,17 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 						continue
 					}
 
+					var user User
+					if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
+						return http.ServerError(err)
+					}
+
 					w.AppendString(`<option value="`)
 					w.WriteInt(j)
 					w.AppendString(`">`)
-					w.WriteHTMLString(submission.User.LastName)
+					w.WriteHTMLString(user.LastName)
 					w.AppendString(` `)
-					w.WriteHTMLString(submission.User.FirstName)
+					w.WriteHTMLString(user.FirstName)
 
 					if submission.Status == SubmissionCheckDone {
 						w.AppendString(` (`)
@@ -239,7 +255,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<br>`)
 	}
 
-	if (session.ID == AdminID) || (session.ID == subject.Teacher.ID) {
+	if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
 		w.AppendString(`<form method="POST" action="/subject/lesson/edit">`)
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteString(r.URL.Path[len("/subject/"):])
@@ -249,7 +265,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			var displayCourses bool
 			for i := 0; i < len(DB.Courses); i++ {
 				course := &DB.Courses[i]
-				if (!course.Draft) && (UserOwnsCourse(subject.Teacher, course.ID)) {
+				if (!course.Draft) && (UserOwnsCourse(&teacher, course.ID)) {
 					displayCourses = true
 					break
 				}
@@ -259,7 +275,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`<select name="CourseID">`)
 				for i := 0; i < len(DB.Courses); i++ {
 					course := &DB.Courses[i]
-					if (course.Draft) || (!UserOwnsCourse(subject.Teacher, course.ID)) {
+					if (course.Draft) || (!UserOwnsCourse(&teacher, course.ID)) {
 						continue
 					}
 
@@ -286,6 +302,68 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	return nil
+}
+
+func DisplayTeacherSelect(w *http.Response, ids []string) {
+	teachers := make([]User, 32)
+	var pos int64
+
+	w.AppendString(`<select name="TeacherID">`)
+	for {
+		n, err := GetUsers(DB2, &pos, teachers)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			teacher := &teachers[i]
+
+			w.AppendString(`<option value="`)
+			w.WriteInt(int(teacher.ID))
+			w.AppendString(`"`)
+			for j := 0; j < len(ids); j++ {
+				id, err := strconv.Atoi(ids[j])
+				if err != nil {
+					continue
+				}
+				if int32(id) == teacher.ID {
+					w.AppendString(` selected`)
+				}
+			}
+			w.AppendString(`>`)
+			w.WriteHTMLString(teacher.LastName)
+			w.AppendString(` `)
+			w.WriteHTMLString(teacher.FirstName)
+			w.AppendString(`</option>`)
+		}
+	}
+	w.AppendString(`</select>`)
+}
+
+func DisplayGroupSelect(w *http.Response, ids []string) {
+	w.AppendString(`<select name="GroupID">`)
+	for i := 0; i < len(DB.Groups); i++ {
+		group := &DB.Groups[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteInt(int(group.ID))
+		w.AppendString(`"`)
+		for j := 0; j < len(ids); j++ {
+			id, err := strconv.Atoi(ids[j])
+			if err != nil {
+				continue
+			}
+			if int32(id) == group.ID {
+				w.AppendString(` selected`)
+			}
+		}
+		w.AppendString(`>`)
+		w.WriteHTMLString(group.Name)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
 }
 
 func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
@@ -318,56 +396,12 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Teacher: `)
-	w.AppendString(`<select name="TeacherID">`)
-	ids := r.Form.GetMany("TeacherID")
-	for i := 0; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(int(user.ID))
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Users)
-			if err != nil {
-				return http.ClientError(err)
-			}
-			if int32(id) == user.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Group: `)
-	w.AppendString(`<select name="GroupID">`)
-	ids = r.Form.GetMany("GroupID")
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(group.ID)
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Groups)
-			if err != nil {
-				return http.ClientError(err)
-			}
-			if id == group.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(group.Name)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -414,56 +448,12 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Teacher: `)
-	w.AppendString(`<select name="TeacherID">`)
-	ids := r.Form.GetMany("TeacherID")
-	for i := 0; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(int(user.ID))
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Users)
-			if err != nil {
-				return http.ClientError(err)
-			}
-			if int32(id) == user.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(user.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(user.FirstName)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<label>Group: `)
-	w.AppendString(`<select name="GroupID">`)
-	ids = r.Form.GetMany("GroupID")
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(group.ID)
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Groups)
-			if err != nil {
-				return http.ClientError(err)
-			}
-			if id == group.ID {
-				w.AppendString(` selected`)
-			}
-		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(group.Name)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -494,19 +484,22 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
-	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
+	nextUserID, err := GetNextID(DB2.UsersFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), int(nextUserID))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	teacher := &DB.Users[teacherID]
 
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), len(DB.Groups))
 	if err != nil {
 		return http.ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
-	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now().Unix()})
+	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, TeacherID: int32(teacherID), Group: group, CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
@@ -525,7 +518,7 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), DB.Subjects)
+	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -536,20 +529,23 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
-	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), DB.Users)
+	nextUserID, err := GetNextID(DB2.UsersFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), int(nextUserID))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	teacher := &DB.Users[teacherID]
 
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), DB.Groups)
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), len(DB.Groups))
 	if err != nil {
 		return http.ClientError(err)
 	}
 	group := &DB.Groups[groupID]
 
 	subject.Name = name
-	subject.Teacher = teacher
+	subject.TeacherID = int32(teacherID)
 	subject.Group = group
 
 	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)

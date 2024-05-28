@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/anton2920/gofa/net/http"
@@ -8,9 +9,9 @@ import (
 )
 
 type Group struct {
-	ID        int
+	ID        int32
 	Name      string
-	Students  []*User
+	Students  []int32
 	CreatedOn int64
 }
 
@@ -24,23 +25,20 @@ func UserInGroup(userID int32, group *Group) bool {
 		return true
 	}
 	for i := 0; i < len(group.Students); i++ {
-		student := group.Students[i]
-
-		if userID == student.ID {
+		if userID == group.Students[i] {
 			return true
 		}
 	}
-
 	return false
 }
 
 func DisplayGroupLink(w *http.Response, group *Group) {
 	w.AppendString(`<a href="/group/`)
-	w.WriteInt(group.ID)
+	w.WriteInt(int(group.ID))
 	w.AppendString(`">`)
 	w.WriteHTMLString(group.Name)
 	w.AppendString(` (ID: `)
-	w.WriteInt(group.ID)
+	w.WriteInt(int(group.ID))
 	w.AppendString(`)`)
 	w.AppendString(`</a>`)
 }
@@ -77,7 +75,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteInt(group.ID)
+	w.WriteInt(int(group.ID))
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
@@ -87,10 +85,13 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h2>Students</h2>`)
 	w.AppendString(`<ul>`)
 	for i := 0; i < len(group.Students); i++ {
-		student := group.Students[i]
+		var user User
+		if err := GetUserByID(DB2, group.Students[i], &user); err != nil {
+			return http.ServerError(err)
+		}
 
 		w.AppendString(`<li>`)
-		DisplayUserLink(w, student)
+		DisplayUserLink(w, &user)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)
@@ -107,9 +108,9 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		for i := 0; i < len(group.Students); i++ {
-			student := group.Students[i]
+			studentID := group.Students[i]
 			w.AppendString(`<input type="hidden" name="StudentID" value="`)
-			w.WriteInt(int(student.ID))
+			w.WriteInt(int(studentID))
 			w.AppendString(`">`)
 		}
 
@@ -146,27 +147,42 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayStudentsSelect(w *http.Response, ids []string) {
-	w.AppendString(`<select name="StudentID" multiple>`)
-	for i := AdminID + 1; i < len(DB.Users); i++ {
-		student := &DB.Users[i]
+	students := make([]User, 32)
+	var pos int64
 
-		w.AppendString(`<option value="`)
-		w.WriteInt(int(student.ID))
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := GetValidIndex(ids[j], DB.Users)
-			if err != nil {
+	w.AppendString(`<select name="StudentID" multiple>`)
+	for {
+		n, err := GetUsers(DB2, &pos, students)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			student := &students[i]
+			if student.ID == AdminID {
 				continue
 			}
-			if int32(id) == student.ID {
-				w.AppendString(` selected`)
+
+			w.AppendString(`<option value="`)
+			w.WriteInt(int(student.ID))
+			w.AppendString(`"`)
+			for j := 0; j < len(ids); j++ {
+				id, err := strconv.Atoi(ids[j])
+				if err != nil {
+					continue
+				}
+				if int32(id) == student.ID {
+					w.AppendString(` selected`)
+				}
 			}
+			w.AppendString(`>`)
+			w.WriteHTMLString(student.LastName)
+			w.AppendString(` `)
+			w.WriteHTMLString(student.FirstName)
+			w.AppendString(`</option>`)
 		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(student.LastName)
-		w.AppendString(` `)
-		w.WriteHTMLString(student.FirstName)
-		w.AppendString(`</option>`)
 	}
 	w.AppendString(`</select>`)
 }
@@ -278,16 +294,21 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
+	nextUserID, err := GetNextID(DB2.UsersFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+
 	sids := r.Form.GetMany("StudentID")
-	students := make([]*User, len(sids))
+	students := make([]int32, len(sids))
 	for i := 0; i < len(sids); i++ {
-		id, err := GetValidIndex(sids[i], DB.Users)
+		id, err := GetValidIndex(sids[i], int(nextUserID))
 		if (err != nil) || (id == AdminID) {
 			return http.ClientError(err)
 		}
-		students[i] = &DB.Users[id]
+		students[i] = int32(id)
 	}
-	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: students, CreatedOn: time.Now().Unix()})
+	DB.Groups = append(DB.Groups, Group{ID: int32(len(DB.Groups)), Name: name, Students: students, CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
@@ -306,7 +327,7 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	groupID, err := GetValidIndex(r.Form.Get("ID"), DB.Groups)
+	groupID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Groups))
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -317,14 +338,19 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, GroupEditPageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
+	nextUserID, err := GetNextID(DB2.UsersFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+
 	sids := r.Form.GetMany("StudentID")
 	students := group.Students[:0]
 	for i := 0; i < len(sids); i++ {
-		id, err := GetValidIndex(sids[i], DB.Users)
+		id, err := GetValidIndex(sids[i], int(nextUserID))
 		if (err != nil) || (id == AdminID) {
 			return http.ClientError(err)
 		}
-		students = append(students, &DB.Users[id])
+		students = append(students, int32(id))
 	}
 	group.Name = name
 	group.Students = students

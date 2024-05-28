@@ -57,13 +57,13 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 	return
 }
 
-func GetValidIndex[T any](si string, ts []T) (int, error) {
+func GetValidIndex(si string, len int) (int, error) {
 	i, err := strconv.Atoi(si)
 	if err != nil {
 		return 0, err
 	}
 
-	if (i < 0) || (i >= len(ts)) {
+	if (i < 0) || (i >= len) {
 		return 0, errors.New("slice index out of range")
 	}
 

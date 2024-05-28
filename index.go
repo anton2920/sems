@@ -3,14 +3,24 @@ package main
 import "github.com/anton2920/gofa/net/http"
 
 func DisplayIndexAdminPage(w *http.Response, user *User) {
+	users := make([]User, 10)
+	var pos int64
+
 	w.AppendString(`<h2>Users</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < min(len(DB.Users), 10); i++ {
-		user := &DB.Users[i]
-
-		w.AppendString(`<li>`)
-		DisplayUserLink(w, user)
-		w.AppendString(`</li>`)
+	for {
+		n, err := GetUsers(DB2, &pos, users)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			w.AppendString(`<li>`)
+			DisplayUserLink(w, &users[i])
+			w.AppendString(`</li>`)
+		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/user/create">`)
@@ -141,7 +151,10 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		w.AppendString(`<a href="/user/signin">Sign in</a>`)
 	} else {
-		user := &DB.Users[session.ID]
+		var user User
+		if err := GetUserByID(DB2, session.ID, &user); err != nil {
+			return http.ServerError(err)
+		}
 
 		w.AppendString(`<a href="/user/`)
 		w.WriteInt(int(user.ID))
@@ -150,9 +163,9 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<br>`)
 
 		if session.ID == AdminID {
-			DisplayIndexAdminPage(w, user)
+			DisplayIndexAdminPage(w, &user)
 		} else {
-			DisplayIndexUserPage(w, user)
+			DisplayIndexUserPage(w, &user)
 		}
 	}
 

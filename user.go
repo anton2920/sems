@@ -8,24 +8,12 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
 
 type User struct {
-	ID        int32
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
-	CreatedOn int64
-
-	Courses []int32
-}
-
-type User2 struct {
 	ID    int32
 	Flags int32
 
@@ -87,19 +75,30 @@ func UserOwnsCourse(user *User, courseID int32) bool {
 	return false
 }
 
-func GetUserByEmail(email string) *User {
-	for i := 0; i < len(DB.Users); i++ {
-		user := &DB.Users[i]
+func GetUserByEmail(db *Database, email string, user *User) error {
+	users := make([]User, 32)
+	var pos int64
 
-		if user.Email == email {
-			return user
+	for {
+		n, err := GetUsers(db, &pos, users)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			if users[i].Email == email {
+				*user = users[i]
+				return nil
+			}
 		}
 	}
 
-	return nil
+	return DBNotFound
 }
 
-func CreateUser(db *Database, user *User2) error {
+func CreateUser(db *Database, user *User) error {
 	var err error
 
 	user.ID, err = IncrementNextID(db.UsersFile)
@@ -110,7 +109,15 @@ func CreateUser(db *Database, user *User2) error {
 	return SaveUser(db, user)
 }
 
-func GetUserByID(db *Database, id int32, user *User2) error {
+func DBUser2User(user *User) {
+	user.FirstName = Offset2String(user.FirstName, &user.Data[0])
+	user.LastName = Offset2String(user.LastName, &user.Data[0])
+	user.Email = Offset2String(user.Email, &user.Data[0])
+	user.Password = Offset2String(user.Password, &user.Data[0])
+	user.Courses = Offset2Slice(user.Courses, &user.Data[0])
+}
+
+func GetUserByID(db *Database, id int32, user *User) error {
 	size := int(unsafe.Sizeof(*user))
 	offset := int64(int(id)*size) + DataOffset
 
@@ -119,21 +126,36 @@ func GetUserByID(db *Database, id int32, user *User2) error {
 		return fmt.Errorf("failed to read user from DB: %w", err)
 	}
 	if n < size {
-		return errors.New("failed to read user from DB: user with this ID does not exists")
+		return DBNotFound
 	}
 
-	user.FirstName = Offset2String(user.FirstName, &user.Data[0])
-	user.LastName = Offset2String(user.LastName, &user.Data[0])
-	user.Email = Offset2String(user.Email, &user.Data[0])
-	user.Password = Offset2String(user.Password, &user.Data[0])
-	user.Courses = Offset2Slice(user.Courses, &user.Data[0])
-
+	DBUser2User(user)
 	return nil
+}
+
+func GetUsers(db *Database, pos *int64, users []User) (int, error) {
+	if *pos < DataOffset {
+		*pos = DataOffset
+	}
+	size := int(unsafe.Sizeof(users[0]))
+
+	n, err := syscall.Pread(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(users))), len(users)*size), *pos)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read user from DB: %w", err)
+	}
+	*pos += int64(n)
+
+	n /= size
+	for i := 0; i < n; i++ {
+		DBUser2User(&users[i])
+	}
+
+	return n, nil
 }
 
 func DeleteUserByID(db *Database, id int32) error {
 	flags := UserDeleted
-	var user User2
+	var user User
 
 	offset := int64(int(id)*int(unsafe.Sizeof(user))) + DataOffset + int64(unsafe.Offsetof(user.Flags))
 	_, err := syscall.Pwrite(db.UsersFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
@@ -144,32 +166,39 @@ func DeleteUserByID(db *Database, id int32) error {
 	return nil
 }
 
-func SaveUser(db *Database, user *User2) error {
-	var userDB User2
+func SaveUser(db *Database, user *User) error {
+	var userDB User
 
 	size := int(unsafe.Sizeof(*user))
 	offset := int64(int(user.ID)*size) + DataOffset
 
-	var n int
+	var n, nbytes int
 
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags
 
 	/* TODO(anton2920): saving up to a sizeof(user.Data). */
-	n += copy(userDB.Data[n:], user.FirstName)
+	nbytes = copy(userDB.Data[n:], user.FirstName)
 	userDB.FirstName = String2Offset(user.FirstName, n)
+	n += nbytes
 
-	n += copy(userDB.Data[n:], user.LastName)
+	nbytes = copy(userDB.Data[n:], user.LastName)
 	userDB.LastName = String2Offset(user.LastName, n)
+	n += nbytes
 
-	n += copy(userDB.Data[n:], user.Email)
+	nbytes = copy(userDB.Data[n:], user.Email)
 	userDB.Email = String2Offset(user.Email, n)
+	n += nbytes
 
-	n += copy(userDB.Data[n:], user.Password)
+	nbytes = copy(userDB.Data[n:], user.Password)
 	userDB.Password = String2Offset(user.Password, n)
+	n += nbytes
 
-	n += copy(userDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(n))))
-	userDB.Courses = Slice2Offset(user.Courses, n)
+	if len(user.Courses) > 0 {
+		nbytes = copy(userDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(user.Courses[0]))))
+		userDB.Courses = Slice2Offset(user.Courses, n)
+		nbytes += n
+	}
 
 	userDB.CreatedOn = user.CreatedOn
 
@@ -195,6 +224,8 @@ func DisplayUserLink(w *http.Response, user *User) {
 }
 
 func UserPageHandler(w *http.Response, r *http.Request) error {
+	var user User
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -204,11 +235,12 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if (id < 0) || (id >= len(DB.Users)) {
-		return http.NotFound("user with this ID does not exist")
+	if err := GetUserByID(DB2, int32(id), &user); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("user with this ID does not exist")
+		}
+		return http.ServerError(err)
 	}
-	user := &DB.Users[id]
-
 	if (session.ID != AdminID) && (session.ID != user.ID) {
 		return http.ForbiddenError
 	}
@@ -296,7 +328,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		for i := 0; i < len(DB.Courses); i++ {
 			course := &DB.Courses[i]
 
-			if !UserOwnsCourse(user, course.ID) {
+			if !UserOwnsCourse(&user, course.ID) {
 				continue
 			}
 
@@ -407,7 +439,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	userID, err := GetValidIndex(r.Form.Get("ID"), DB.Users)
+	userID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -540,11 +572,20 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, UserCreatePageHandler, http.BadRequest("passwords do not match each other"))
 	}
 
-	if GetUserByEmail(email) != nil {
+	var user User
+	if err := GetUserByEmail(DB2, email, &user); err == nil {
 		return WritePage(w, r, UserCreatePageHandler, http.Conflict("user with this email already exists"))
 	}
 
-	DB.Users = append(DB.Users, User{ID: int32(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now().Unix()})
+	user.FirstName = firstName
+	user.LastName = lastName
+	user.Email = email
+	user.Password = password
+	user.CreatedOn = time.Now().Unix()
+
+	if err := CreateUser(DB2, &user); err != nil {
+		return http.ServerError(err)
+	}
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
@@ -552,6 +593,8 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserEditHandler(w *http.Response, r *http.Request) error {
+	var user User
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -561,11 +604,16 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	userID, err := GetValidIndex(r.Form.Get("ID"), DB.Users)
+	userID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-
+	if err := GetUserByID(DB2, int32(userID), &user); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("user with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 	if (session.ID != int32(userID)) && (session.ID != AdminID) {
 		return http.ForbiddenError
 	}
@@ -595,16 +643,19 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, UserEditPageHandler, http.BadRequest("passwords do not match each other"))
 	}
 
-	user := GetUserByEmail(email)
-	if (user != nil) && (user.ID != int32(userID)) {
+	var user2 User
+	if err := GetUserByEmail(DB2, email, &user2); (err == nil) && (user2.ID != int32(userID)) {
 		return WritePage(w, r, UserEditPageHandler, http.Conflict("user with this email already exists"))
 	}
 
-	user = &DB.Users[userID]
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.Email = email
 	user.Password = password
+
+	if err := SaveUser(DB2, &user); err != nil {
+		return http.ServerError(err)
+	}
 
 	w.RedirectID("/user/", userID, http.StatusSeeOther)
 	return nil
@@ -621,9 +672,12 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 	}
 	email := address.Address
 
-	user := GetUserByEmail(email)
-	if user == nil {
-		return WritePage(w, r, UserSigninPageHandler, http.NotFound("user with this email does not exist"))
+	var user User
+	if err := GetUserByEmail(DB2, email, &user); err != nil {
+		if err == DBNotFound {
+			return WritePage(w, r, UserSigninPageHandler, http.NotFound("user with this email does not exist"))
+		}
+		return http.ServerError(err)
 	}
 
 	password := r.Form.Get("Password")

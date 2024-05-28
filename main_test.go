@@ -125,13 +125,13 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	CreateInitialDB()
-
 	DB2, err = OpenDB("db_test")
 	if err != nil {
 		log.Fatalf("Failed to open DB: %v", err)
 	}
-	defer CloseDB(&DB2)
+	defer CloseDB(DB2)
+
+	CreateInitialDB()
 
 	jail.JailsRootDir = "./jails_test"
 

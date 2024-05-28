@@ -84,8 +84,6 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 
 	DB.Courses = nil
 	for i, token := range testTokens {
-		DB.Users[i].Courses = nil
-
 		testPostAuth(t, endpoint, token, url.Values{}, http.StatusOK)
 		for _, test := range expectedOK {
 			test.SetInt("ID", i)

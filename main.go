@@ -30,7 +30,7 @@ var (
 
 var WorkingDirectory string
 
-var DB2 Database
+var DB2 *Database
 
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
@@ -237,17 +237,17 @@ func main() {
 		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
+	DB2, err = OpenDB("db")
+	if err != nil {
+		log.Fatalf("Failed to open DB: %v", err)
+	}
+
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		log.Warnf("Failed to restore sessions from file: %v", err)
 	}
 	if err := RestoreDBFromFile(DBFile); err != nil {
 		log.Warnf("Failed to restore DB from file: %v", err)
 		CreateInitialDB()
-	}
-
-	DB2, err = OpenDB("db")
-	if err != nil {
-		log.Fatalf("Failed to open DB: %v", err)
 	}
 
 	go SubmissionVerifyWorker()
@@ -353,14 +353,14 @@ func main() {
 		q.Pause(FPS)
 	}
 
-	if err := CloseDB(&DB2); err != nil {
-		log.Warnf("Failed to close DB: %v", err)
-	}
-
 	if err := StoreDBToFile(DBFile); err != nil {
 		log.Warnf("Failed to store DB to file: %v", err)
 	}
 	if err := StoreSessionsToFile(SessionsFile); err != nil {
 		log.Warnf("Failed to store sessions to file: %v", err)
+	}
+
+	if err := CloseDB(DB2); err != nil {
+		log.Warnf("Failed to close DB: %v", err)
 	}
 }

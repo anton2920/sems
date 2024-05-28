@@ -32,11 +32,12 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
-	Users    []User
 	Groups   []Group
 	Courses  []Course
 	Subjects []Subject
 }
+
+var DBNotFound = errors.New("not found")
 
 //go:noescape
 //go:nosplit
@@ -55,29 +56,40 @@ func Offset2Slice[T any](s []T, base *byte) []T {
 }
 
 func String2Offset(s string, offset int) string {
-	return DBString((*byte)(unsafe.Pointer(uintptr(offset-len(s)))), len(s))
+	return DBString((*byte)(unsafe.Pointer(uintptr(offset))), len(s))
 }
 
 func Slice2Offset[T any](s []T, offset int) []T {
-	var t T
-	return unsafe.Slice((*T)(unsafe.Pointer((unsafe.SliceData(DBSlice((*byte)(unsafe.Pointer(uintptr(offset-len(s)*int(unsafe.Sizeof(t))))), len(s)))))), len(s))
+	if len(s) == 0 {
+		return nil
+	}
+	return unsafe.Slice((*T)(unsafe.Pointer((unsafe.SliceData(DBSlice((*byte)(unsafe.Pointer(uintptr(offset))), len(s)))))), len(s))
 }
 
-func CreateInitialDB() {
-	DB.Users = []User{
+func CreateInitialDB() error {
+	users := [...]User{
 		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now().Unix(), Courses: []int32{0}},
 		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now().Unix(), Courses: []int32{1}},
 		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now().Unix()},
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now().Unix()},
 	}
-	for id := int32(AdminID + 1); id < int32(len(DB.Users)); id++ {
-		DB.Users[id].ID = id
+
+	if err := syscall.Ftruncate(DB2.UsersFile, DataOffset); err != nil {
+		return fmt.Errorf("failed to truncate users file: %w", err)
+	}
+	if err := SetNextID(DB2.UsersFile, 0); err != nil {
+		return fmt.Errorf("failed to set next user ID: %w", err)
+	}
+	for id := int32(0); id < int32(len(users)); id++ {
+		if err := CreateUser(DB2, &users[id]); err != nil {
+			return err
+		}
 	}
 
 	DB.Groups = []Group{
-		{Name: "18-SWE", Students: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now().Unix()},
+		{Name: "18-SWE", Students: []int32{2, 3}, CreatedOn: time.Now().Unix()},
 	}
-	for id := 0; id < len(DB.Groups); id++ {
+	for id := int32(0); id < int32(len(DB.Groups)); id++ {
 		DB.Groups[id].ID = id
 	}
 
@@ -153,11 +165,13 @@ func CreateInitialDB() {
 	}
 
 	DB.Subjects = []Subject{
-		{Name: "Programming", Teacher: &DB.Users[AdminID], Group: &DB.Groups[0], CreatedOn: time.Now().Unix()},
+		{Name: "Programming", TeacherID: 0, Group: &DB.Groups[0], CreatedOn: time.Now().Unix()},
 	}
 	for id := 0; id < len(DB.Subjects); id++ {
 		DB.Subjects[id].ID = id
 	}
+
+	return nil
 }
 
 func StoreDBToFile(filename string) error {
@@ -234,34 +248,35 @@ func OpenDBFile(dir string, name string) (int32, error) {
 	return fd, nil
 }
 
-func OpenDB(dir string) (Database, error) {
-	var db Database
+func OpenDB(dir string) (*Database, error) {
 	var err error
 
 	if err := syscall.Mkdir(dir, 0755); err != nil {
 		if err.(syscall.Error).Errno != syscall.EEXIST {
-			return db, fmt.Errorf("failed to create DB directory: %w", err)
+			return nil, fmt.Errorf("failed to create DB directory: %w", err)
 		}
 	}
 
+	db := new(Database)
+
 	db.UsersFile, err = OpenDBFile(dir, "Users.db")
 	if err != nil {
-		return db, fmt.Errorf("failed to open users DB file: %w", err)
+		return nil, fmt.Errorf("failed to open users DB file: %w", err)
 	}
 
 	db.GroupsFile, err = OpenDBFile(dir, "Groups.db")
 	if err != nil {
-		return db, fmt.Errorf("failed to open groups DB file: %w", err)
+		return nil, fmt.Errorf("failed to open groups DB file: %w", err)
 	}
 
 	db.CoursesFile, err = OpenDBFile(dir, "Courses.db")
 	if err != nil {
-		return db, fmt.Errorf("failed to open courses DB file: %w", err)
+		return nil, fmt.Errorf("failed to open courses DB file: %w", err)
 	}
 
 	db.SubjectsFile, err = OpenDBFile(dir, "Subjects.db")
 	if err != nil {
-		return db, fmt.Errorf("failed to open subjects DB file: %w", err)
+		return nil, fmt.Errorf("failed to open subjects DB file: %w", err)
 	}
 
 	return db, nil

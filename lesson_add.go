@@ -3,10 +3,9 @@ package main
 import (
 	"unsafe"
 
+	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/slices"
-
-	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 )
 
@@ -103,7 +102,7 @@ func LessonTestFillFromRequest(vs url.Values, test *StepTest) error {
 			}
 
 			var err error
-			question.CorrectAnswers[j], err = GetValidIndex(correctAnswers[j], question.Answers)
+			question.CorrectAnswers[j], err = GetValidIndex(correctAnswers[j], len(question.Answers))
 			if err != nil {
 				return http.ClientError(err)
 			}
@@ -517,7 +516,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson
 	default:
 		return http.ClientError(nil)
 	case "Lesson":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
@@ -551,13 +550,13 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Test":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
 		lesson := lessons[li]
 
-		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
 		}
@@ -657,13 +656,13 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson
 		return LessonAddTestPageHandler(w, r, test)
 
 	case "Programming":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), lessons)
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
 		lesson := lessons[li]
 
-		si, err := GetValidIndex(r.Form.Get("StepIndex"), lesson.Steps)
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
 		}

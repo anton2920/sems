@@ -7,55 +7,6 @@ import (
 	"github.com/anton2920/gofa/net/url"
 )
 
-func TestUser2(t *testing.T) {
-	var user2, user3 User2
-	var user User
-
-	user = DB.Users[0]
-
-	user2.FirstName = user.FirstName
-	user2.LastName = user.LastName
-	user2.Email = user.Email
-	user2.Password = user.Password
-	user2.Courses = []int32{0}
-	user2.CreatedOn = user.CreatedOn.Unix()
-
-	if err := CreateUser(&DB2, &user2); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := GetUserByID(&DB2, 0, &user3); err != nil {
-		t.Fatal(err)
-	}
-
-	if user2.FirstName != user3.FirstName {
-		t.Errorf("First name: %s != %s", user2.FirstName, user3.FirstName)
-	}
-	if user2.LastName != user3.LastName {
-		t.Errorf("Last name: %s != %s", user2.LastName, user3.LastName)
-	}
-	if user2.Email != user3.Email {
-		t.Errorf("Email: %s != %s", user2.Email, user3.Email)
-	}
-	if user2.Password != user3.Password {
-		t.Errorf("Password: %s != %s", user2.Password, user3.Password)
-	}
-	if user2.Courses[0] != user3.Courses[0] {
-		t.Errorf("Courses[0]: %d != %d", user2.Courses[0], user3.Courses[0])
-	}
-	if user2.CreatedOn != user3.CreatedOn {
-		t.Errorf("CreatedOn: %d != %d", user2.CreatedOn, user3.CreatedOn)
-	}
-
-	if err := GetUserByID(&DB2, 100, &user3); err == nil {
-		t.Fatal("expected error, got nothing")
-	}
-
-	if err := DeleteUserByID(&DB2, 0); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestUserNameValid(t *testing.T) {
 	expectedOK := [...]string{
 		/* Make sure basic English works. */
