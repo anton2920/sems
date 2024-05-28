@@ -34,6 +34,7 @@ const DBFile = "db.gob"
 var DB struct {
 	Users    []User
 	Groups   []Group
+	Courses  []Course
 	Subjects []Subject
 }
 
@@ -64,80 +65,12 @@ func Slice2Offset[T any](s []T, offset int) []T {
 
 func CreateInitialDB() {
 	DB.Users = []User{
-		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now(), Courses: []*Course{
-			&Course{
-				Name: "Programming basics",
-				Lessons: []*Lesson{
-					&Lesson{
-						Name:   "Introduction",
-						Theory: "This is an introduction.",
-						Steps: []interface{}{
-							&StepTest{
-								Name: "Back-end development basics",
-								Questions: []Question{
-									Question{
-										Name: "What is an API?",
-										Answers: []string{
-											"One",
-											"Two",
-											"Three",
-											"Four",
-										},
-										CorrectAnswers: []int{2},
-									},
-									Question{
-										Name: "To be or not to be?",
-										Answers: []string{
-											"To be",
-											"Not to be",
-										},
-										CorrectAnswers: []int{0, 1},
-									},
-									Question{
-										Name: "Third question",
-										Answers: []string{
-											"What?",
-											"Where?",
-											"When?",
-											"Correct",
-										},
-										CorrectAnswers: []int{3},
-									},
-								},
-							},
-							&StepProgramming{
-								Name:        "Hello, world",
-								Description: "Print 'hello, world' in your favorite language",
-								Checks: [2][]Check{
-									CheckTypeExample: []Check{
-										Check{Input: "aaa", Output: "bbb"},
-										Check{Input: "ccc", Output: "ddd"},
-									},
-									CheckTypeTest: []Check{
-										Check{Input: "fff", Output: "eee"},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}},
-		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now(), Courses: []*Course{
-			&Course{
-				Name: "Test course",
-				Lessons: []*Lesson{
-					&Lesson{
-						Name:   "Test lesson",
-						Theory: "This is a test lesson.",
-					},
-				},
-			},
-		}},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now(), Courses: []int32{0}},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now(), Courses: []int32{1}},
 		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
 	}
-	for id := AdminID + 1; id < len(DB.Users); id++ {
+	for id := int32(AdminID + 1); id < int32(len(DB.Users)); id++ {
 		DB.Users[id].ID = id
 	}
 
@@ -146,6 +79,77 @@ func CreateInitialDB() {
 	}
 	for id := 0; id < len(DB.Groups); id++ {
 		DB.Groups[id].ID = id
+	}
+
+	DB.Courses = []Course{
+		{
+			Name: "Programming basics", Lessons: []*Lesson{
+				&Lesson{
+					Name:   "Introduction",
+					Theory: "This is an introduction.",
+					Steps: []interface{}{
+						&StepTest{
+							Name: "Back-end development basics",
+							Questions: []Question{
+								Question{
+									Name: "What is an API?",
+									Answers: []string{
+										"One",
+										"Two",
+										"Three",
+										"Four",
+									},
+									CorrectAnswers: []int{2},
+								},
+								Question{
+									Name: "To be or not to be?",
+									Answers: []string{
+										"To be",
+										"Not to be",
+									},
+									CorrectAnswers: []int{0, 1},
+								},
+								Question{
+									Name: "Third question",
+									Answers: []string{
+										"What?",
+										"Where?",
+										"When?",
+										"Correct",
+									},
+									CorrectAnswers: []int{3},
+								},
+							},
+						},
+						&StepProgramming{
+							Name:        "Hello, world",
+							Description: "Print 'hello, world' in your favorite language",
+							Checks: [2][]Check{
+								CheckTypeExample: []Check{
+									Check{Input: "aaa", Output: "bbb"},
+									Check{Input: "ccc", Output: "ddd"},
+								},
+								CheckTypeTest: []Check{
+									Check{Input: "fff", Output: "eee"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			Name: "Test course", Lessons: []*Lesson{
+				&Lesson{
+					Name:   "Test lesson",
+					Theory: "This is a test lesson.",
+				},
+			},
+		},
+	}
+	for id := int32(0); id < int32(len(DB.Courses)); id++ {
+		DB.Courses[id].ID = id
 	}
 
 	DB.Subjects = []Subject{

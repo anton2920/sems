@@ -19,7 +19,7 @@ const (
 	MaxGroupNameLen = 15
 )
 
-func UserInGroup(userID int, group *Group) bool {
+func UserInGroup(userID int32, group *Group) bool {
 	if userID == AdminID {
 		return true
 	}
@@ -109,7 +109,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		for i := 0; i < len(group.Students); i++ {
 			student := group.Students[i]
 			w.AppendString(`<input type="hidden" name="StudentID" value="`)
-			w.WriteInt(student.ID)
+			w.WriteInt(int(student.ID))
 			w.AppendString(`">`)
 		}
 
@@ -151,14 +151,14 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 		student := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteInt(student.ID)
+		w.WriteInt(int(student.ID))
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				continue
 			}
-			if id == student.ID {
+			if int32(id) == student.ID {
 				w.AppendString(` selected`)
 			}
 		}

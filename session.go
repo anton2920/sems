@@ -14,7 +14,7 @@ import (
 
 type Session struct {
 	GobMutex
-	ID     int
+	ID     int32
 	Expiry time.Time
 }
 

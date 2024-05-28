@@ -33,8 +33,8 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 
 	w.AppendString(`<h2>Courses</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(user.Courses); i++ {
-		course := user.Courses[i]
+	for i := 0; i < len(DB.Courses); i++ {
+		course := &DB.Courses[i]
 
 		w.AppendString(`<li>`)
 		DisplayCourseLink(w, i, course)
@@ -89,8 +89,12 @@ func DisplayIndexUserPage(w *http.Response, user *User) {
 
 	w.AppendString(`<h2>Courses</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(user.Courses); i++ {
-		course := user.Courses[i]
+	for i := 0; i < len(DB.Courses); i++ {
+		course := &DB.Courses[i]
+
+		if !UserOwnsCourse(user, course.ID) {
+			continue
+		}
 
 		w.AppendString(`<li>`)
 		DisplayCourseLink(w, i, course)
@@ -140,7 +144,7 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		user := &DB.Users[session.ID]
 
 		w.AppendString(`<a href="/user/`)
-		w.WriteInt(user.ID)
+		w.WriteInt(int(user.ID))
 		w.AppendString(`">Profile</a> `)
 		w.AppendString(`<a href="/api/user/signout">Sign out</a>`)
 		w.AppendString(`<br>`)

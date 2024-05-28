@@ -15,14 +15,14 @@ import (
 )
 
 type User struct {
-	ID        int
+	ID        int32
 	FirstName string
 	LastName  string
 	Email     string
 	Password  string
 	CreatedOn time.Time
 
-	Courses []*Course
+	Courses []int32
 }
 
 type User2 struct {
@@ -71,6 +71,20 @@ func UserNameValid(name string) error {
 	}
 
 	return nil
+}
+
+func UserOwnsCourse(user *User, courseID int32) bool {
+	/* TODO(anton2920): move this out to caller. */
+	if user.ID == AdminID {
+		return true
+	}
+	for i := 0; i < len(user.Courses); i++ {
+		cID := user.Courses[i]
+		if cID == courseID {
+			return true
+		}
+	}
+	return false
 }
 
 func GetUserByEmail(email string) *User {
@@ -169,13 +183,13 @@ func SaveUser(db *Database, user *User2) error {
 
 func DisplayUserLink(w *http.Response, user *User) {
 	w.AppendString(`<a href="/user/`)
-	w.WriteInt(user.ID)
+	w.WriteInt(int(user.ID))
 	w.AppendString(`">`)
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
 	w.AppendString(` (ID: `)
-	w.WriteInt(user.ID)
+	w.WriteInt(int(user.ID))
 	w.AppendString(`)`)
 	w.AppendString(`</a>`)
 }
@@ -217,7 +231,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteInt(user.ID)
+	w.WriteInt(int(user.ID))
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Email: `)
@@ -228,7 +242,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	DisplayFormattedTime(w, user.CreatedOn)
 	w.AppendString(`</p>`)
 
-	if (session.ID == id) || (session.ID == AdminID) {
+	if (session.ID == int32(id)) || (session.ID == AdminID) {
 		w.AppendString(`<form method="POST" action="/user/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
@@ -279,8 +293,12 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	if session.ID == user.ID {
 		w.AppendString(`<h2>Courses</h2>`)
 		w.AppendString(`<ul>`)
-		for i := 0; i < len(user.Courses); i++ {
-			course := user.Courses[i]
+		for i := 0; i < len(DB.Courses); i++ {
+			course := &DB.Courses[i]
+
+			if !UserOwnsCourse(user, course.ID) {
+				continue
+			}
 
 			w.AppendString(`<li>`)
 			DisplayCourseLink(w, i, course)
@@ -394,7 +412,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	if (session.ID != userID) && (session.ID != AdminID) {
+	if (session.ID != int32(userID)) && (session.ID != AdminID) {
 		return http.ForbiddenError
 	}
 
@@ -526,7 +544,7 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, UserCreatePageHandler, http.Conflict("user with this email already exists"))
 	}
 
-	DB.Users = append(DB.Users, User{ID: len(DB.Users), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
+	DB.Users = append(DB.Users, User{ID: int32(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
@@ -548,7 +566,7 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	if (session.ID != userID) && (session.ID != AdminID) {
+	if (session.ID != int32(userID)) && (session.ID != AdminID) {
 		return http.ForbiddenError
 	}
 
@@ -578,7 +596,7 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 	}
 
 	user := GetUserByEmail(email)
-	if (user != nil) && (user.ID != userID) {
+	if (user != nil) && (user.ID != int32(userID)) {
 		return WritePage(w, r, UserEditPageHandler, http.Conflict("user with this email already exists"))
 	}
 

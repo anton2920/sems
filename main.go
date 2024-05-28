@@ -106,7 +106,7 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
 		case "/delete":
-			return CourseDeleteHandler(w, r)
+			// return CourseDeleteHandler(w, r)
 		}
 	case strings.StartsWith(path, "/group"):
 		switch path[len("/group"):] {

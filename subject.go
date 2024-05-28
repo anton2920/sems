@@ -31,7 +31,7 @@ const (
 	MaxSubjectNameLen = 45
 )
 
-func WhoIsUserInSubject(userID int, subject *Subject) SubjectUserType {
+func WhoIsUserInSubject(userID int32, subject *Subject) SubjectUserType {
 	if userID == AdminID {
 		return SubjectUserAdmin
 	}
@@ -132,7 +132,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="TeacherID" value="`)
-		w.WriteInt(subject.Teacher.ID)
+		w.WriteInt(int(subject.Teacher.ID))
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="GroupID" value="`)
@@ -247,9 +247,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 		if len(subject.Lessons) == 0 {
 			var displayCourses bool
-			for i := 0; i < len(subject.Teacher.Courses); i++ {
-				course := subject.Teacher.Courses[i]
-				if !course.Draft {
+			for i := 0; i < len(DB.Courses); i++ {
+				course := &DB.Courses[i]
+				if (!course.Draft) && (UserOwnsCourse(subject.Teacher, course.ID)) {
 					displayCourses = true
 					break
 				}
@@ -257,9 +257,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			if displayCourses {
 				w.AppendString(`<label>Courses: `)
 				w.AppendString(`<select name="CourseID">`)
-				for i := 0; i < len(subject.Teacher.Courses); i++ {
-					course := subject.Teacher.Courses[i]
-					if course.Draft {
+				for i := 0; i < len(DB.Courses); i++ {
+					course := &DB.Courses[i]
+					if (course.Draft) || (!UserOwnsCourse(subject.Teacher, course.ID)) {
 						continue
 					}
 
@@ -324,14 +324,14 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
 		user := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteInt(user.ID)
+		w.WriteInt(int(user.ID))
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return http.ClientError(err)
 			}
-			if id == user.ID {
+			if int32(id) == user.ID {
 				w.AppendString(` selected`)
 			}
 		}
@@ -420,14 +420,14 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
 		user := &DB.Users[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteInt(user.ID)
+		w.WriteInt(int(user.ID))
 		w.AppendString(`"`)
 		for j := 0; j < len(ids); j++ {
 			id, err := GetValidIndex(ids[j], DB.Users)
 			if err != nil {
 				return http.ClientError(err)
 			}
-			if id == user.ID {
+			if int32(id) == user.ID {
 				w.AppendString(` selected`)
 			}
 		}

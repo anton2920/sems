@@ -8,6 +8,9 @@ import (
 )
 
 type Course struct {
+	ID    int32
+	Flags int32
+
 	Name    string
 	Lessons []*Lesson
 
@@ -42,10 +45,13 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if (id < 0) || (id > len(user.Courses)) {
+	if (id < 0) || (id > len(DB.Courses)) {
 		return http.NotFound("course with this ID does not exist")
 	}
-	course := user.Courses[id]
+	if !UserOwnsCourse(user, int32(id)) {
+		return http.ForbiddenError
+	}
+	course := &DB.Courses[id]
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -137,11 +143,14 @@ func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	user := &DB.Users[session.ID]
-	courseID, err := GetValidIndex(r.Form.Get("ID"), user.Courses)
+	courseID, err := GetValidIndex(r.Form.Get("ID"), DB.Courses)
 	if err != nil {
 		return http.ClientError(err)
 	}
-	course := user.Courses[courseID]
+	if !UserOwnsCourse(user, int32(courseID)) {
+		return http.ForbiddenError
+	}
+	course := &DB.Courses[courseID]
 
 	li, err := GetValidIndex(r.Form.Get("LessonIndex"), course.Lessons)
 	if err != nil {
@@ -321,15 +330,20 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 	id := r.Form.Get("ID")
 	var course *Course
 	if id == "" {
-		course = new(Course)
-		user.Courses = append(user.Courses, course)
-		r.Form.SetInt("ID", len(user.Courses)-1)
+		DB.Courses = append(DB.Courses, Course{ID: int32(len(DB.Courses))})
+		course = &DB.Courses[len(DB.Courses)-1]
+
+		user.Courses = append(user.Courses, course.ID)
+		r.Form.SetInt("ID", int(course.ID))
 	} else {
-		ci, err := GetValidIndex(id, user.Courses)
+		ci, err := GetValidIndex(id, DB.Courses)
 		if err != nil {
 			return http.ClientError(err)
 		}
-		course = user.Courses[ci]
+		if !UserOwnsCourse(user, int32(ci)) {
+			return http.ForbiddenError
+		}
+		course = &DB.Courses[ci]
 	}
 	course.Draft = true
 
@@ -476,56 +490,12 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
 	case "Save":
-		return CourseCreateEditHandler(w, r)
+		if err := CourseVerify(course); err != nil {
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
+		}
+		course.Draft = false
+
+		w.RedirectID("/course/", int(course.ID), http.StatusSeeOther)
+		return nil
 	}
-}
-
-/* TODO(anton2920): think about removing this function. */
-func CourseCreateEditHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	user := &DB.Users[session.ID]
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	courseID, err := GetValidIndex(r.Form.Get("ID"), user.Courses)
-	if err != nil {
-		return http.ClientError(err)
-	}
-	course := user.Courses[courseID]
-
-	if err := CourseVerify(course); err != nil {
-		return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
-	}
-	course.Draft = false
-
-	w.RedirectID("/course/", courseID, http.StatusSeeOther)
-	return nil
-}
-
-func CourseDeleteHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	user := &DB.Users[session.ID]
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	courseID, err := GetValidIndex(r.Form.Get("ID"), user.Courses)
-	if err != nil {
-		return http.ClientError(err)
-	}
-
-	/* TODO(anton2920): this will screw up indicies for courses that are being edited. */
-	user.Courses = RemoveAtIndex(user.Courses, courseID)
-
-	w.Redirect("/", http.StatusSeeOther)
-	return nil
 }
