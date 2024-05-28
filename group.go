@@ -11,7 +11,7 @@ type Group struct {
 	ID        int
 	Name      string
 	Students  []*User
-	CreatedOn time.Time
+	CreatedOn int64
 }
 
 const (
@@ -287,7 +287,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 		}
 		students[i] = &DB.Users[id]
 	}
-	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: students, CreatedOn: time.Now()})
+	DB.Groups = append(DB.Groups, Group{ID: len(DB.Groups), Name: name, Students: students, CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil

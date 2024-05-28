@@ -12,7 +12,7 @@ type Subject struct {
 	Name      string
 	Teacher   *User
 	Group     *Group
-	CreatedOn time.Time
+	CreatedOn int64
 
 	Lessons []*Lesson
 }
@@ -506,7 +506,7 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 	}
 	group := &DB.Groups[groupID]
 
-	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now()})
+	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, Teacher: teacher, Group: group, CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil

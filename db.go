@@ -65,17 +65,17 @@ func Slice2Offset[T any](s []T, offset int) []T {
 
 func CreateInitialDB() {
 	DB.Users = []User{
-		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now(), Courses: []int32{0}},
-		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now(), Courses: []int32{1}},
-		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now()},
-		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now()},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now().Unix(), Courses: []int32{0}},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now().Unix(), Courses: []int32{1}},
+		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now().Unix()},
+		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now().Unix()},
 	}
 	for id := int32(AdminID + 1); id < int32(len(DB.Users)); id++ {
 		DB.Users[id].ID = id
 	}
 
 	DB.Groups = []Group{
-		{Name: "18-SWE", Students: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now()},
+		{Name: "18-SWE", Students: []*User{&DB.Users[2], &DB.Users[3]}, CreatedOn: time.Now().Unix()},
 	}
 	for id := 0; id < len(DB.Groups); id++ {
 		DB.Groups[id].ID = id
@@ -153,7 +153,7 @@ func CreateInitialDB() {
 	}
 
 	DB.Subjects = []Subject{
-		{Name: "Programming", Teacher: &DB.Users[AdminID], Group: &DB.Groups[0], CreatedOn: time.Now()},
+		{Name: "Programming", Teacher: &DB.Users[AdminID], Group: &DB.Groups[0], CreatedOn: time.Now().Unix()},
 	}
 	for id := 0; id < len(DB.Subjects); id++ {
 		DB.Subjects[id].ID = id

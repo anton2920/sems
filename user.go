@@ -20,7 +20,7 @@ type User struct {
 	LastName  string
 	Email     string
 	Password  string
-	CreatedOn time.Time
+	CreatedOn int64
 
 	Courses []int32
 }
@@ -544,7 +544,7 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, UserCreatePageHandler, http.Conflict("user with this email already exists"))
 	}
 
-	DB.Users = append(DB.Users, User{ID: int32(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now()})
+	DB.Users = append(DB.Users, User{ID: int32(len(DB.Users)), FirstName: firstName, LastName: lastName, Email: email, Password: password, CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil

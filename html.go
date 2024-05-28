@@ -6,8 +6,8 @@ import (
 	"github.com/anton2920/gofa/net/http"
 )
 
-func DisplayFormattedTime(w *http.Response, t time.Time) {
-	w.Write(t.AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+func DisplayFormattedTime(w *http.Response, t int64) {
+	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }
 
 func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int, name, value string, required bool) {
