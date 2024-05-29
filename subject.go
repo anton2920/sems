@@ -15,7 +15,7 @@ type Subject struct {
 	GroupID   int32
 	CreatedOn int64
 
-	Lessons []*Lesson
+	Lessons []Lesson
 }
 
 type SubjectUserType int
@@ -275,7 +275,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			var displayCourses bool
 			for i := 0; i < len(DB.Courses); i++ {
 				course := &DB.Courses[i]
-				if (!course.Draft) && (UserOwnsCourse(&teacher, course.ID)) {
+				if (course.Flags != CourseDraft) && (UserOwnsCourse(&teacher, course.ID)) {
 					displayCourses = true
 					break
 				}
@@ -285,7 +285,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`<select name="CourseID">`)
 				for i := 0; i < len(DB.Courses); i++ {
 					course := &DB.Courses[i]
-					if (course.Draft) || (!UserOwnsCourse(&teacher, course.ID)) {
+					if (course.Flags == CourseDraft) || (!UserOwnsCourse(&teacher, course.ID)) {
 						continue
 					}
 

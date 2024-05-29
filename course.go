@@ -1,9 +1,8 @@
 package main
 
 import (
-	"github.com/anton2920/gofa/net/url"
-
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/strings"
 )
 
@@ -12,11 +11,16 @@ type Course struct {
 	Flags int32
 
 	Name    string
-	Lessons []*Lesson
+	Lessons []Lesson
 
-	/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-	Draft bool
+	Data [16384]byte
 }
+
+const (
+	CourseActive  int32 = 0
+	CourseDeleted       = 1
+	CourseDraft         = 2
+)
 
 const (
 	MinNameLen = 1
@@ -28,7 +32,7 @@ func DisplayCourseLink(w *http.Response, index int, course *Course) {
 	w.WriteInt(index)
 	w.AppendString(`">`)
 	w.WriteHTMLString(course.Name)
-	if course.Draft {
+	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
 	}
 	w.AppendString(`</a>`)
@@ -60,7 +64,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(course.Name)
-	if course.Draft {
+	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
 	}
 	w.AppendString(`</title></head>`)
@@ -68,7 +72,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<h1>`)
 	w.WriteHTMLString(course.Name)
-	if course.Draft {
+	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
 	}
 	w.AppendString(`</h1>`)
@@ -306,7 +310,7 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, course *Co
 			if (pindex < 0) || (pindex >= len(course.Lessons)) {
 				return http.ClientError(nil)
 			}
-			lesson := course.Lessons[pindex]
+			lesson := &course.Lessons[pindex]
 			lesson.Draft = true
 
 			r.Form.Set("LessonIndex", spindex)
@@ -361,7 +365,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 		course = &DB.Courses[ci]
 	}
-	course.Draft = true
+	course.Flags = CourseDraft
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
@@ -383,7 +387,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
+		lesson := &course.Lessons[li]
 
 		LessonFillFromRequest(r.Form, lesson)
 	case "Test":
@@ -440,7 +444,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
+		lesson := &course.Lessons[li]
 
 		LessonFillFromRequest(r.Form, lesson)
 		if err := LessonVerify(lesson); err != nil {
@@ -450,9 +454,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Add lesson":
-		lesson := new(Lesson)
-		lesson.Draft = true
-		course.Lessons = append(course.Lessons, lesson)
+		course.Lessons = append(course.Lessons, Lesson{Draft: true})
+		lesson := &course.Lessons[len(course.Lessons)-1]
 
 		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
 		return LessonAddPageHandler(w, r, lesson)
@@ -461,7 +464,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
+		lesson := &course.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -509,7 +512,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err := CourseVerify(course); err != nil {
 			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
 		}
-		course.Draft = false
+		course.Flags = CourseActive
 
 		w.RedirectID("/course/", int(course.ID), http.StatusSeeOther)
 		return nil

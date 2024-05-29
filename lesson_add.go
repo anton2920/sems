@@ -506,7 +506,7 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 	return nil
 }
 
-func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []Lesson, currentPage, k, command string) error {
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -520,7 +520,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []*Lesson
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := lessons[li]
+		lesson := &lessons[li]
 
 		switch command {
 		case "Delete":

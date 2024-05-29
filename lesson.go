@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"unsafe"
 
 	"github.com/anton2920/gofa/net/http"
 )
@@ -17,20 +18,28 @@ type (
 		Output string
 	}
 
+	StepCommon struct {
+		Name string
+		Type StepType
+	}
 	StepTest struct {
-		Name      string
+		StepCommon
 		Questions []Question
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
 	}
 	StepProgramming struct {
-		Name        string
+		StepCommon
 		Description string
 		Checks      [2][]Check
 
 		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
 		Draft bool
+	}
+	Step struct {
+		StepCommon
+		_ [max(unsafe.Sizeof(st), unsafe.Sizeof(sp)) - unsafe.Sizeof(sc)]byte
 	}
 
 	Lesson struct {
@@ -54,7 +63,20 @@ const (
 	CheckTypeTest
 )
 
+type StepType byte
+
+const (
+	StepTypeTest StepType = iota
+	StepTypeProgramming
+)
+
 const LessonTheoryMaxDisplayLen = 30
+
+var (
+	sc StepCommon
+	st StepTest
+	sp StepProgramming
+)
 
 func init() {
 	gob.Register(&StepTest{})
@@ -99,14 +121,12 @@ func StepsDeepCopy(dst *[]interface{}, src []interface{}) {
 	}
 }
 
-func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
-	*dst = make([]*Lesson, len(src))
+func LessonsDeepCopy(dst *[]Lesson, src []Lesson) {
+	*dst = make([]Lesson, len(src))
 
 	for l := 0; l < len(src); l++ {
 		sl := src[l]
-
-		dl := new(Lesson)
-		(*dst)[l] = dl
+		dl := (*dst)[l]
 
 		dl.Name = sl.Name
 		dl.Theory = sl.Theory
@@ -114,7 +134,7 @@ func LessonsDeepCopy(dst *[]*Lesson, src []*Lesson) {
 	}
 }
 
-func DisplayLessonsEditableList(w *http.Response, lessons []*Lesson) {
+func DisplayLessonsEditableList(w *http.Response, lessons []Lesson) {
 	for i := 0; i < len(lessons); i++ {
 		lesson := lessons[i]
 

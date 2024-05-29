@@ -190,7 +190,7 @@ func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
 			}
-			lesson := subject.Lessons[pindex]
+			lesson := &subject.Lessons[pindex]
 			lesson.Draft = true
 
 			r.Form.Set("LessonIndex", spindex)
@@ -280,7 +280,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 
 		LessonFillFromRequest(r.Form, lesson)
 	case "Test":
@@ -288,7 +288,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -310,7 +310,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -337,7 +337,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 
 		if err := LessonVerify(lesson); err != nil {
 			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
@@ -346,9 +346,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 
 		return SubjectLessonEditMainPageHandler(w, r, subject)
 	case "Add lesson":
-		lesson := new(Lesson)
-		lesson.Draft = true
-		subject.Lessons = append(subject.Lessons, lesson)
+		subject.Lessons = append(subject.Lessons, Lesson{Draft: true})
+		lesson := &subject.Lessons[len(subject.Lessons)-1]
 
 		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
 		return LessonAddPageHandler(w, r, lesson)
@@ -357,7 +356,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -378,7 +377,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 		lesson.Draft = true
 
 		test := new(StepTest)
@@ -392,7 +391,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := subject.Lessons[li]
+		lesson := &subject.Lessons[li]
 		lesson.Draft = true
 
 		task := new(StepProgramming)

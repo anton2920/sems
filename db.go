@@ -102,13 +102,13 @@ func CreateInitialDB() error {
 
 	DB.Courses = []Course{
 		{
-			Name: "Programming basics", Lessons: []*Lesson{
-				&Lesson{
+			Name: "Programming basics", Lessons: []Lesson{
+				Lesson{
 					Name:   "Introduction",
 					Theory: "This is an introduction.",
 					Steps: []interface{}{
 						&StepTest{
-							Name: "Back-end development basics",
+							StepCommon: StepCommon{"Back-end development basics", StepTypeTest},
 							Questions: []Question{
 								Question{
 									Name: "What is an API?",
@@ -141,7 +141,7 @@ func CreateInitialDB() error {
 							},
 						},
 						&StepProgramming{
-							Name:        "Hello, world",
+							StepCommon:  StepCommon{"Hello, world", StepTypeProgramming},
 							Description: "Print 'hello, world' in your favorite language",
 							Checks: [2][]Check{
 								CheckTypeExample: []Check{
@@ -159,8 +159,8 @@ func CreateInitialDB() error {
 		},
 
 		{
-			Name: "Test course", Lessons: []*Lesson{
-				&Lesson{
+			Name: "Test course", Lessons: []Lesson{
+				Lesson{
 					Name:   "Test lesson",
 					Theory: "This is a test lesson.",
 				},
