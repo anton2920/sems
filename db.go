@@ -32,6 +32,7 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
+	Lessons  []Lesson
 	Courses  []Course
 	Subjects []Subject
 }
@@ -100,72 +101,71 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Courses = []Course{
-		{
-			Name: "Programming basics", Lessons: []Lesson{
-				Lesson{
-					Name:   "Introduction",
-					Theory: "This is an introduction.",
-					Steps: []interface{}{
-						&StepTest{
-							StepCommon: StepCommon{"Back-end development basics", StepTypeTest},
-							Questions: []Question{
-								Question{
-									Name: "What is an API?",
-									Answers: []string{
-										"One",
-										"Two",
-										"Three",
-										"Four",
-									},
-									CorrectAnswers: []int{2},
-								},
-								Question{
-									Name: "To be or not to be?",
-									Answers: []string{
-										"To be",
-										"Not to be",
-									},
-									CorrectAnswers: []int{0, 1},
-								},
-								Question{
-									Name: "Third question",
-									Answers: []string{
-										"What?",
-										"Where?",
-										"When?",
-										"Correct",
-									},
-									CorrectAnswers: []int{3},
-								},
+	DB.Lessons = []Lesson{
+		Lesson{
+			Name:   "Introduction",
+			Theory: "This is an introduction.",
+			Steps: []interface{}{
+				&StepTest{
+					StepCommon: StepCommon{"Back-end development basics", StepTypeTest},
+					Questions: []Question{
+						Question{
+							Name: "What is an API?",
+							Answers: []string{
+								"One",
+								"Two",
+								"Three",
+								"Four",
 							},
+							CorrectAnswers: []int{2},
 						},
-						&StepProgramming{
-							StepCommon:  StepCommon{"Hello, world", StepTypeProgramming},
-							Description: "Print 'hello, world' in your favorite language",
-							Checks: [2][]Check{
-								CheckTypeExample: []Check{
-									Check{Input: "aaa", Output: "bbb"},
-									Check{Input: "ccc", Output: "ddd"},
-								},
-								CheckTypeTest: []Check{
-									Check{Input: "fff", Output: "eee"},
-								},
+						Question{
+							Name: "To be or not to be?",
+							Answers: []string{
+								"To be",
+								"Not to be",
 							},
+							CorrectAnswers: []int{0, 1},
+						},
+						Question{
+							Name: "Third question",
+							Answers: []string{
+								"What?",
+								"Where?",
+								"When?",
+								"Correct",
+							},
+							CorrectAnswers: []int{3},
+						},
+					},
+				},
+				&StepProgramming{
+					StepCommon:  StepCommon{"Hello, world", StepTypeProgramming},
+					Description: "Print 'hello, world' in your favorite language",
+					Checks: [2][]Check{
+						CheckTypeExample: []Check{
+							Check{Input: "aaa", Output: "bbb"},
+							Check{Input: "ccc", Output: "ddd"},
+						},
+						CheckTypeTest: []Check{
+							Check{Input: "fff", Output: "eee"},
 						},
 					},
 				},
 			},
 		},
-
-		{
-			Name: "Test course", Lessons: []Lesson{
-				Lesson{
-					Name:   "Test lesson",
-					Theory: "This is a test lesson.",
-				},
-			},
+		Lesson{
+			Name:   "Test lesson",
+			Theory: "This is a test lesson.",
 		},
+	}
+	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
+		DB.Lessons[id].ID = id
+	}
+
+	DB.Courses = []Course{
+		{Name: "Programming basics", Lessons: []int32{0}},
+		{Name: "Test course", Lessons: []int32{1}},
 	}
 	for id := int32(0); id < int32(len(DB.Courses)); id++ {
 		DB.Courses[id].ID = id

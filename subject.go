@@ -15,7 +15,7 @@ type Subject struct {
 	GroupID   int32
 	CreatedOn int64
 
-	Lessons []Lesson
+	Lessons []int32
 }
 
 type SubjectUserType int
@@ -169,13 +169,13 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<h2>Lessons</h2>`)
 	}
 	for i := 0; i < len(subject.Lessons); i++ {
-		lesson := subject.Lessons[i]
+		lesson := &DB.Lessons[subject.Lessons[i]]
 
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Lesson #`)
 		w.WriteInt(i + 1)
-		if lesson.Draft {
+		if lesson.Flags == LessonDraft {
 			w.AppendString(` (draft)`)
 		}
 		w.AppendString(`</legend>`)

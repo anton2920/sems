@@ -11,7 +11,7 @@ type Course struct {
 	Flags int32
 
 	Name    string
-	Lessons []Lesson
+	Lessons []int32
 
 	Data [16384]byte
 }
@@ -79,13 +79,13 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<h2>Lessons</h2>`)
 	for i := 0; i < len(course.Lessons); i++ {
-		lesson := course.Lessons[i]
+		lesson := &DB.Lessons[course.Lessons[i]]
 
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Lesson #`)
 		w.WriteInt(i + 1)
-		if lesson.Draft {
+		if lesson.Flags == LessonDraft {
 			w.AppendString(` (draft)`)
 		}
 		w.AppendString(`</legend>`)
@@ -168,7 +168,7 @@ func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := course.Lessons[li]
+	lesson := &DB.Lessons[course.Lessons[li]]
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -245,8 +245,8 @@ func CourseVerify(course *Course) error {
 		return http.BadRequest("create at least one lesson")
 	}
 	for li := 0; li < len(course.Lessons); li++ {
-		lesson := course.Lessons[li]
-		if lesson.Draft {
+		lesson := &DB.Lessons[course.Lessons[li]]
+		if lesson.Flags == LessonDraft {
 			return http.BadRequest("lesson %d is a draft", li+1)
 		}
 	}
@@ -310,8 +310,8 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, course *Co
 			if (pindex < 0) || (pindex >= len(course.Lessons)) {
 				return http.ClientError(nil)
 			}
-			lesson := &course.Lessons[pindex]
-			lesson.Draft = true
+			lesson := &DB.Lessons[course.Lessons[pindex]]
+			lesson.Flags = LessonDraft
 
 			r.Form.Set("LessonIndex", spindex)
 			return LessonAddPageHandler(w, r, lesson)
@@ -387,7 +387,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &course.Lessons[li]
+		lesson := &DB.Lessons[course.Lessons[li]]
 
 		LessonFillFromRequest(r.Form, lesson)
 	case "Test":
@@ -395,7 +395,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
+		lesson := &DB.Lessons[course.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -417,7 +417,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
+		lesson := &DB.Lessons[course.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -444,27 +444,29 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &course.Lessons[li]
+		lesson := &DB.Lessons[course.Lessons[li]]
 
 		LessonFillFromRequest(r.Form, lesson)
 		if err := LessonVerify(lesson); err != nil {
 			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
-		lesson.Draft = false
+		lesson.Flags = LessonActive
 
 		return CourseCreateEditCoursePageHandler(w, r, course)
 	case "Add lesson":
-		course.Lessons = append(course.Lessons, Lesson{Draft: true})
-		lesson := &course.Lessons[len(course.Lessons)-1]
+		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft})
+		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
-		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
+		course.Lessons = append(course.Lessons, lesson.ID)
+		r.Form.SetInt("LessonIndex", int(lesson.ID))
+
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &course.Lessons[li]
+		lesson := &DB.Lessons[course.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -485,8 +487,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
-		lesson.Draft = true
+		lesson := &DB.Lessons[course.Lessons[li]]
+		lesson.Flags = LessonDraft
 
 		test := new(StepTest)
 		test.Draft = true
@@ -499,8 +501,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := course.Lessons[li]
-		lesson.Draft = true
+		lesson := &DB.Lessons[course.Lessons[li]]
+		lesson.Flags = LessonDraft
 
 		task := new(StepProgramming)
 		task.Draft = true

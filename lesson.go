@@ -43,6 +43,9 @@ type (
 	}
 
 	Lesson struct {
+		ID    int32
+		Flags int32
+
 		Name   string
 		Theory string
 
@@ -50,9 +53,6 @@ type (
 		Steps []interface{}
 
 		Submissions []*Submission
-
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
 	}
 )
 
@@ -68,6 +68,12 @@ type StepType byte
 const (
 	StepTypeTest StepType = iota
 	StepTypeProgramming
+)
+
+const (
+	LessonActive  int32 = 0
+	LessonDeleted       = 1
+	LessonDraft         = 2
 )
 
 const LessonTheoryMaxDisplayLen = 30
@@ -121,28 +127,32 @@ func StepsDeepCopy(dst *[]interface{}, src []interface{}) {
 	}
 }
 
-func LessonsDeepCopy(dst *[]Lesson, src []Lesson) {
-	*dst = make([]Lesson, len(src))
+func LessonsDeepCopy(dst *[]int32, src []int32) {
+	*dst = make([]int32, len(src))
 
 	for l := 0; l < len(src); l++ {
-		sl := src[l]
-		dl := (*dst)[l]
+		sl := &DB.Lessons[src[l]]
 
+		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons))})
+		dl := &DB.Lessons[len(DB.Lessons)-1]
+		(*dst)[l] = dl.ID
+
+		dl.Flags = sl.Flags
 		dl.Name = sl.Name
 		dl.Theory = sl.Theory
 		StepsDeepCopy(&dl.Steps, sl.Steps)
 	}
 }
 
-func DisplayLessonsEditableList(w *http.Response, lessons []Lesson) {
+func DisplayLessonsEditableList(w *http.Response, lessons []int32) {
 	for i := 0; i < len(lessons); i++ {
-		lesson := lessons[i]
+		lesson := &DB.Lessons[lessons[i]]
 
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Lesson #`)
 		w.WriteInt(i + 1)
-		if lesson.Draft {
+		if lesson.Flags == LessonDraft {
 			w.AppendString(` (draft)`)
 		}
 		w.AppendString(`</legend>`)

@@ -580,7 +580,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := subject.Lessons[li]
+	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
 	if err != nil {
@@ -1044,7 +1044,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := subject.Lessons[li]
+	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	who, err := WhoIsUserInSubject(session.ID, subject)
 	if err != nil {
@@ -1168,7 +1168,7 @@ func SubmissionDiscardHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := subject.Lessons[li]
+	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
 	if err != nil {
@@ -1207,7 +1207,7 @@ func SubmissionNewHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := subject.Lessons[li]
+	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
 	if err != nil {

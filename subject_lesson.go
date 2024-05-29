@@ -25,7 +25,7 @@ func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := subject.Lessons[li]
+	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	who, err := WhoIsUserInSubject(session.ID, subject)
 	if err != nil {
@@ -190,8 +190,8 @@ func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
 			}
-			lesson := &subject.Lessons[pindex]
-			lesson.Draft = true
+			lesson := &DB.Lessons[subject.Lessons[pindex]]
+			lesson.Flags = LessonDraft
 
 			r.Form.Set("LessonIndex", spindex)
 			return LessonAddPageHandler(w, r, lesson)
@@ -280,7 +280,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
+		lesson := &DB.Lessons[subject.Lessons[li]]
 
 		LessonFillFromRequest(r.Form, lesson)
 	case "Test":
@@ -288,7 +288,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
+		lesson := &DB.Lessons[subject.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -310,7 +310,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
+		lesson := &DB.Lessons[subject.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -337,26 +337,28 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
+		lesson := &DB.Lessons[subject.Lessons[li]]
 
 		if err := LessonVerify(lesson); err != nil {
 			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
 		}
-		lesson.Draft = false
+		lesson.Flags = LessonActive
 
 		return SubjectLessonEditMainPageHandler(w, r, subject)
 	case "Add lesson":
-		subject.Lessons = append(subject.Lessons, Lesson{Draft: true})
-		lesson := &subject.Lessons[len(subject.Lessons)-1]
+		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft})
+		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
-		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
+		subject.Lessons = append(subject.Lessons, lesson.ID)
+		r.Form.SetInt("LessonIndex", int(lesson.ID))
+
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
+		lesson := &DB.Lessons[subject.Lessons[li]]
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -377,8 +379,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
-		lesson.Draft = true
+		lesson := &DB.Lessons[subject.Lessons[li]]
+		lesson.Flags = LessonDraft
 
 		test := new(StepTest)
 		test.Draft = true
@@ -391,8 +393,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &subject.Lessons[li]
-		lesson.Draft = true
+		lesson := &DB.Lessons[subject.Lessons[li]]
+		lesson.Flags = LessonDraft
 
 		task := new(StepProgramming)
 		task.Draft = true
@@ -428,8 +430,8 @@ func SubjectLessonEditHandler(w *http.Response, r *http.Request) error {
 		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("create at least one lesson"))
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
-		lesson := subject.Lessons[li]
-		if lesson.Draft {
+		lesson := &DB.Lessons[subject.Lessons[li]]
+		if lesson.Flags == LessonDraft {
 			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("lesson %d is a draft", li+1))
 		}
 	}
