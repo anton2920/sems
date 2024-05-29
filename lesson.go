@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/gob"
 	"unsafe"
 
+	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 )
 
@@ -21,21 +21,20 @@ type (
 	StepCommon struct {
 		Name string
 		Type StepType
+
+		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
+		Draft bool
 	}
 	StepTest struct {
 		StepCommon
-		Questions []Question
 
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
+		Questions []Question
 	}
 	StepProgramming struct {
 		StepCommon
+
 		Description string
 		Checks      [2][]Check
-
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
 	}
 	Step struct {
 		StepCommon
@@ -49,8 +48,7 @@ type (
 		Name   string
 		Theory string
 
-		/* TODO(anton2920): using 'interface{}' so 'encoding/gob' does what it supposed to do. */
-		Steps []interface{}
+		Steps []Step
 
 		Submissions []*Submission
 	}
@@ -84,21 +82,43 @@ var (
 	sp StepProgramming
 )
 
-func init() {
-	gob.Register(&StepTest{})
-	gob.Register(&StepProgramming{})
+func Step2Test(s *Step) (*StepTest, error) {
+	if s.Type != StepTypeTest {
+		return nil, errors.New("invalid step type for test")
+	}
+	return (*StepTest)(unsafe.Pointer(s)), nil
 }
 
-func StepsDeepCopy(dst *[]interface{}, src []interface{}) {
-	*dst = make([]interface{}, len(src))
+func Step2Programming(s *Step) (*StepProgramming, error) {
+	if s.Type != StepTypeProgramming {
+		return nil, errors.New("invalid step type for programming")
+	}
+	return (*StepProgramming)(unsafe.Pointer(s)), nil
+}
+
+func GetStepStringType(s *Step) string {
+	switch s.Type {
+	default:
+		panic("invalid step type")
+	case StepTypeTest:
+		return "Test"
+	case StepTypeProgramming:
+		return "Programming task"
+	}
+}
+
+func StepsDeepCopy(dst *[]Step, src []Step) {
+	*dst = make([]Step, len(src))
 
 	for s := 0; s < len(src); s++ {
-		switch ss := src[s].(type) {
+		switch src[s].Type {
 		default:
 			panic("invalid step type")
-		case *StepTest:
-			ds := new(StepTest)
-			(*dst)[s] = ds
+		case StepTypeTest:
+			ss, _ := Step2Test(&src[s])
+
+			(*dst)[s].Type = StepTypeTest
+			ds, _ := Step2Test(&(*dst)[s])
 
 			ds.Name = ss.Name
 			ds.Questions = make([]Question, len(ss.Questions))
@@ -113,9 +133,11 @@ func StepsDeepCopy(dst *[]interface{}, src []interface{}) {
 				dq.CorrectAnswers = make([]int, len(sq.CorrectAnswers))
 				copy(dq.CorrectAnswers, sq.CorrectAnswers)
 			}
-		case *StepProgramming:
-			ds := new(StepProgramming)
-			(*dst)[s] = ds
+		case StepTypeProgramming:
+			ss, _ := Step2Programming(&src[s])
+
+			(*dst)[s].Type = StepTypeProgramming
+			ds, _ := Step2Programming(&(*dst)[s])
 
 			ds.Name = ss.Name
 			ds.Description = ss.Description

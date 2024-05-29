@@ -5,10 +5,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/slices"
-
-	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 )
 
@@ -57,7 +56,7 @@ type (
 		LessonName string
 		UserID     int32
 
-		Steps          []interface{}
+		Steps          []Step
 		StartedAt      time.Time
 		SubmittedSteps []interface{}
 		FinishedAt     time.Time
@@ -87,15 +86,17 @@ func init() {
 	gob.Register(&SubmittedProgramming{})
 }
 
-func GetSubmittedStepScore(step interface{}, submittedStep interface{}) (int, int) {
+func GetSubmittedStepScore(step *Step, submittedStep interface{}) (int, int) {
 	var nsteps int
-	switch step := step.(type) {
+	switch step.Type {
 	default:
 		panic("invalid step type")
-	case *StepTest:
-		nsteps = len(step.Questions)
-	case *StepProgramming:
-		nsteps = len(step.Checks[CheckTypeTest])
+	case StepTypeTest:
+		test, _ := Step2Test(step)
+		nsteps = len(test.Questions)
+	case StepTypeProgramming:
+		task, _ := Step2Programming(step)
+		nsteps = len(task.Checks[CheckTypeTest])
 	}
 
 	if submittedStep == nil {
@@ -124,7 +125,7 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 	var totalScore, totalMaximum int
 
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		score, maximum := GetSubmittedStepScore(submission.Steps[i], submission.SubmittedSteps[i])
+		score, maximum := GetSubmittedStepScore(&submission.Steps[i], submission.SubmittedSteps[i])
 		totalScore += score
 		totalMaximum += maximum
 	}
@@ -178,17 +179,17 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 	w.AppendString(`">`)
 
 	for i := 0; i < len(submission.Steps); i++ {
-		var name, stepType string
+		step := &submission.Steps[i]
 
-		step := submission.Steps[i]
-		switch step := step.(type) {
+		name := step.Name
+
+		var stepType string
+		switch step.Type {
 		default:
 			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
+		case StepTypeTest:
 			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
+		case StepTypeProgramming:
 			stepType = "Programming task"
 		}
 
@@ -696,21 +697,11 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 	w.AppendString(`">`)
 
 	for i := 0; i < len(submission.Steps); i++ {
-		var name, stepType string
+		step := &submission.Steps[i]
+		name := step.Name
+		stepType := GetStepStringType(step)
+
 		var draft bool
-
-		step := submission.Steps[i]
-		switch step := step.(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
-			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
-			stepType = "Programming task"
-		}
-
 		submittedStep := submission.SubmittedSteps[i]
 		if submittedStep != nil {
 			switch submittedStep := submittedStep.(type) {
@@ -993,26 +984,29 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *S
 			if (pindex < 0) || (pindex >= len(submission.Steps)) {
 				return http.ClientError(nil)
 			}
+			step := &submission.Steps[pindex]
 
-			switch step := submission.Steps[pindex].(type) {
+			switch step.Type {
 			default:
 				panic("invalid step type")
-			case *StepTest:
+			case StepTypeTest:
 				submittedStep, ok := submission.SubmittedSteps[pindex].(*SubmittedTest)
 				if !ok {
+					test, _ := Step2Test(step)
 					submittedStep = new(SubmittedTest)
-					submittedStep.Test = step
+					submittedStep.Test = test
 					submittedStep.Draft = true
 					submission.SubmittedSteps[pindex] = submittedStep
 				}
 
 				r.Form.Set("StepIndex", spindex)
 				return SubmissionNewTestPageHandler(w, r, submittedStep)
-			case *StepProgramming:
+			case StepTypeProgramming:
 				submittedStep, ok := submission.SubmittedSteps[pindex].(*SubmittedProgramming)
 				if !ok {
+					task, _ := Step2Programming(step)
 					submittedStep = new(SubmittedProgramming)
-					submittedStep.Task = step
+					submittedStep.Task = task
 					submittedStep.Draft = true
 					submission.SubmittedSteps[pindex] = submittedStep
 				}

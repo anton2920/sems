@@ -52,12 +52,14 @@ func LessonVerify(lesson *Lesson) error {
 	}
 
 	for si := 0; si < len(lesson.Steps); si++ {
-		switch step := lesson.Steps[si].(type) {
-		case *StepTest:
+		step := &lesson.Steps[si]
+
+		switch step.Type {
+		case StepTypeTest:
 			if step.Draft {
 				return http.BadRequest("test %d is a draft", si+1)
 			}
-		case *StepProgramming:
+		case StepTypeProgramming:
 			if step.Draft {
 				return http.BadRequest("programming task %d is a draft", si+1)
 			}
@@ -230,22 +232,10 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 	w.AppendString(`<br><br>`)
 
 	for i := 0; i < len(lesson.Steps); i++ {
-		var name, stepType string
-		var draft bool
-
-		step := lesson.Steps[i]
-		switch step := step.(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
-			draft = step.Draft
-			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
-			draft = step.Draft
-			stepType = "Programming task"
-		}
+		step := &lesson.Steps[i]
+		name := step.Name
+		draft := step.Draft
+		stepType := GetStepStringType(step)
 
 		w.AppendString(`<fieldset>`)
 
@@ -506,6 +496,19 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 	return nil
 }
 
+func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) error {
+	switch step.Type {
+	default:
+		panic("invalid step type")
+	case StepTypeTest:
+		test, _ := Step2Test(step)
+		return LessonAddTestPageHandler(w, r, test)
+	case StepTypeProgramming:
+		task, _ := Step2Programming(step)
+		return LessonAddProgrammingPageHandler(w, r, task)
+	}
+}
+
 func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, currentPage, k, command string) error {
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
@@ -529,19 +532,11 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
 				return http.ClientError(nil)
 			}
-			step := lesson.Steps[pindex]
+			step := &lesson.Steps[pindex]
+			step.Draft = true
 
 			r.Form.Set("StepIndex", spindex)
-			switch step := step.(type) {
-			default:
-				panic("invalid step type")
-			case *StepTest:
-				step.Draft = true
-				return LessonAddTestPageHandler(w, r, step)
-			case *StepProgramming:
-				step.Draft = true
-				return LessonAddProgrammingPageHandler(w, r, step)
-			}
+			return LessonAddStepPageHandler(w, r, step)
 		case "↑", "^|":
 			MoveUp(lesson.Steps, pindex)
 		case "↓", "|v":
@@ -560,9 +555,9 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		test, ok := lesson.Steps[si].(*StepTest)
-		if !ok {
-			return http.ClientError(nil)
+		test, err := Step2Test(&lesson.Steps[si])
+		if err != nil {
+			return http.ClientError(err)
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
@@ -666,8 +661,8 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		task, ok := lesson.Steps[si].(*StepProgramming)
-		if !ok {
+		task, err := Step2Programming(&lesson.Steps[si])
+		if err != nil {
 			return http.ClientError(nil)
 		}
 

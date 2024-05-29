@@ -105,54 +105,7 @@ func CreateInitialDB() error {
 		Lesson{
 			Name:   "Introduction",
 			Theory: "This is an introduction.",
-			Steps: []interface{}{
-				&StepTest{
-					StepCommon: StepCommon{"Back-end development basics", StepTypeTest},
-					Questions: []Question{
-						Question{
-							Name: "What is an API?",
-							Answers: []string{
-								"One",
-								"Two",
-								"Three",
-								"Four",
-							},
-							CorrectAnswers: []int{2},
-						},
-						Question{
-							Name: "To be or not to be?",
-							Answers: []string{
-								"To be",
-								"Not to be",
-							},
-							CorrectAnswers: []int{0, 1},
-						},
-						Question{
-							Name: "Third question",
-							Answers: []string{
-								"What?",
-								"Where?",
-								"When?",
-								"Correct",
-							},
-							CorrectAnswers: []int{3},
-						},
-					},
-				},
-				&StepProgramming{
-					StepCommon:  StepCommon{"Hello, world", StepTypeProgramming},
-					Description: "Print 'hello, world' in your favorite language",
-					Checks: [2][]Check{
-						CheckTypeExample: []Check{
-							Check{Input: "aaa", Output: "bbb"},
-							Check{Input: "ccc", Output: "ddd"},
-						},
-						CheckTypeTest: []Check{
-							Check{Input: "fff", Output: "eee"},
-						},
-					},
-				},
-			},
+			Steps:  make([]Step, 2),
 		},
 		Lesson{
 			Name:   "Test lesson",
@@ -161,6 +114,52 @@ func CreateInitialDB() error {
 	}
 	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
 		DB.Lessons[id].ID = id
+	}
+	*((*StepTest)(unsafe.Pointer(&DB.Lessons[0].Steps[0]))) = StepTest{
+		StepCommon: StepCommon{Name: "Back-end development basics", Type: StepTypeTest},
+		Questions: []Question{
+			Question{
+				Name: "What is an API?",
+				Answers: []string{
+					"One",
+					"Two",
+					"Three",
+					"Four",
+				},
+				CorrectAnswers: []int{2},
+			},
+			Question{
+				Name: "To be or not to be?",
+				Answers: []string{
+					"To be",
+					"Not to be",
+				},
+				CorrectAnswers: []int{0, 1},
+			},
+			Question{
+				Name: "Third question",
+				Answers: []string{
+					"What?",
+					"Where?",
+					"When?",
+					"Correct",
+				},
+				CorrectAnswers: []int{3},
+			},
+		},
+	}
+	*((*StepProgramming)(unsafe.Pointer(&DB.Lessons[0].Steps[1]))) = StepProgramming{
+		StepCommon:  StepCommon{Name: "Hello, world", Type: StepTypeProgramming},
+		Description: "Print 'hello, world' in your favorite language",
+		Checks: [2][]Check{
+			CheckTypeExample: []Check{
+				Check{Input: "aaa", Output: "bbb"},
+				Check{Input: "ccc", Output: "ddd"},
+			},
+			CheckTypeTest: []Check{
+				Check{Input: "fff", Output: "eee"},
+			},
+		},
 	}
 
 	DB.Courses = []Course{

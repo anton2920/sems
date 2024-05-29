@@ -58,19 +58,9 @@ func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<div style="max-width: max-content">`)
 	for i := 0; i < len(lesson.Steps); i++ {
-		var name, stepType string
-
-		step := lesson.Steps[i]
-		switch step := step.(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			name = step.Name
-			stepType = "Test"
-		case *StepProgramming:
-			name = step.Name
-			stepType = "Programming task"
-		}
+		step := &lesson.Steps[i]
+		name := step.Name
+		stepType := GetStepStringType(step)
 
 		w.AppendString(`<fieldset>`)
 
@@ -294,9 +284,9 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		test, ok := lesson.Steps[si].(*StepTest)
-		if !ok {
-			return http.ClientError(nil)
+		test, err := Step2Test(&lesson.Steps[si])
+		if err != nil {
+			return http.ClientError(err)
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
@@ -316,9 +306,9 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		task, ok := lesson.Steps[si].(*StepProgramming)
-		if !ok {
-			return http.ClientError(nil)
+		task, err := Step2Programming(&lesson.Steps[si])
+		if err != nil {
+			return http.ClientError(err)
 		}
 
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
@@ -364,14 +354,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		switch step := lesson.Steps[si].(type) {
-		default:
-			panic("invalid step type")
-		case *StepTest:
-			step.Draft = false
-		case *StepProgramming:
-			step.Draft = false
-		}
+		lesson.Steps[si].Draft = false
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Add test":
@@ -382,9 +365,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		lesson := &DB.Lessons[subject.Lessons[li]]
 		lesson.Flags = LessonDraft
 
-		test := new(StepTest)
-		test.Draft = true
-		lesson.Steps = append(lesson.Steps, test)
+		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeTest, Draft: true}})
+		test, _ := Step2Test(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddTestPageHandler(w, r, test)
@@ -396,9 +378,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		lesson := &DB.Lessons[subject.Lessons[li]]
 		lesson.Flags = LessonDraft
 
-		task := new(StepProgramming)
-		task.Draft = true
-		lesson.Steps = append(lesson.Steps, task)
+		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeProgramming, Draft: true}})
+		task, _ := Step2Programming(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
