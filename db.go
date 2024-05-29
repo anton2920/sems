@@ -32,7 +32,6 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
-	Groups   []Group
 	Courses  []Course
 	Subjects []Subject
 }
@@ -86,11 +85,19 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Groups = []Group{
+	groups := [...]Group{
 		{Name: "18-SWE", Students: []int32{2, 3}, CreatedOn: time.Now().Unix()},
 	}
-	for id := int32(0); id < int32(len(DB.Groups)); id++ {
-		DB.Groups[id].ID = id
+	if err := syscall.Ftruncate(DB2.GroupsFile, DataOffset); err != nil {
+		return fmt.Errorf("failed to truncate groups file: %w", err)
+	}
+	if err := SetNextID(DB2.GroupsFile, 0); err != nil {
+		return fmt.Errorf("failed to set next group ID: %w", err)
+	}
+	for id := int32(0); id < int32(len(groups)); id++ {
+		if err := CreateGroup(DB2, &groups[id]); err != nil {
+			return err
+		}
 	}
 
 	DB.Courses = []Course{
@@ -165,7 +172,7 @@ func CreateInitialDB() error {
 	}
 
 	DB.Subjects = []Subject{
-		{Name: "Programming", TeacherID: 0, Group: &DB.Groups[0], CreatedOn: time.Now().Unix()},
+		{Name: "Programming", TeacherID: 0, GroupID: 0, CreatedOn: time.Now().Unix()},
 	}
 	for id := 0; id < len(DB.Subjects); id++ {
 		DB.Subjects[id].ID = id

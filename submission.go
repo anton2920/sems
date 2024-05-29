@@ -564,7 +564,12 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
-	switch WhoIsUserInSubject(session.ID, subject) {
+
+	who, err := WhoIsUserInSubject(session.ID, subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	switch who {
 	default:
 		r.Form.Set("Teacher", "")
 	case SubjectUserAdmin, SubjectUserTeacher:
@@ -1041,7 +1046,11 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	}
 	lesson := subject.Lessons[li]
 
-	if WhoIsUserInSubject(session.ID, subject) != SubjectUserStudent {
+	who, err := WhoIsUserInSubject(session.ID, subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	if who != SubjectUserStudent {
 		return http.ForbiddenError
 	}
 
@@ -1186,7 +1195,11 @@ func SubmissionNewHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 	subject := &DB.Subjects[subjectID]
-	if WhoIsUserInSubject(session.ID, subject) != SubjectUserStudent {
+	who, err := WhoIsUserInSubject(session.ID, subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	if who != SubjectUserStudent {
 		return http.ForbiddenError
 	}
 

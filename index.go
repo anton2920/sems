@@ -27,14 +27,24 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 	w.AppendString(`<input type="submit" value="Create user">`)
 	w.AppendString(`</form>`)
 
+	groups := make([]Group, 32)
+	pos = 0
+
 	w.AppendString(`<h2>Groups</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
-
-		w.AppendString(`<li>`)
-		DisplayGroupLink(w, group)
-		w.AppendString(`</li>`)
+	for {
+		n, err := GetGroups(DB2, &pos, groups)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			w.AppendString(`<li>`)
+			DisplayGroupLink(w, &groups[i])
+			w.AppendString(`</li>`)
+		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/group/create">`)
@@ -71,73 +81,9 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 }
 
 func DisplayIndexUserPage(w *http.Response, user *User) {
-	userID := user.ID
-
-	var displayGroups bool
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
-
-		if UserInGroup(userID, group) {
-			displayGroups = true
-			break
-		}
-	}
-	if displayGroups {
-		w.AppendString(`<h2>Groups</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Groups); i++ {
-			group := &DB.Groups[i]
-
-			if UserInGroup(userID, group) {
-				w.AppendString(`<li>`)
-				DisplayGroupLink(w, group)
-				w.AppendString(`</li>`)
-			}
-		}
-		w.AppendString(`</ul>`)
-	}
-
-	w.AppendString(`<h2>Courses</h2>`)
-	w.AppendString(`<ul>`)
-	for i := 0; i < len(DB.Courses); i++ {
-		course := &DB.Courses[i]
-
-		if !UserOwnsCourse(user, course.ID) {
-			continue
-		}
-
-		w.AppendString(`<li>`)
-		DisplayCourseLink(w, i, course)
-		w.AppendString(`</li>`)
-	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/course/create">`)
-	w.AppendString(`<input type="submit" value="Create course">`)
-	w.AppendString(`</form>`)
-
-	var displaySubjects bool
-	for i := 0; i < len(DB.Subjects); i++ {
-		subject := &DB.Subjects[i]
-
-		if WhoIsUserInSubject(userID, subject) != SubjectUserNone {
-			displaySubjects = true
-			break
-		}
-	}
-	if displaySubjects {
-		w.AppendString(`<h2>Subjects</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Subjects); i++ {
-			subject := &DB.Subjects[i]
-
-			if WhoIsUserInSubject(userID, subject) != SubjectUserNone {
-				w.AppendString(`<li>`)
-				DisplaySubjectLink(w, subject)
-				w.AppendString(`</li>`)
-			}
-		}
-		w.AppendString(`</ul>`)
-	}
+	DisplayUserGroups(w, user.ID)
+	DisplayUserCourses(w, user)
+	DisplayUserSubjects(w, user.ID)
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {

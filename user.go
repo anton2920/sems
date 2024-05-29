@@ -210,6 +210,92 @@ func SaveUser(db *Database, user *User) error {
 	return nil
 }
 
+func DisplayUserGroups(w *http.Response, userID int32) {
+	groups := make([]Group, 32)
+	var pos int64
+
+	var displayed bool
+	for {
+		n, err := GetGroups(DB2, &pos, groups)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			if UserInGroup(userID, &groups[i]) {
+				if !displayed {
+					w.AppendString(`<h2>Groups</h2>`)
+					w.AppendString(`<ul>`)
+					displayed = true
+				}
+
+				w.AppendString(`<li>`)
+				DisplayGroupLink(w, &groups[i])
+				w.AppendString(`</li>`)
+			}
+		}
+	}
+	if displayed {
+		w.AppendString(`</ul>`)
+	}
+}
+
+func DisplayUserCourses(w *http.Response, user *User) {
+	w.AppendString(`<h2>Courses</h2>`)
+	w.AppendString(`<ul>`)
+	for i := 0; i < len(DB.Courses); i++ {
+		course := &DB.Courses[i]
+
+		if !UserOwnsCourse(user, course.ID) {
+			continue
+		}
+
+		w.AppendString(`<li>`)
+		DisplayCourseLink(w, i, course)
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ul>`)
+	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.AppendString(`<input type="submit" value="Create course">`)
+	w.AppendString(`</form>`)
+}
+
+func DisplayUserSubjects(w *http.Response, userID int32) {
+	var displaySubjects bool
+	for i := 0; i < len(DB.Subjects); i++ {
+		subject := &DB.Subjects[i]
+
+		who, err := WhoIsUserInSubject(userID, subject)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if who != SubjectUserNone {
+			displaySubjects = true
+			break
+		}
+	}
+	if displaySubjects {
+		w.AppendString(`<h2>Subjects</h2>`)
+		w.AppendString(`<ul>`)
+		for i := 0; i < len(DB.Subjects); i++ {
+			subject := &DB.Subjects[i]
+
+			who, err := WhoIsUserInSubject(userID, subject)
+			if err != nil {
+				/* TODO(anton2920): report error. */
+			}
+			if who != SubjectUserNone {
+				w.AppendString(`<li>`)
+				DisplaySubjectLink(w, subject)
+				w.AppendString(`</li>`)
+			}
+		}
+		w.AppendString(`</ul>`)
+	}
+}
+
 func DisplayUserLink(w *http.Response, user *User) {
 	w.AppendString(`<a href="/user/`)
 	w.WriteInt(int(user.ID))
@@ -298,73 +384,13 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</form>`)
 	}
 
-	var displayGroups bool
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
-
-		if UserInGroup(user.ID, group) {
-			displayGroups = true
-			break
-		}
-	}
-	if displayGroups {
-		w.AppendString(`<h2>Groups</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Groups); i++ {
-			group := &DB.Groups[i]
-
-			if UserInGroup(user.ID, group) {
-				w.AppendString(`<li>`)
-				DisplayGroupLink(w, group)
-				w.AppendString(`</li>`)
-			}
-		}
-		w.AppendString(`</ul>`)
-	}
+	DisplayUserGroups(w, user.ID)
 
 	if session.ID == user.ID {
-		w.AppendString(`<h2>Courses</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Courses); i++ {
-			course := &DB.Courses[i]
-
-			if !UserOwnsCourse(&user, course.ID) {
-				continue
-			}
-
-			w.AppendString(`<li>`)
-			DisplayCourseLink(w, i, course)
-			w.AppendString(`</li>`)
-		}
-		w.AppendString(`</ul>`)
-		w.AppendString(`<form method="POST" action="/course/create">`)
-		w.AppendString(`<input type="submit" value="Create course">`)
-		w.AppendString(`</form>`)
+		DisplayUserCourses(w, &user)
 	}
 
-	var displaySubjects bool
-	for i := 0; i < len(DB.Subjects); i++ {
-		subject := &DB.Subjects[i]
-
-		if WhoIsUserInSubject(user.ID, subject) != SubjectUserNone {
-			displaySubjects = true
-			break
-		}
-	}
-	if displaySubjects {
-		w.AppendString(`<h2>Subjects</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Subjects); i++ {
-			subject := &DB.Subjects[i]
-
-			if WhoIsUserInSubject(user.ID, subject) != SubjectUserNone {
-				w.AppendString(`<li>`)
-				DisplaySubjectLink(w, subject)
-				w.AppendString(`</li>`)
-			}
-		}
-		w.AppendString(`</ul>`)
-	}
+	DisplayUserSubjects(w, user.ID)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)

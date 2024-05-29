@@ -27,7 +27,10 @@ func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
 	}
 	lesson := subject.Lessons[li]
 
-	who := WhoIsUserInSubject(session.ID, subject)
+	who, err := WhoIsUserInSubject(session.ID, subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
 	if who == SubjectUserNone {
 		return http.ForbiddenError
 	}

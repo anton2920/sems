@@ -12,7 +12,7 @@ type Subject struct {
 	ID        int
 	Name      string
 	TeacherID int32
-	Group     *Group
+	GroupID   int32
 	CreatedOn int64
 
 	Lessons []*Lesson
@@ -32,22 +32,24 @@ const (
 	MaxSubjectNameLen = 45
 )
 
-func WhoIsUserInSubject(userID int32, subject *Subject) SubjectUserType {
+func WhoIsUserInSubject(userID int32, subject *Subject) (SubjectUserType, error) {
 	if userID == AdminID {
-		return SubjectUserAdmin
+		return SubjectUserAdmin, nil
 	}
 
 	if userID == subject.TeacherID {
-		return SubjectUserTeacher
+		return SubjectUserTeacher, nil
 	}
 
-	for i := 0; i < len(subject.Group.Students); i++ {
-		if userID == subject.Group.Students[i] {
-			return SubjectUserStudent
-		}
+	var group Group
+	if err := GetGroupByID(DB2, subject.GroupID, &group); err != nil {
+		return SubjectUserNone, err
+	}
+	if UserInGroup(userID, &group) {
+		return SubjectUserStudent, nil
 	}
 
-	return SubjectUserNone
+	return SubjectUserNone, nil
 }
 
 func DisplaySubjectLink(w *http.Response, subject *Subject) {
@@ -86,13 +88,21 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	}
 	subject := &DB.Subjects[id]
 
-	who := WhoIsUserInSubject(session.ID, subject)
+	who, err := WhoIsUserInSubject(session.ID, subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
 	if who == SubjectUserNone {
 		return http.ForbiddenError
 	}
 
 	var teacher User
 	if err := GetUserByID(DB2, subject.TeacherID, &teacher); err != nil {
+		return http.ServerError(err)
+	}
+
+	var group Group
+	if err := GetGroupByID(DB2, subject.GroupID, &group); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -124,7 +134,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Group: `)
-	DisplayGroupLink(w, subject.Group)
+	DisplayGroupLink(w, &group)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
@@ -147,7 +157,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="GroupID" value="`)
-		w.WriteInt(int(subject.Group.ID))
+		w.WriteInt(int(subject.GroupID))
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="submit" value="Edit">`)
@@ -343,25 +353,37 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 }
 
 func DisplayGroupSelect(w *http.Response, ids []string) {
-	w.AppendString(`<select name="GroupID">`)
-	for i := 0; i < len(DB.Groups); i++ {
-		group := &DB.Groups[i]
+	groups := make([]Group, 32)
+	var pos int64
 
-		w.AppendString(`<option value="`)
-		w.WriteInt(int(group.ID))
-		w.AppendString(`"`)
-		for j := 0; j < len(ids); j++ {
-			id, err := strconv.Atoi(ids[j])
-			if err != nil {
-				continue
-			}
-			if int32(id) == group.ID {
-				w.AppendString(` selected`)
-			}
+	w.AppendString(`<select name="GroupID">`)
+	for {
+		n, err := GetGroups(DB2, &pos, groups)
+		if err != nil {
+			/* TODO(anton2920): report error. */
 		}
-		w.AppendString(`>`)
-		w.WriteHTMLString(group.Name)
-		w.AppendString(`</option>`)
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			group := &groups[i]
+
+			w.AppendString(`<option value="`)
+			w.WriteInt(int(group.ID))
+			w.AppendString(`"`)
+			for j := 0; j < len(ids); j++ {
+				id, err := strconv.Atoi(ids[j])
+				if err != nil {
+					continue
+				}
+				if int32(id) == group.ID {
+					w.AppendString(` selected`)
+				}
+			}
+			w.AppendString(`>`)
+			w.WriteHTMLString(group.Name)
+			w.AppendString(`</option>`)
+		}
 	}
 	w.AppendString(`</select>`)
 }
@@ -493,13 +515,16 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), len(DB.Groups))
+	nextGroupID, err := GetNextID(DB2.GroupsFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), int(nextGroupID))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	group := &DB.Groups[groupID]
 
-	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, TeacherID: int32(teacherID), Group: group, CreatedOn: time.Now().Unix()})
+	DB.Subjects = append(DB.Subjects, Subject{ID: len(DB.Subjects), Name: name, TeacherID: int32(teacherID), GroupID: int32(groupID), CreatedOn: time.Now().Unix()})
 
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
@@ -538,15 +563,18 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), len(DB.Groups))
+	nextGroupID, err := GetNextID(DB2.GroupsFile)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	groupID, err := GetValidIndex(r.Form.Get("GroupID"), int(nextGroupID))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	group := &DB.Groups[groupID]
 
 	subject.Name = name
 	subject.TeacherID = int32(teacherID)
-	subject.Group = group
+	subject.GroupID = int32(groupID)
 
 	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 	return nil
