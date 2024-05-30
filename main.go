@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime/pprof"
-	sys "syscall"
 	"time"
 
 	"github.com/anton2920/gofa/errors"
@@ -198,7 +196,7 @@ func Router(ws []http.Response, rs []http.Request) {
 			ErrorPageHandler(w, message)
 		}
 
-		var addr string
+		addr := r.RemoteAddr
 		for i := 0; i < len(r.Headers); i++ {
 			header := r.Headers[i]
 			if strings.StartsWith(header, "X-Forwarded-For: ") {
@@ -206,7 +204,7 @@ func Router(ws []http.Response, rs []http.Request) {
 				break
 			}
 		}
-		log.Logf(level, "[%15s] %7s %s -> %v (%v), %v", addr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
+		log.Logf(level, "[%21s] %7s %s -> %v (%v), %v", addr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
 	}
 }
 
@@ -269,9 +267,8 @@ func main() {
 
 	q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
 
-	signal.Ignore(sys.Signal(syscall.SIGINT), sys.Signal(syscall.SIGTERM))
-	q.AddSignal(syscall.SIGINT)
-	q.AddSignal(syscall.SIGTERM)
+	syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
+	q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
 	ws := make([]http.Response, 32)
 	rs := make([]http.Request, 32)
