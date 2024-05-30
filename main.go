@@ -265,10 +265,10 @@ func main() {
 	}
 	defer q.Close()
 
-	q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
+	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
 
-	syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
-	q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
+	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
+	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
 	ws := make([]http.Response, 32)
 	rs := make([]http.Request, 32)
@@ -297,7 +297,7 @@ func main() {
 					/* TODO(anton2920): remove this. */
 					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
-					http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
+					_ = http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
 				default: /* ready to serve new HTTP request. */
 					ctx, ok := http.ContextFromEvent(e)
 					if !ok {
