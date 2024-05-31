@@ -192,6 +192,10 @@ func TestUserEditHandler(t *testing.T) {
 
 	expectedForbidden := expectedOK
 
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"5"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+	}
+
 	expectedConflict := expectedOK
 
 	for _, test := range expectedOK {
@@ -215,6 +219,10 @@ func TestUserEditHandler(t *testing.T) {
 
 	for _, test := range expectedForbidden {
 		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+	}
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
 	}
 
 	for i, test := range expectedConflict {
