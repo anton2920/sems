@@ -67,6 +67,7 @@ func TestGroupCreateHandler(t *testing.T) {
 	expectedBadRequest := [...]url.Values{
 		{{"Name", []string{"Test"}}, {"StudentID", []string{"1", "2", "3"}}},
 		{{"Name", []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"Name", []string{"Test group"}}},
 		{{"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
 		{{"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},
 	}
@@ -105,11 +106,16 @@ func TestGroupEditHandler(t *testing.T) {
 		{{"ID", []string{"a"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test"}}, {"StudentID", []string{"1", "2", "3"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},
 	}
 
 	expectedForbidden := expectedOK[0]
+
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"2"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
+	}
 
 	for _, test := range expectedOK {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
@@ -130,4 +136,8 @@ func TestGroupEditHandler(t *testing.T) {
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
 
 	testPostAuth(t, endpoint, testTokens[1], expectedForbidden, http.StatusForbidden)
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
+	}
 }
