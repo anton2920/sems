@@ -8,6 +8,37 @@ import (
 	"github.com/anton2920/gofa/net/url"
 )
 
+func TestCoursePageHandler(t *testing.T) {
+	const endpoint = "/course/"
+
+	expectedOK := [...]string{"0", "1"}
+
+	expectedBadRequest := [...]string{"a", "b", "c"}
+
+	expectedForbidden := [...]string{"0"}
+
+	expectedNotFound := [...]string{"2", "3", "4"}
+
+	for _, test := range expectedOK {
+		testGetAuth(t, endpoint+test, testTokens[AdminID], http.StatusOK)
+	}
+
+	for _, test := range expectedBadRequest {
+		testGetAuth(t, endpoint+test, testTokens[AdminID], http.StatusBadRequest)
+	}
+
+	testGet(t, endpoint, http.StatusUnauthorized)
+	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
+
+	for _, test := range expectedForbidden {
+		testGetAuth(t, endpoint+test, testTokens[1], http.StatusForbidden)
+	}
+
+	for _, test := range expectedNotFound {
+		testGetAuth(t, endpoint+test, testTokens[AdminID], http.StatusNotFound)
+	}
+}
+
 func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 	expectedOK := [...]url.Values{
 		/* Create two lessons, move them around and then delete. */

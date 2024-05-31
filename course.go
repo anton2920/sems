@@ -53,7 +53,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if (id < 0) || (id > len(DB.Courses)) {
+	if (id < 0) || (id >= len(DB.Courses)) {
 		return http.NotFound("course with this ID does not exist")
 	}
 	if !UserOwnsCourse(&user, int32(id)) {
