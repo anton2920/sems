@@ -26,8 +26,8 @@ func TestUserNameValid(t *testing.T) {
 	}
 
 	expectedError := [...]string{
-		"",
-		"AntonAntonAntonAntonAntonAntonAntonAntonAntonA",
+		testString(MinNameLen - 1),
+		testString(MaxNameLen + 1),
 		"Anton1",
 		" Anton",
 	}
@@ -128,13 +128,13 @@ func TestUserCreateHandler(t *testing.T) {
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"FirstName", []string{""}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"FirstName", []string{"TestTestTestTestTestTestTestTestTestTestTestTe"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"FirstName", []string{"Test"}}, {"LastName", []string{""}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"FirstName", []string{"Test"}}, {"LastName", []string{"TestovichTestovichTestovichTestovichTestovichT"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"FirstName", []string{testString(MinNameLen - 1)}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"FirstName", []string{testString(MaxNameLen + 1)}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"FirstName", []string{"Test"}}, {"LastName", []string{testString(MinNameLen - 1)}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"FirstName", []string{"Test"}}, {"LastName", []string{testString(MaxNameLen + 1)}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
 		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"testmasters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"test"}}, {"RepeatPassword", []string{"test"}}},
-		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtesttesttesttesttesttesttesttesttesttestte"}}, {"RepeatPassword", []string{"testtesttesttesttesttesttesttesttesttesttestte"}}},
+		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{testString(MinPasswordLen - 1)}}, {"RepeatPassword", []string{testString(MinPasswordLen - 1)}}},
+		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{testString(MaxPasswordLen + 1)}}, {"RepeatPassword", []string{testString(MaxPasswordLen + 1)}}},
 		{{"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtesttest"}}},
 	}
 
@@ -180,13 +180,13 @@ func TestUserEditHandler(t *testing.T) {
 
 	expectedBadRequest := [...]url.Values{
 		{{"ID", []string{"a"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{""}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{"TestTestTestTestTestTestTestTestTestTestTestTe"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{""}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"TestovichTestovichTestovichTestovichTestovichT"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{testString(MinNameLen - 1)}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{testString(MaxNameLen + 1)}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{testString(MinNameLen - 1)}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{testString(MaxNameLen + 1)}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
 		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"testmasters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"test"}}, {"RepeatPassword", []string{"test"}}},
-		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtesttesttesttesttesttesttesttesttesttestte"}}, {"RepeatPassword", []string{"testtesttesttesttesttesttesttesttesttesttestte"}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{testString(MinPasswordLen - 1)}}, {"RepeatPassword", []string{testString(MinPasswordLen - 1)}}},
+		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{testString(MaxPasswordLen + 1)}}, {"RepeatPassword", []string{testString(MaxPasswordLen - 1)}}},
 		{{"ID", []string{"0"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtesttest"}}},
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 	"unsafe"
@@ -19,6 +20,10 @@ var (
 
 	testInvalidForm = []byte("a=1;b=2")
 )
+
+func testString(len int) string {
+	return strings.Repeat("a", len)
+}
 
 func testGet(t *testing.T, endpoint string, expectedStatus http.Status) {
 	t.Helper()
