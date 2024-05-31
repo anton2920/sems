@@ -13,7 +13,7 @@ type Course struct {
 	Name    string
 	Lessons []int32
 
-	Data [16384]byte
+	Data [1024]byte
 }
 
 const (
@@ -365,6 +365,9 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
+		if len(r.Form[i].Values) == 0 {
+			continue
+		}
 		v := r.Form[i].Values[0]
 
 		/* 'command' is button, which modifies content of a current page. */

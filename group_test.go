@@ -65,8 +65,8 @@ func TestGroupCreateHandler(t *testing.T) {
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"Name", []string{"Test"}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"Name", []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"Name", []string{testString(MinGroupNameLen - 1)}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"Name", []string{testString(MaxGroupNameLen + 1)}}, {"StudentID", []string{"1", "2", "3"}}},
 		{{"Name", []string{"Test group"}}},
 		{{"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
 		{{"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},
@@ -104,8 +104,8 @@ func TestGroupEditHandler(t *testing.T) {
 
 	expectedBadRequest := [...]url.Values{
 		{{"ID", []string{"a"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{"Test"}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{"TestTestTestTestTestTestTestTestTestTestTestT"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"ID", []string{"1"}}, {"Name", []string{testString(MinGroupNameLen - 1)}}, {"StudentID", []string{"1", "2", "3"}}},
+		{{"ID", []string{"1"}}, {"Name", []string{testString(MaxGroupNameLen + 1)}}, {"StudentID", []string{"1", "2", "3"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
 		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},

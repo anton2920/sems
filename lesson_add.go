@@ -510,6 +510,7 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) err
 }
 
 func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, currentPage, k, command string) error {
+	/* TODO(anton2920): pass these as parameters. */
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
