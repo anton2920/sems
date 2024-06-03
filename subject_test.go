@@ -7,6 +7,35 @@ import (
 	"github.com/anton2920/gofa/net/url"
 )
 
+func TestSubjectPageHandler(t *testing.T) {
+	const endpoint = "/subject/"
+
+	expectedOK := [...]string{"0", "1"}
+
+	expectedBadRequest := [...]string{"a", "b", "c"}
+
+	expectedNotFound := [...]string{"2", "3", "4"}
+
+	for i, id := range expectedOK {
+		testGetAuth(t, endpoint+id, testTokens[i], http.StatusOK)
+		testGetAuth(t, endpoint+id, testTokens[2], http.StatusOK)
+		testGetAuth(t, endpoint+id, testTokens[3], http.StatusOK)
+	}
+
+	for _, id := range expectedBadRequest {
+		testGetAuth(t, endpoint+id, testTokens[AdminID], http.StatusBadRequest)
+	}
+
+	testGet(t, endpoint, http.StatusUnauthorized)
+	testGetAuth(t, endpoint, testInvalidToken, http.StatusUnauthorized)
+
+	testGetAuth(t, endpoint+"0", testTokens[1], http.StatusForbidden)
+
+	for _, id := range expectedNotFound {
+		testGetAuth(t, endpoint+id, testTokens[AdminID], http.StatusNotFound)
+	}
+}
+
 func TestSubjectCreatePageHandler(t *testing.T) {
 	const endpoint = "/subject/create"
 

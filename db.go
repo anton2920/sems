@@ -111,6 +111,14 @@ func CreateInitialDB() error {
 			Name:   "Test lesson",
 			Theory: "This is a test lesson.",
 		},
+		Lesson{
+			Name:   "New lesson",
+			Theory: "New theory",
+			Steps:  make([]Step, 2),
+			Submissions: []*Submission{
+				{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone},
+			},
+		},
 	}
 	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
 		DB.Lessons[id].ID = id
@@ -172,6 +180,7 @@ func CreateInitialDB() error {
 
 	DB.Subjects = []Subject{
 		{Name: "Programming", TeacherID: 0, GroupID: 0, CreatedOn: time.Now().Unix()},
+		{Name: "Physics", TeacherID: 1, GroupID: 0, CreatedOn: time.Now().Unix(), Lessons: []int32{2}},
 	}
 	for id := 0; id < len(DB.Subjects); id++ {
 		DB.Subjects[id].ID = id
