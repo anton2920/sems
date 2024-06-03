@@ -75,3 +75,86 @@ func TestSubjectEditPageHandler(t *testing.T) {
 
 	testPostAuth(t, endpoint, testTokens[1], nil, http.StatusForbidden)
 }
+
+func TestSubjectCreateHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/subject/create"
+
+	expectedOK := [...]url.Values{
+		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{{"Name", []string{testString(MaxNameLen + 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"a"}}, {"GroupID", []string{"0"}}},
+		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"10"}}, {"GroupID", []string{"0"}}},
+		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"a"}}},
+		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"10"}}},
+	}
+
+	expectedForbidden := expectedOK
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+	}
+
+	for _, test := range expectedBadRequest {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+	}
+
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	for _, test := range expectedForbidden {
+		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+	}
+}
+
+func TestSubjectEditHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/subject/edit"
+
+	expectedOK := [...]url.Values{
+		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{"ID", []string{"a"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{testString(MaxNameLen + 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"a"}}, {"GroupID", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"10"}}, {"GroupID", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"a"}}},
+		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"10"}}},
+	}
+
+	expectedForbidden := expectedOK
+
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"3"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+	}
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+	}
+
+	for _, test := range expectedBadRequest {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+	}
+
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	for _, test := range expectedForbidden {
+		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+	}
+
+	for _, test := range expectedNotFound {
+		/* TODO(anton2920): change later. */
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+		// testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
+	}
+}
