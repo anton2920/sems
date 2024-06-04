@@ -115,7 +115,8 @@ func SaveGroup(db *Database, group *Group) error {
 	size := int(unsafe.Sizeof(*group))
 	offset := int64(int(group.ID)*size) + DataOffset
 
-	var n, nbytes int
+	n := DataStartOffset
+	var nbytes int
 
 	groupDB.ID = group.ID
 	groupDB.Flags = group.Flags

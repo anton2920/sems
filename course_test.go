@@ -176,7 +176,6 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 
 		/* Course page. */
 		{{"ID", []string{"a"}}},
-		{{"ID", []string{"4"}}},
 		{{"ID", []string{"0"}}, {"CurrentPage", []string{"Course"}}, {"NextPage", []string{"Save"}}, {"Name", []string{testString(MinNameLen - 1)}}},
 		{{"ID", []string{"0"}}, {"CurrentPage", []string{"Course"}}, {"NextPage", []string{"Save"}}, {"Name", []string{testString(MaxNameLen + 1)}}},
 		{{"ID", []string{"0"}}, {"CurrentPage", []string{"Course"}}, {"Command1", []string{"Edit"}}},
@@ -186,7 +185,13 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 		{{"ID", []string{"0"}}},
 	}
 
-	DB.Courses = nil
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"4"}}},
+	}
+
+	if err := DropData(DB2.CoursesFile); err != nil {
+		t.Fatalf("Failed to drop courses data: %v", err)
+	}
 	for i, token := range testTokens {
 		testPostAuth(t, endpoint, token, url.Values{}, http.StatusOK)
 		for _, test := range expectedOK {
@@ -206,6 +211,10 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 
 	for _, test := range expectedForbidden {
 		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+	}
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
 	}
 }
 

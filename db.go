@@ -25,6 +25,8 @@ const (
 	VersionOffset = 0
 	NextIDOffset  = VersionOffset + 4
 	DataOffset    = NextIDOffset + 4
+
+	DataStartOffset = 1
 )
 
 const AdminID = 0
@@ -33,19 +35,10 @@ const DBFile = "db.gob"
 
 var DB struct {
 	Lessons  []Lesson
-	Courses  []Course
 	Subjects []Subject
 }
 
 var DBNotFound = errors.New("not found")
-
-//go:noescape
-//go:nosplit
-func DBString(ptr *byte, len int) string
-
-//go:noescape
-//go:nosplit
-func DBSlice(ptr *byte, len int) []byte
 
 func Offset2String(s string, base *byte) string {
 	return unsafe.String((*byte)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.StringData(s))))), len(s))
@@ -56,14 +49,11 @@ func Offset2Slice[T any](s []T, base *byte) []T {
 }
 
 func String2Offset(s string, offset int) string {
-	return DBString((*byte)(unsafe.Pointer(uintptr(offset))), len(s))
+	return unsafe.String((*byte)(unsafe.Pointer(uintptr(offset))), len(s))
 }
 
 func Slice2Offset[T any](s []T, offset int) []T {
-	if len(s) == 0 {
-		return nil
-	}
-	return unsafe.Slice((*T)(unsafe.Pointer((unsafe.SliceData(DBSlice((*byte)(unsafe.Pointer(uintptr(offset))), len(s)))))), len(s))
+	return unsafe.Slice((*T)(unsafe.Pointer(uintptr(offset))), len(s))
 }
 
 func CreateInitialDB() error {
@@ -74,11 +64,8 @@ func CreateInitialDB() error {
 		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now().Unix()},
 	}
 
-	if err := syscall.Ftruncate(DB2.UsersFile, DataOffset); err != nil {
-		return fmt.Errorf("failed to truncate users file: %w", err)
-	}
-	if err := SetNextID(DB2.UsersFile, 0); err != nil {
-		return fmt.Errorf("failed to set next user ID: %w", err)
+	if err := DropData(DB2.UsersFile); err != nil {
+		return fmt.Errorf("failed to drop users data: %w", err)
 	}
 	for id := int32(0); id < int32(len(users)); id++ {
 		if err := CreateUser(DB2, &users[id]); err != nil {
@@ -89,11 +76,8 @@ func CreateInitialDB() error {
 	groups := [...]Group{
 		{Name: "18-SWE", Students: []int32{2, 3}, CreatedOn: time.Now().Unix()},
 	}
-	if err := syscall.Ftruncate(DB2.GroupsFile, DataOffset); err != nil {
-		return fmt.Errorf("failed to truncate groups file: %w", err)
-	}
-	if err := SetNextID(DB2.GroupsFile, 0); err != nil {
-		return fmt.Errorf("failed to set next group ID: %w", err)
+	if err := DropData(DB2.GroupsFile); err != nil {
+		return fmt.Errorf("failed to drop groups data: %w", err)
 	}
 	for id := int32(0); id < int32(len(groups)); id++ {
 		if err := CreateGroup(DB2, &groups[id]); err != nil {
@@ -170,12 +154,17 @@ func CreateInitialDB() error {
 		},
 	}
 
-	DB.Courses = []Course{
+	courses := [...]Course{
 		{Name: "Programming basics", Lessons: []int32{0}},
 		{Name: "Test course", Lessons: []int32{1}},
 	}
-	for id := int32(0); id < int32(len(DB.Courses)); id++ {
-		DB.Courses[id].ID = id
+	if err := DropData(DB2.CoursesFile); err != nil {
+		return fmt.Errorf("failed to drop courses data: %w", err)
+	}
+	for id := int32(0); id < int32(len(courses)); id++ {
+		if err := CreateCourse(DB2, &courses[id]); err != nil {
+			return err
+		}
 	}
 
 	DB.Subjects = []Subject{
@@ -348,4 +337,14 @@ func IncrementNextID(fd int32) (int32, error) {
 		return -1, err
 	}
 	return id, nil
+}
+
+func DropData(fd int32) error {
+	if err := syscall.Ftruncate(fd, DataOffset); err != nil {
+		return fmt.Errorf("failed to truncate courses file: %w", err)
+	}
+	if err := SetNextID(fd, 0); err != nil {
+		return fmt.Errorf("failed to set next course ID: %w", err)
+	}
+	return nil
 }

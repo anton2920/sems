@@ -272,29 +272,34 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		if len(subject.Lessons) == 0 {
-			var displayCourses bool
-			for i := 0; i < len(DB.Courses); i++ {
-				course := &DB.Courses[i]
-				if (course.Flags != CourseDraft) && (UserOwnsCourse(&teacher, course.ID)) {
-					displayCourses = true
+			courses := make([]Course, 32)
+			var pos int64
+
+			var displayed bool
+			for {
+				n, err := GetCourses(DB2, &pos, courses)
+				if err != nil {
+					return http.ServerError(err)
+				}
+				if n == 0 {
 					break
 				}
-			}
-			if displayCourses {
-				w.AppendString(`<label>Courses: `)
-				w.AppendString(`<select name="CourseID">`)
-				for i := 0; i < len(DB.Courses); i++ {
-					course := &DB.Courses[i]
-					if (course.Flags == CourseDraft) || (!UserOwnsCourse(&teacher, course.ID)) {
-						continue
+				for i := 0; i < n; i++ {
+					course := &courses[i]
+					if (course.Flags != CourseDraft) && (UserOwnsCourse(&teacher, course.ID)) {
+						if !displayed {
+							w.AppendString(`<label>Courses: `)
+							w.AppendString(`<select name="CourseID">`)
+						}
+						w.AppendString(`<option value="`)
+						w.WriteInt(i)
+						w.AppendString(`">`)
+						w.WriteHTMLString(course.Name)
+						w.AppendString(`</option>`)
 					}
-
-					w.AppendString(`<option value="`)
-					w.WriteInt(i)
-					w.AppendString(`">`)
-					w.WriteHTMLString(course.Name)
-					w.AppendString(`</option>`)
 				}
+			}
+			if displayed {
 				w.AppendString(`</select>`)
 				w.AppendString(`</label> `)
 

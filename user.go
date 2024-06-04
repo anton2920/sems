@@ -61,20 +61,6 @@ func UserNameValid(name string) error {
 	return nil
 }
 
-func UserOwnsCourse(user *User, courseID int32) bool {
-	/* TODO(anton2920): move this out to caller. */
-	if user.ID == AdminID {
-		return true
-	}
-	for i := 0; i < len(user.Courses); i++ {
-		cID := user.Courses[i]
-		if cID == courseID {
-			return true
-		}
-	}
-	return false
-}
-
 func GetUserByEmail(db *Database, email string, user *User) error {
 	users := make([]User, 32)
 	var pos int64
@@ -172,7 +158,8 @@ func SaveUser(db *Database, user *User) error {
 	size := int(unsafe.Sizeof(*user))
 	offset := int64(int(user.ID)*size) + DataOffset
 
-	var n, nbytes int
+	n := DataStartOffset
+	var nbytes int
 
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags
@@ -210,6 +197,20 @@ func SaveUser(db *Database, user *User) error {
 	return nil
 }
 
+func UserOwnsCourse(user *User, courseID int32) bool {
+	/* TODO(anton2920): move this out to caller. */
+	if user.ID == AdminID {
+		return true
+	}
+	for i := 0; i < len(user.Courses); i++ {
+		cID := user.Courses[i]
+		if cID == courseID {
+			return true
+		}
+	}
+	return false
+}
+
 func DisplayUserGroups(w *http.Response, userID int32) {
 	groups := make([]Group, 32)
 	var pos int64
@@ -243,17 +244,17 @@ func DisplayUserGroups(w *http.Response, userID int32) {
 }
 
 func DisplayUserCourses(w *http.Response, user *User) {
+	var course Course
+
 	w.AppendString(`<h2>Courses</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(DB.Courses); i++ {
-		course := &DB.Courses[i]
-
-		if !UserOwnsCourse(user, course.ID) {
-			continue
+	for i := 0; i < len(user.Courses); i++ {
+		if err := GetCourseByID(DB2, user.Courses[i], &course); err != nil {
+			/* TODO(anton2920): report error. */
 		}
 
 		w.AppendString(`<li>`)
-		DisplayCourseLink(w, i, course)
+		DisplayCourseLink(w, &course)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)

@@ -1,9 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"strconv"
+	"unsafe"
+
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/syscall"
 )
 
 type Course struct {
@@ -27,9 +32,105 @@ const (
 	MaxNameLen = 45
 )
 
-func DisplayCourseLink(w *http.Response, index int, course *Course) {
+func CreateCourse(db *Database, course *Course) error {
+	var err error
+
+	course.ID, err = IncrementNextID(db.CoursesFile)
+	if err != nil {
+		return fmt.Errorf("failed to increment course ID: %w", err)
+	}
+
+	return SaveCourse(db, course)
+}
+
+func DBCourse2Course(course *Course) {
+	course.Name = Offset2String(course.Name, &course.Data[0])
+	course.Lessons = Offset2Slice(course.Lessons, &course.Data[0])
+}
+
+func GetCourseByID(db *Database, id int32, course *Course) error {
+	size := int(unsafe.Sizeof(*course))
+	offset := int64(int(id)*size) + DataOffset
+
+	n, err := syscall.Pread(db.CoursesFile, unsafe.Slice((*byte)(unsafe.Pointer(course)), size), offset)
+	if err != nil {
+		return fmt.Errorf("failed to read course from DB: %w", err)
+	}
+	if n < size {
+		return DBNotFound
+	}
+
+	DBCourse2Course(course)
+	return nil
+}
+
+func GetCourses(db *Database, pos *int64, courses []Course) (int, error) {
+	if *pos < DataOffset {
+		*pos = DataOffset
+	}
+	size := int(unsafe.Sizeof(courses[0]))
+
+	n, err := syscall.Pread(db.CoursesFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(courses))), len(courses)*size), *pos)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read course from DB: %w", err)
+	}
+	*pos += int64(n)
+
+	n /= size
+	for i := 0; i < n; i++ {
+		DBCourse2Course(&courses[i])
+	}
+
+	return n, nil
+}
+
+func DeleteCourseByID(db *Database, id int32) error {
+	flags := CourseDeleted
+	var course Course
+
+	offset := int64(int(id)*int(unsafe.Sizeof(course))) + DataOffset + int64(unsafe.Offsetof(course.Flags))
+	_, err := syscall.Pwrite(db.CoursesFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
+	if err != nil {
+		return fmt.Errorf("failed to delete course from DB: %w", err)
+	}
+
+	return nil
+}
+
+func SaveCourse(db *Database, course *Course) error {
+	var courseDB Course
+
+	size := int(unsafe.Sizeof(*course))
+	offset := int64(int(course.ID)*size) + DataOffset
+
+	n := DataStartOffset
+	var nbytes int
+
+	courseDB.ID = course.ID
+	courseDB.Flags = course.Flags
+
+	/* TODO(anton2920): saving up to a sizeof(course.Data). */
+	nbytes = copy(courseDB.Data[n:], course.Name)
+	courseDB.Name = String2Offset(course.Name, n)
+	n += nbytes
+
+	if len(course.Lessons) > 0 {
+		nbytes = copy(courseDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&course.Lessons[0])), len(course.Lessons)*int(unsafe.Sizeof(course.Lessons[0]))))
+		courseDB.Lessons = Slice2Offset(course.Lessons, n)
+		nbytes += n
+	}
+
+	_, err := syscall.Pwrite(db.CoursesFile, unsafe.Slice((*byte)(unsafe.Pointer(&courseDB)), size), offset)
+	if err != nil {
+		return fmt.Errorf("failed to write course to DB: %w", err)
+	}
+
+	return nil
+}
+
+func DisplayCourseLink(w *http.Response, course *Course) {
 	w.AppendString(`<a href="/course/`)
-	w.WriteInt(index)
+	w.WriteInt(int(course.ID))
 	w.AppendString(`">`)
 	w.WriteHTMLString(course.Name)
 	if course.Flags == CourseDraft {
@@ -39,6 +140,7 @@ func DisplayCourseLink(w *http.Response, index int, course *Course) {
 }
 
 func CoursePageHandler(w *http.Response, r *http.Request) error {
+	var course Course
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -53,13 +155,15 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if (id < 0) || (id >= len(DB.Courses)) {
-		return http.NotFound("course with this ID does not exist")
-	}
 	if !UserOwnsCourse(&user, int32(id)) {
 		return http.ForbiddenError
 	}
-	course := &DB.Courses[id]
+	if err := GetCourseByID(DB2, int32(id), &course); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("course with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -141,6 +245,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
+	var course Course
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -155,14 +260,16 @@ func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	courseID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Courses))
+	courseID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
 	if !UserOwnsCourse(&user, int32(courseID)) {
 		return http.ForbiddenError
 	}
-	course := &DB.Courses[courseID]
+	if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
+		return http.ServerError(err)
+	}
 
 	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
 	if err != nil {
@@ -340,10 +447,11 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 	nextPage := r.Form.Get("NextPage")
 
 	id := r.Form.Get("ID")
-	var course *Course
+	var course Course
 	if id == "" {
-		DB.Courses = append(DB.Courses, Course{ID: int32(len(DB.Courses))})
-		course = &DB.Courses[len(DB.Courses)-1]
+		if err := CreateCourse(DB2, &course); err != nil {
+			return http.ServerError(err)
+		}
 
 		user.Courses = append(user.Courses, course.ID)
 		if err := SaveUser(DB2, &user); err != nil {
@@ -352,15 +460,22 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 		r.Form.SetInt("ID", int(course.ID))
 	} else {
-		ci, err := GetValidIndex(id, len(DB.Courses))
+		courseID, err := strconv.Atoi(id)
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if !UserOwnsCourse(&user, int32(ci)) {
+		if !UserOwnsCourse(&user, int32(courseID)) {
 			return http.ForbiddenError
 		}
-		course = &DB.Courses[ci]
+		if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
+			if err == DBNotFound {
+				return http.NotFound("course with this ID does not exist")
+			}
+			return http.ServerError(err)
+		}
 	}
+	defer SaveCourse(DB2, &course)
+
 	course.Flags = CourseDraft
 
 	for i := 0; i < len(r.Form); i++ {
@@ -373,14 +488,14 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return CourseCreateEditHandleCommand(w, r, course, currentPage, k, v)
+			return CourseCreateEditHandleCommand(w, r, &course, currentPage, k, v)
 		}
 	}
 
 	/* 'currentPage' is the page to save/check before leaving it. */
 	switch currentPage {
 	case "Course":
-		CourseFillFromRequest(r.Form, course)
+		CourseFillFromRequest(r.Form, &course)
 	case "Lesson":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
 		if err != nil {
@@ -437,7 +552,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 	switch nextPage {
 	default:
-		return CourseCreateEditCoursePageHandler(w, r, course)
+		return CourseCreateEditCoursePageHandler(w, r, &course)
 	case "Next":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
 		if err != nil {
@@ -451,7 +566,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 		lesson.Flags = LessonActive
 
-		return CourseCreateEditCoursePageHandler(w, r, course)
+		return CourseCreateEditCoursePageHandler(w, r, &course)
 	case "Add lesson":
 		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft})
 		lesson := &DB.Lessons[len(DB.Lessons)-1]
@@ -502,8 +617,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
 	case "Save":
-		if err := CourseVerify(course); err != nil {
-			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, course, err)
+		if err := CourseVerify(&course); err != nil {
+			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, &course, err)
 		}
 		course.Flags = CourseActive
 

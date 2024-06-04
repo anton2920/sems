@@ -224,27 +224,34 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 
 	switch r.Form.Get("Action") {
 	case "create from":
-		courseID, err := GetValidIndex(r.Form.Get("CourseID"), len(DB.Courses))
+		var course Course
+
+		courseID, err := r.Form.GetInt("CourseID")
 		if err != nil {
 			return http.ClientError(err)
 		}
 		if !UserOwnsCourse(&user, int32(courseID)) {
 			return http.ForbiddenError
 		}
-		/* TODO(anton2920): check if it's still a draft. */
-		course := &DB.Courses[courseID]
+		if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
+			return http.ServerError(err)
+		}
 
+		/* TODO(anton2920): check if it's still a draft. */
 		LessonsDeepCopy(&subject.Lessons, course.Lessons)
 	case "give as is":
-		courseID, err := GetValidIndex(r.Form.Get("CourseID"), len(user.Courses))
+		var course Course
+
+		courseID, err := r.Form.GetInt("CourseID")
 		if err != nil {
 			return http.ClientError(err)
 		}
 		if !UserOwnsCourse(&user, int32(courseID)) {
 			return http.ForbiddenError
 		}
-		/* TODO(anton2920): check if it's still a draft. */
-		course := &DB.Courses[courseID]
+		if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
+			return http.ServerError(err)
+		}
 
 		LessonsDeepCopy(&subject.Lessons, course.Lessons)
 
