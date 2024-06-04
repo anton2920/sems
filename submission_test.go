@@ -84,3 +84,37 @@ func TestSubmissionNewPageHandler(t *testing.T) {
 
 	testPostAuth(t, endpoint, testTokens[1], url.Values{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}}, http.StatusForbidden)
 }
+
+func TestSubmissionDiscardHandler(t *testing.T) {
+	const endpoint = APIPrefix + "/submission/discard"
+
+	expectedOK := [...]url.Values{
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"SubmissionIndex", []string{"0"}}},
+	}
+
+	expectedBadRequest := [...]url.Values{
+		{{"ID", []string{"a"}}, {"LessonIndex", []string{"0"}}, {"SubmissionIndex", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"SubmissionIndex", []string{"0"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"SubmissionIndex", []string{"a"}}},
+	}
+
+	expectedForbidden := expectedOK
+
+	for _, test := range expectedBadRequest {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
+	}
+	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
+
+	testPost(t, endpoint, nil, http.StatusUnauthorized)
+	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
+
+	for _, test := range expectedForbidden {
+		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
+		testPostAuth(t, endpoint, testTokens[2], test, http.StatusForbidden)
+		testPostAuth(t, endpoint, testTokens[3], test, http.StatusForbidden)
+	}
+
+	for _, test := range expectedOK {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusSeeOther)
+	}
+}
