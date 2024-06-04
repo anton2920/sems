@@ -614,6 +614,33 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	}
 }
 
+func SubmissionNewVerify(submission *Submission) error {
+	empty := true
+	for i := 0; i < len(submission.SubmittedSteps); i++ {
+		step := submission.SubmittedSteps[i]
+		if step != nil {
+			empty = false
+
+			var draft bool
+			switch step := step.(type) {
+			default:
+				panic("invalid step type")
+			case *SubmittedTest:
+				draft = step.Draft
+			case *SubmittedProgramming:
+				draft = step.Draft
+			}
+			if draft {
+				return http.BadRequest("step %d is still a draft", i+1)
+			}
+		}
+	}
+	if empty {
+		return http.BadRequest("you have to pass at least one step")
+	}
+	return nil
+}
+
 func SubmissionNewTestVerifyRequest(vs url.Values, submittedTest *SubmittedTest) error {
 	test := submittedTest.Test
 
@@ -1141,7 +1168,16 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	default:
 		return SubmissionNewMainPageHandler(w, r, submission)
 	case "Finish":
-		return SubmissionNewHandler(w, r)
+		if err := SubmissionNewVerify(submission); err != nil {
+			return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, err)
+		}
+		submission.Draft = false
+		submission.FinishedAt = time.Now()
+
+		SubmissionVerifyChannel <- submission
+
+		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+		return nil
 	}
 }
 
@@ -1175,72 +1211,6 @@ func SubmissionDiscardHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 	lesson.Submissions = RemoveAtIndex(lesson.Submissions, si)
-
-	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
-	return nil
-}
-
-func SubmissionNewHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	subject := &DB.Subjects[subjectID]
-	who, err := WhoIsUserInSubject(session.ID, subject)
-	if err != nil {
-		return http.ServerError(err)
-	}
-	if who != SubjectUserStudent {
-		return http.ForbiddenError
-	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[subject.Lessons[li]]
-
-	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	submission := lesson.Submissions[si]
-
-	empty := true
-	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		step := submission.SubmittedSteps[i]
-		if step != nil {
-			empty = false
-
-			var draft bool
-			switch step := step.(type) {
-			case *SubmittedTest:
-				draft = step.Draft
-			case *SubmittedProgramming:
-				draft = step.Draft
-			}
-			if draft {
-				return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, http.BadRequest("step %d is still a draft", i+1))
-			}
-		}
-	}
-	if empty {
-		return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, http.BadRequest("you have to pass at least one step"))
-	}
-
-	submission.Draft = false
-	submission.FinishedAt = time.Now()
-
-	SubmissionVerifyChannel <- submission
 
 	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 	return nil

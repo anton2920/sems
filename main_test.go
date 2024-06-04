@@ -117,7 +117,17 @@ func testPostInvalidFormAuth(t *testing.T, endpoint string, token string) {
 }
 
 func testWaitForJails() {
-	/* TODO(anton2920): implement. */
+	for len(SubmissionVerifyChannel) > 0 {
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	for {
+		ents, err := os.ReadDir(jail.JailsRootDir + "/containers")
+		if (err != nil) || (len(ents) == 0) {
+			return
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -139,6 +149,10 @@ func TestMain(m *testing.M) {
 	CreateInitialDB()
 
 	jail.JailsRootDir = "./jails_test"
+	os.MkdirAll(jail.JailsRootDir+"/containers", 0755)
+	os.MkdirAll(jail.JailsRootDir+"/envs", 0755)
+
+	go SubmissionVerifyWorker()
 
 	now := time.Now()
 	for i := int32(0); i < int32(len(testTokens)); i++ {
@@ -152,6 +166,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	testWaitForJails()
+	os.RemoveAll("jails_test")
 	os.RemoveAll("db_test")
 	os.Exit(code)
 }
