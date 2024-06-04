@@ -387,39 +387,17 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
 	case "Save":
-		return SubjectLessonEditHandler(w, r)
-	}
-}
-
-func SubjectLessonEditHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	subject := &DB.Subjects[subjectID]
-	if (session.ID != AdminID) && (session.ID != subject.TeacherID) {
-		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.ForbiddenError)
-	}
-
-	if len(subject.Lessons) == 0 {
-		return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("create at least one lesson"))
-	}
-	for li := 0; li < len(subject.Lessons); li++ {
-		lesson := &DB.Lessons[subject.Lessons[li]]
-		if lesson.Flags == LessonDraft {
-			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("lesson %d is a draft", li+1))
+		if len(subject.Lessons) == 0 {
+			return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("create at least one lesson"))
 		}
-	}
+		for li := 0; li < len(subject.Lessons); li++ {
+			lesson := &DB.Lessons[subject.Lessons[li]]
+			if lesson.Flags == LessonDraft {
+				return WritePageEx(w, r, SubjectLessonEditMainPageHandler, subject, http.BadRequest("lesson %d is a draft", li+1))
+			}
+		}
 
-	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
-	return nil
+		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+		return nil
+	}
 }
