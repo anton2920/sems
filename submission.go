@@ -670,6 +670,7 @@ func SubmissionNewTestVerifyRequest(vs url.Values, submittedTest *SubmittedTest)
 				return http.ClientError(err)
 			}
 		}
+		submittedQuestion.SelectedAnswers = submittedQuestion.SelectedAnswers[:len(selectedAnswers)]
 	}
 
 	return nil
