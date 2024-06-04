@@ -151,13 +151,18 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 
 		/* Main page. */
 		{{"ID", []string{"a"}}},
-		{{"ID", []string{"4"}}},
 		{{"ID", []string{"0"}}, {"CurrentPage", []string{"Main"}}, {"Command1", []string{"Edit"}}},
 	}
 
 	expectedForbidden := [...]url.Values{
 		{{"ID", []string{"1"}}, {"CourseID", []string{"0"}}, {"Action", []string{"create from"}}},
 		{{"ID", []string{"1"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}},
+	}
+
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"4"}}},
+		{{"ID", []string{"0"}}, {"CourseID", []string{"10"}}, {"Action", []string{"create from"}}},
+		{{"ID", []string{"0"}}, {"CourseID", []string{"10"}}, {"Action", []string{"give as is"}}},
 	}
 
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"create from"}}}, http.StatusOK)
@@ -169,15 +174,29 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 		testPostAuth(t, endpoint, token, url.Values{{"ID", []string{strconv.Itoa(i)}}, {"NextPage", []string{"Save"}}}, http.StatusSeeOther)
 	}
 
-	DB.Subjects[0].Lessons = nil
+	var subject Subject
+	if err := GetSubjectByID(DB2, 0, &subject); err != nil {
+		t.Fatalf("Failed to get subject by ID 0: %v", err)
+	}
+	subject.Lessons = nil
+	if err := SaveSubject(DB2, &subject); err != nil {
+		t.Fatalf("Failed to save subject: %v", err)
+	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}}, http.StatusSeeOther)
 
 	for _, test := range expectedBadRequest {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
 	}
-	DB.Lessons[DB.Subjects[1].Lessons[0]].Flags = LessonDraft
+
+	if err := GetSubjectByID(DB2, 1, &subject); err != nil {
+		t.Fatalf("Failed to get subject by ID 1: %v", err)
+	}
+	DB.Lessons[subject.Lessons[0]].Flags = LessonDraft
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{"Save"}}}, http.StatusBadRequest)
-	DB.Subjects[1].Lessons = nil
+	subject.Lessons = nil
+	if err := SaveSubject(DB2, &subject); err != nil {
+		t.Fatalf("Failed to save subject: %v", err)
+	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{"Save"}}}, http.StatusBadRequest)
 	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
@@ -188,4 +207,8 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
 	}
 	testPostAuth(t, endpoint, testTokens[2], url.Values{{"ID", []string{"0"}}}, http.StatusForbidden)
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
+	}
 }

@@ -213,9 +213,9 @@ func UserOwnsCourse(user *User, courseID int32) bool {
 
 func DisplayUserGroups(w *http.Response, userID int32) {
 	groups := make([]Group, 32)
+	var displayed bool
 	var pos int64
 
-	var displayed bool
 	for {
 		n, err := GetGroups(DB2, &pos, groups)
 		if err != nil {
@@ -264,35 +264,38 @@ func DisplayUserCourses(w *http.Response, user *User) {
 }
 
 func DisplayUserSubjects(w *http.Response, userID int32) {
-	var displaySubjects bool
-	for i := 0; i < len(DB.Subjects); i++ {
-		subject := &DB.Subjects[i]
+	subjects := make([]Subject, 32)
+	var displayed bool
+	var pos int64
 
-		who, err := WhoIsUserInSubject(userID, subject)
+	for {
+		n, err := GetSubjects(DB2, &pos, subjects)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
-		if who != SubjectUserNone {
-			displaySubjects = true
+		if n == 0 {
 			break
 		}
-	}
-	if displaySubjects {
-		w.AppendString(`<h2>Subjects</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Subjects); i++ {
-			subject := &DB.Subjects[i]
+		for i := 0; i < n; i++ {
+			subject := &subjects[i]
 
 			who, err := WhoIsUserInSubject(userID, subject)
 			if err != nil {
 				/* TODO(anton2920): report error. */
 			}
 			if who != SubjectUserNone {
+				if !displayed {
+					w.AppendString(`<h2>Subjects</h2>`)
+					w.AppendString(`<ul>`)
+					displayed = true
+				}
 				w.AppendString(`<li>`)
 				DisplaySubjectLink(w, subject)
 				w.AppendString(`</li>`)
 			}
 		}
+	}
+	if displayed {
 		w.AppendString(`</ul>`)
 	}
 }

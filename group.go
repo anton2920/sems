@@ -231,27 +231,34 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</form>`)
 	}
 
-	var displaySubjects bool
-	for i := 0; i < len(DB.Subjects); i++ {
-		subject := &DB.Subjects[i]
+	subjects := make([]Subject, 32)
+	var displayed bool
+	var pos int64
 
-		if group.ID == subject.GroupID {
-			displaySubjects = true
+	for {
+		n, err := GetSubjects(DB2, &pos, subjects)
+		if err != nil {
+			return http.ServerError(err)
+		}
+		if n == 0 {
 			break
 		}
-	}
-	if displaySubjects {
-		w.AppendString(`<h2>Subjects</h2>`)
-		w.AppendString(`<ul>`)
-		for i := 0; i < len(DB.Subjects); i++ {
-			subject := &DB.Subjects[i]
+		for i := 0; i < n; i++ {
+			subject := &subjects[i]
 
 			if group.ID == subject.GroupID {
+				if !displayed {
+					w.AppendString(`<h2>Subjects</h2>`)
+					w.AppendString(`<ul>`)
+					displayed = true
+				}
 				w.AppendString(`<li>`)
 				DisplaySubjectLink(w, subject)
 				w.AppendString(`</li>`)
 			}
 		}
+	}
+	if displayed {
 		w.AppendString(`</ul>`)
 	}
 

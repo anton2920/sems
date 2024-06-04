@@ -34,8 +34,7 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
-	Lessons  []Lesson
-	Subjects []Subject
+	Lessons []Lesson
 }
 
 var DBNotFound = errors.New("not found")
@@ -167,12 +166,17 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Subjects = []Subject{
+	subjects := [...]Subject{
 		{Name: "Programming", TeacherID: 0, GroupID: 0, CreatedOn: time.Now().Unix()},
 		{Name: "Physics", TeacherID: 1, GroupID: 0, CreatedOn: time.Now().Unix(), Lessons: []int32{2}},
 	}
-	for id := 0; id < len(DB.Subjects); id++ {
-		DB.Subjects[id].ID = id
+	if err := DropData(DB2.SubjectsFile); err != nil {
+		return fmt.Errorf("failed to drop subjects data: %w", err)
+	}
+	for id := int32(0); id < int32(len(subjects)); id++ {
+		if err := CreateSubject(DB2, &subjects[id]); err != nil {
+			return err
+		}
 	}
 
 	return nil

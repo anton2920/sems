@@ -75,14 +75,24 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 	w.AppendString(`<input type="submit" value="Create course">`)
 	w.AppendString(`</form>`)
 
+	subjects := make([]Subject, 32)
+	pos = 0
+
 	w.AppendString(`<h2>Subjects</h2>`)
 	w.AppendString(`<ul>`)
-	for i := 0; i < len(DB.Subjects); i++ {
-		subject := &DB.Subjects[i]
-
-		w.AppendString(`<li>`)
-		DisplaySubjectLink(w, subject)
-		w.AppendString(`</li>`)
+	for {
+		n, err := GetSubjects(DB2, &pos, subjects)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			w.AppendString(`<li>`)
+			DisplaySubjectLink(w, &subjects[i])
+			w.AppendString(`</li>`)
+		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/subject/create">`)

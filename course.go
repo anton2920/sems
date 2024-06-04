@@ -268,6 +268,9 @@ func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 	if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("course with this ID does not exist")
+		}
 		return http.ServerError(err)
 	}
 

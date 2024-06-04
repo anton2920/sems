@@ -551,6 +551,8 @@ func SubmissionHandleCommand(w *http.Response, r *http.Request, submission *Subm
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
+	var subject Subject
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -560,13 +562,18 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
+	subjectID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	subject := &DB.Subjects[subjectID]
+	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("subject with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 
-	who, err := WhoIsUserInSubject(session.ID, subject)
+	who, err := WhoIsUserInSubject(session.ID, &subject)
 	if err != nil {
 		return http.ServerError(err)
 	}
@@ -1050,6 +1057,8 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *S
 }
 
 func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
+	var subject Subject
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -1059,11 +1068,16 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
+	subjectID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	subject := &DB.Subjects[subjectID]
+	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("subject with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 
 	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
 	if err != nil {
@@ -1071,7 +1085,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	}
 	lesson := &DB.Lessons[subject.Lessons[li]]
 
-	who, err := WhoIsUserInSubject(session.ID, subject)
+	who, err := WhoIsUserInSubject(session.ID, &subject)
 	if err != nil {
 		return http.ServerError(err)
 	}
@@ -1183,6 +1197,8 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmissionDiscardHandler(w *http.Response, r *http.Request) error {
+	var subject Subject
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -1192,11 +1208,16 @@ func SubmissionDiscardHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Subjects))
+	subjectID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	subject := &DB.Subjects[subjectID]
+	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("subject with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 	if (session.ID != AdminID) && (session.ID != subject.TeacherID) {
 		return http.ForbiddenError
 	}

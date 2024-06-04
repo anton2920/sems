@@ -10,6 +10,8 @@ import (
 func TestSubjectPageHandler(t *testing.T) {
 	const endpoint = "/subject/"
 
+	CreateInitialDB()
+
 	expectedOK := [...]string{"0", "1"}
 
 	expectedBadRequest := [...]string{"a", "b", "c"}
@@ -153,8 +155,6 @@ func TestSubjectEditHandler(t *testing.T) {
 	}
 
 	for _, test := range expectedNotFound {
-		/* TODO(anton2920): change later. */
-		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
-		// testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
 	}
 }

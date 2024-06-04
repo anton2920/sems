@@ -57,6 +57,10 @@ func TestSubmissionNewPageHandler(t *testing.T) {
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"SubmissionIndex", []string{"1"}}, {"NextPage", []string{"Finish"}}},
 	}
 
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"2"}}, {"LessonIndex", []string{"0"}}},
+	}
+
 	testPostAuth(t, endpoint, testTokens[2], url.Values{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}}, http.StatusOK)
 	for _, test := range expectedOK {
 		test.SetInt("ID", 0)
@@ -83,6 +87,10 @@ func TestSubmissionNewPageHandler(t *testing.T) {
 	testPostAuth(t, endpoint, testInvalidToken, nil, http.StatusUnauthorized)
 
 	testPostAuth(t, endpoint, testTokens[1], url.Values{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}}, http.StatusForbidden)
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
+	}
 }
 
 func TestSubmissionDiscardHandler(t *testing.T) {
@@ -100,6 +108,10 @@ func TestSubmissionDiscardHandler(t *testing.T) {
 
 	expectedForbidden := expectedOK
 
+	expectedNotFound := [...]url.Values{
+		{{"ID", []string{"2"}}, {"LessonIndex", []string{"0"}}},
+	}
+
 	for _, test := range expectedBadRequest {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
 	}
@@ -112,6 +124,10 @@ func TestSubmissionDiscardHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
 		testPostAuth(t, endpoint, testTokens[2], test, http.StatusForbidden)
 		testPostAuth(t, endpoint, testTokens[3], test, http.StatusForbidden)
+	}
+
+	for _, test := range expectedNotFound {
+		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
 	}
 
 	for _, test := range expectedOK {
