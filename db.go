@@ -185,7 +185,7 @@ func CreateInitialDB() error {
 	}
 
 	DB.Submissions = make([]Submission, 0, 1024)
-	DB.Submissions = append(DB.Submissions, Submission{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone})
+	DB.Submissions = append(DB.Submissions, Submission{Steps: make([]Step, 2), LessonID: 2, UserID: 2, SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone})
 	for i := int32(0); i < int32(len(DB.Submissions)); i++ {
 		DB.Submissions[i].ID = i
 	}
