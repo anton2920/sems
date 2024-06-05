@@ -75,6 +75,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 			return SubmissionPageHandler(w, r)
 		case "/new":
 			return SubmissionNewPageHandler(w, r)
+		case "/results":
+			return SubmissionResultsPageHandler(w, r)
 		}
 	case strings.StartsWith(path, "/user"):
 		switch path[len("/user"):] {

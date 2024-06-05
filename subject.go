@@ -304,61 +304,6 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
-			var displaySubmissions bool
-			for j := 0; j < len(lesson.Submissions); j++ {
-				submission := &DB.Submissions[lesson.Submissions[j]]
-				if !submission.Draft {
-					displaySubmissions = true
-					break
-				}
-			}
-			if displaySubmissions {
-				w.AppendString(`<form method="POST" action="/submission">`)
-
-				w.AppendString(`<input type="hidden" name="ID" value="`)
-				w.WriteInt(int(lesson.ID))
-				w.AppendString(`">`)
-
-				w.AppendString(`<label>Submissions: `)
-				w.AppendString(`<select name="SubmissionIndex">`)
-				for j := 0; j < len(lesson.Submissions); j++ {
-					submission := &DB.Submissions[lesson.Submissions[j]]
-					if submission.Draft {
-						continue
-					}
-
-					var user User
-					if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
-						return http.ServerError(err)
-					}
-
-					w.AppendString(`<option value="`)
-					w.WriteInt(j)
-					w.AppendString(`">`)
-					w.WriteHTMLString(user.LastName)
-					w.AppendString(` `)
-					w.WriteHTMLString(user.FirstName)
-
-					if submission.Status == SubmissionCheckDone {
-						w.AppendString(` (`)
-						DisplaySubmissionTotalScore(w, submission)
-						w.AppendString(`)`)
-					}
-					w.AppendString(`</option>`)
-				}
-				w.AppendString(`</select>`)
-				w.AppendString(`</label> `)
-
-				w.AppendString(`<input type="submit" value="See results"> `)
-				w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
-
-				w.AppendString(`</form>`)
-
-				w.AppendString(`<br>`)
-			}
-		}
-
 		DisplayLessonLink(w, lesson)
 
 		w.AppendString(`</fieldset>`)

@@ -53,10 +53,10 @@ type (
 	}
 
 	Submission struct {
-		ID     int32
-		UserID int32
+		ID       int32
+		UserID   int32
+		LessonID int32
 
-		LessonName     string
 		Steps          []Step
 		StartedAt      time.Time
 		SubmittedSteps []interface{}
@@ -135,10 +135,58 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 	w.WriteInt(totalMaximum)
 }
 
-func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
-	teacher := r.Form.Get("Teacher") != ""
-
+func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	var user User
+
+	if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
+		/* TODO(anton2920): report error. */
+	}
+
+	w.AppendString(`<a href="/submission/`)
+	w.WriteInt(int(submission.ID))
+	w.AppendString(`">`)
+	w.WriteHTMLString(user.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(user.FirstName)
+	if submission.Status == SubmissionCheckDone {
+		w.AppendString(` (`)
+		DisplaySubmissionTotalScore(w, submission)
+		w.AppendString(`)`)
+	}
+	w.AppendString(`</a>`)
+}
+
+func SubmissionPageHandler(w *http.Response, r *http.Request) error {
+	var subject Subject
+	var user User
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	id, err := GetIDFromURL(r.URL, "/submission/")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if (id < 0) || (id >= len(DB.Submissions)) {
+		return http.NotFound("lesson with this ID does not exist")
+	}
+	submission := &DB.Submissions[id]
+
+	lesson := &DB.Lessons[submission.LessonID]
+	if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+		return http.ServerError(err)
+	}
+	who, err := WhoIsUserInSubject(session.ID, &subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	if who == SubjectUserNone {
+		return http.ForbiddenError
+	}
+	teacher := (who == SubjectUserAdmin) || (who == SubjectUserTeacher)
+
 	if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
 		return http.ServerError(err)
 	}
@@ -146,7 +194,9 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Submission for `)
-	w.WriteHTMLString(submission.LessonName)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
 	w.AppendString(` by `)
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
@@ -156,27 +206,19 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 
 	w.AppendString(`<h1>`)
 	w.AppendString(`Submission for `)
-	w.WriteHTMLString(submission.LessonName)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
 	w.AppendString(` by `)
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission">`)
-
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Main">`)
+	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/results">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("LessonIndex"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
+	w.WriteInt(int(submission.ID))
 	w.AppendString(`">`)
 
 	for i := 0; i < len(submission.Steps); i++ {
@@ -284,7 +326,7 @@ func SubmissionMainPageHandler(w *http.Response, r *http.Request, submission *Su
 
 }
 
-func SubmissionTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
+func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
 	test := submittedTest.Test
 	teacher := r.Form.Get("Teacher") != ""
 
@@ -379,7 +421,7 @@ func SubmissionTestPageHandler(w *http.Response, r *http.Request, submittedTest 
 	return nil
 }
 
-func SubmissionProgrammingDisplayChecks(w *http.Response, submittedTask *SubmittedProgramming, checkType CheckType) {
+func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *SubmittedProgramming, checkType CheckType) {
 	task := submittedTask.Task
 	scores := submittedTask.Scores[checkType]
 	messages := submittedTask.Messages[checkType]
@@ -423,7 +465,7 @@ func SubmissionProgrammingDisplayChecks(w *http.Response, submittedTask *Submitt
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
+func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
 	task := submittedTask.Task
 	teacher := r.Form.Get("Teacher") != ""
 
@@ -476,7 +518,7 @@ func SubmissionProgrammingPageHandler(w *http.Response, r *http.Request, submitt
 
 	if teacher {
 		w.AppendString(`<h2>Tests</h2>`)
-		SubmissionProgrammingDisplayChecks(w, submittedTask, CheckTypeTest)
+		SubmissionResultsProgrammingDisplayChecks(w, submittedTask, CheckTypeTest)
 	}
 
 	w.AppendString(`</body>`)
@@ -485,76 +527,70 @@ func SubmissionProgrammingPageHandler(w *http.Response, r *http.Request, submitt
 	return nil
 }
 
-func SubmissionHandleCommand(w *http.Response, r *http.Request, submission *Submission, currentPage, k, command string) error {
+func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submission *Submission, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
 	}
 
-	switch currentPage {
+	switch command {
 	default:
 		return http.ClientError(nil)
-	case "Main":
-		switch command {
-		default:
+	case "Open":
+		if (pindex < 0) || (pindex >= len(submission.Steps)) {
 			return http.ClientError(nil)
-		case "Open":
+		}
+
+		switch submittedStep := submission.SubmittedSteps[pindex].(type) {
+		default:
+			panic("invalid step type")
+		case *SubmittedTest:
+			return SubmissionResultsTestPageHandler(w, r, submittedStep)
+		case *SubmittedProgramming:
+			return SubmissionResultsProgrammingPageHandler(w, r, submittedStep)
+		}
+	case "Re-check":
+		if spindex != "" {
 			if (pindex < 0) || (pindex >= len(submission.Steps)) {
 				return http.ClientError(nil)
 			}
+			submission.Status = SubmissionCheckPending
 
 			switch submittedStep := submission.SubmittedSteps[pindex].(type) {
 			default:
-				panic("invalid step type")
+				panic("invaid step type")
 			case *SubmittedTest:
-				return SubmissionTestPageHandler(w, r, submittedStep)
+				submittedStep.Status = SubmissionCheckPending
 			case *SubmittedProgramming:
-				return SubmissionProgrammingPageHandler(w, r, submittedStep)
+				submittedStep.Status = SubmissionCheckPending
 			}
-		case "Re-check":
-			if spindex != "" {
-				if (pindex < 0) || (pindex >= len(submission.Steps)) {
-					return http.ClientError(nil)
-				}
-				submission.Status = SubmissionCheckPending
+		} else {
+			submission.Status = SubmissionCheckPending
 
-				switch submittedStep := submission.SubmittedSteps[pindex].(type) {
-				default:
-					panic("invaid step type")
-				case *SubmittedTest:
-					submittedStep.Status = SubmissionCheckPending
-				case *SubmittedProgramming:
-					submittedStep.Status = SubmissionCheckPending
-				}
-			} else {
-				submission.Status = SubmissionCheckPending
-
-				for i := 0; i < len(submission.SubmittedSteps); i++ {
-					submittedStep := submission.SubmittedSteps[i]
-					if submittedStep != nil {
-						switch submittedStep := submittedStep.(type) {
-						default:
-							panic("invaid step type")
-						case *SubmittedTest:
-							submittedStep.Status = SubmissionCheckPending
-						case *SubmittedProgramming:
-							submittedStep.Status = SubmissionCheckPending
-						}
+			for i := 0; i < len(submission.SubmittedSteps); i++ {
+				submittedStep := submission.SubmittedSteps[i]
+				if submittedStep != nil {
+					switch submittedStep := submittedStep.(type) {
+					default:
+						panic("invaid step type")
+					case *SubmittedTest:
+						submittedStep.Status = SubmissionCheckPending
+					case *SubmittedProgramming:
+						submittedStep.Status = SubmissionCheckPending
 					}
 				}
 			}
-
-			SubmissionVerifyChannel <- submission
-
-			return SubmissionMainPageHandler(w, r, submission)
 		}
+
+		SubmissionVerifyChannel <- submission
+
+		w.RedirectID("/submission/", int(submission.ID), http.StatusSeeOther)
+		return nil
 	}
 }
 
-func SubmissionPageHandler(w *http.Response, r *http.Request) error {
-	var subject Subject
-
-	session, err := GetSessionFromRequest(r)
+func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
+	_, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
 	}
@@ -563,40 +599,11 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	lessonID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Lessons))
+	submissionID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Submissions))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := &DB.Lessons[lessonID]
-
-	if lesson.ContainerType != ContainerTypeSubject {
-		return http.ClientError(nil)
-	}
-	if err := GetSubjectByID(DB2, int32(lesson.ContainerID), &subject); err != nil {
-		return http.ServerError(err)
-	}
-
-	who, err := WhoIsUserInSubject(session.ID, &subject)
-	if err != nil {
-		return http.ServerError(err)
-	}
-	switch who {
-	default:
-		return http.ForbiddenError
-	case SubjectUserStudent:
-		r.Form.Set("Teacher", "")
-	case SubjectUserAdmin, SubjectUserTeacher:
-		r.Form.Set("Teacher", "yay")
-	}
-
-	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	submission := &DB.Submissions[lesson.Submissions[si]]
-
-	currentPage := r.Form.Get("CurrentPage")
-	nextPage := r.Form.Get("NextPage")
+	submission := &DB.Submissions[submissionID]
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
@@ -608,16 +615,11 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionHandleCommand(w, r, submission, currentPage, k, v)
+			return SubmissionResultsHandleCommand(w, r, submission, k, v)
 		}
 	}
 
-	switch nextPage {
-	default:
-		return SubmissionMainPageHandler(w, r, submission)
-	case "Discard":
-		return SubmissionDiscardHandler(w, r)
-	}
+	return http.ClientError(nil)
 }
 
 func SubmissionNewVerify(submission *Submission) error {
@@ -701,16 +703,18 @@ func SubmissionNewProgrammingVerifyRequest(vs url.Values, submittedTask *Submitt
 }
 
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
+	lesson := &DB.Lessons[submission.LessonID]
+
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(submission.LessonName)
+	w.WriteHTMLString(lesson.Name)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
 	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(submission.LessonName)
+	w.WriteHTMLString(lesson.Name)
 	w.AppendString(`</h1>`)
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
@@ -1091,7 +1095,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	submissionIndex := r.Form.Get("SubmissionIndex")
 	var submission *Submission
 	if submissionIndex == "" {
-		DB.Submissions = append(DB.Submissions, Submission{ID: int32(len(DB.Submissions)), Draft: true, LessonName: lesson.Name, StartedAt: time.Now(), UserID: session.ID})
+		DB.Submissions = append(DB.Submissions, Submission{ID: int32(len(DB.Submissions)), Draft: true, LessonID: lesson.ID, StartedAt: time.Now(), UserID: session.ID})
 		submission = &DB.Submissions[len(DB.Submissions)-1]
 
 		StepsDeepCopy(&submission.Steps, lesson.Steps)

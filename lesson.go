@@ -133,7 +133,6 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.UnauthorizedError
 	}
-	_ = session
 
 	id, err := GetIDFromURL(r.URL, "/lesson/")
 	if err != nil {
@@ -203,6 +202,10 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	for i := 0; i < len(lesson.Steps); i++ {
 		step := &lesson.Steps[i]
 
+		if i > 0 {
+			w.AppendString(`<br>`)
+		}
+
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Step #`)
@@ -218,43 +221,66 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
 	}
 	w.AppendString(`</div>`)
 
-	if who == SubjectUserStudent {
-		var submission *Submission
-		var i int
+	switch who {
+	case SubjectUserAdmin, SubjectUserTeacher:
+		if len(lesson.Submissions) > 0 {
+			w.AppendString(`<h2>Submissions</h2>`)
+			w.AppendString(`<ul>`)
+			for i := 0; i < len(lesson.Submissions); i++ {
+				submission := &DB.Submissions[lesson.Submissions[i]]
 
-		for i = 0; i < len(lesson.Submissions); i++ {
-			if session.ID == DB.Submissions[lesson.Submissions[i]].UserID {
-				submission = &DB.Submissions[lesson.Submissions[i]]
-				break
+				w.AppendString(`<li>`)
+				DisplaySubmissionLink(w, submission)
+				w.AppendString(`</li>`)
+			}
+			w.AppendString(`</ul>`)
+		}
+	case SubjectUserStudent:
+		var submission *Submission
+		var displayed bool
+		var si int
+
+		for i := 0; i < len(lesson.Submissions); i++ {
+			submission = &DB.Submissions[lesson.Submissions[i]]
+
+			if submission.UserID == session.ID {
+				if !displayed {
+					w.AppendString(`<h2>Submissions</h2>`)
+					w.AppendString(`<ul>`)
+					displayed = true
+				}
+				if !submission.Draft {
+					w.AppendString(`<li>`)
+					DisplaySubmissionLink(w, submission)
+					w.AppendString(`</li>`)
+				} else {
+					si = i
+				}
 			}
 		}
-
-		if (submission != nil) && (!submission.Draft) {
-			w.AppendString(`<form method="POST" action="/submission">`)
+		if displayed {
+			w.AppendString(`</ul>`)
 		} else {
-			w.AppendString(`<form method="POST" action="/submission/new">`)
+			w.AppendString(`<br>`)
 		}
+
+		w.AppendString(`<form method="POST" action="/submission/new">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteInt(int(lesson.ID))
 		w.AppendString(`">`)
 
-		if submission == nil {
+		if (submission == nil) || (!submission.Draft) {
 			w.AppendString(`<input type="submit" value="Pass">`)
 		} else {
 			w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-			w.WriteInt(i)
+			w.WriteInt(si)
 			w.AppendString(`">`)
 
-			if submission.Draft {
-				w.AppendString(`<input type="submit" value="Edit">`)
-			} else {
-				w.AppendString(`<input type="submit" value="See submission">`)
-			}
+			w.AppendString(`<input type="submit" value="Edit">`)
 		}
 
 		w.AppendString(`</form>`)
