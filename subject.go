@@ -317,11 +317,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`<form method="POST" action="/submission">`)
 
 				w.AppendString(`<input type="hidden" name="ID" value="`)
-				w.WriteString(r.URL.Path[len("/subject/"):])
-				w.AppendString(`">`)
-
-				w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-				w.WriteInt(i)
+				w.WriteInt(int(lesson.ID))
 				w.AppendString(`">`)
 
 				w.AppendString(`<label>Submissions: `)
@@ -363,19 +359,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			}
 		}
 
-		w.AppendString(`<form method="POST" action="/subject/lesson">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/subject/"):])
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-		w.WriteInt(i)
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="submit" value="Open">`)
-
-		w.AppendString(`</form>`)
+		DisplayLessonLink(w, lesson)
 
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)

@@ -87,19 +87,25 @@ func CreateInitialDB() error {
 
 	DB.Lessons = []Lesson{
 		Lesson{
-			Name:   "Introduction",
-			Theory: "This is an introduction.",
-			Steps:  make([]Step, 2),
+			ContainerID:   0,
+			ContainerType: ContainerTypeCourse,
+			Name:          "Introduction",
+			Theory:        "This is an introduction.",
+			Steps:         make([]Step, 2),
 		},
 		Lesson{
-			Name:   "Test lesson",
-			Theory: "This is a test lesson.",
+			ContainerID:   1,
+			ContainerType: ContainerTypeCourse,
+			Name:          "Test lesson",
+			Theory:        "This is a test lesson.",
 		},
 		Lesson{
-			Name:        "New lesson",
-			Theory:      "New theory",
-			Steps:       make([]Step, 2),
-			Submissions: []int32{0},
+			ContainerID:   1,
+			ContainerType: ContainerTypeSubject,
+			Name:          "New lesson",
+			Theory:        "New theory",
+			Steps:         make([]Step, 2),
+			Submissions:   []int32{0},
 		},
 	}
 	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
@@ -178,8 +184,10 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Submissions = []Submission{
-		{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone},
+	DB.Submissions = make([]Submission, 0, 1024)
+	DB.Submissions = append(DB.Submissions, Submission{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone})
+	for i := int32(0); i < int32(len(DB.Submissions)); i++ {
+		DB.Submissions[i].ID = i
 	}
 
 	return nil

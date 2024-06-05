@@ -202,19 +202,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<form method="POST" action="/course/lesson">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/course/"):])
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-		w.WriteInt(i)
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="submit" value="Open">`)
-
-		w.AppendString(`</form>`)
+		DisplayLessonLink(w, lesson)
 
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)
@@ -236,100 +224,6 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<input type="submit" value="Delete">`)
 	w.AppendString(`</form>`)
 
-	w.AppendString(`</div>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
-}
-
-func CourseLessonPageHandler(w *http.Response, r *http.Request) error {
-	var course Course
-	var user User
-
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if err := GetUserByID(DB2, session.ID, &user); err != nil {
-		return http.ServerError(err)
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	courseID, err := r.Form.GetInt("ID")
-	if err != nil {
-		return http.ClientError(err)
-	}
-	if !UserOwnsCourse(&user, int32(courseID)) {
-		return http.ForbiddenError
-	}
-	if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
-		if err == DBNotFound {
-			return http.NotFound("course with this ID does not exist")
-		}
-		return http.ServerError(err)
-	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[course.Lessons[li]]
-
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(course.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.WriteHTMLString(course.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<h2>Theory</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<h2>Evaluation</h2>`)
-
-	w.AppendString(`<div style="max-width: max-content">`)
-	for i := 0; i < len(lesson.Steps); i++ {
-		step := &lesson.Steps[i]
-		name := step.Name
-
-		var stepType string
-		if step.Type == StepTypeTest {
-			stepType = "Test"
-		} else {
-			stepType = "Programming task"
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
 	w.AppendString(`</div>`)
 
 	w.AppendString(`</body>`)
@@ -571,7 +465,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 		return CourseCreateEditCoursePageHandler(w, r, &course)
 	case "Add lesson":
-		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft})
+		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft, ContainerID: course.ID, ContainerType: ContainerTypeCourse})
 		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
 		course.Lessons = append(course.Lessons, lesson.ID)

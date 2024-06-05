@@ -563,14 +563,16 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := r.Form.GetInt("ID")
+	lessonID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Lessons))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
-			return http.NotFound("subject with this ID does not exist")
-		}
+	lesson := &DB.Lessons[lessonID]
+
+	if lesson.ContainerType != ContainerTypeSubject {
+		return http.ClientError(nil)
+	}
+	if err := GetSubjectByID(DB2, int32(lesson.ContainerID), &subject); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -580,16 +582,12 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	}
 	switch who {
 	default:
+		return http.ForbiddenError
+	case SubjectUserStudent:
 		r.Form.Set("Teacher", "")
 	case SubjectUserAdmin, SubjectUserTeacher:
 		r.Form.Set("Teacher", "yay")
 	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
 	if err != nil {
@@ -1069,22 +1067,18 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := r.Form.GetInt("ID")
+	lessonID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Lessons))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
-			return http.NotFound("subject with this ID does not exist")
-		}
+	lesson := &DB.Lessons[lessonID]
+
+	if lesson.ContainerType != ContainerTypeSubject {
+		return http.ClientError(nil)
+	}
+	if err := GetSubjectByID(DB2, int32(lesson.ContainerID), &subject); err != nil {
 		return http.ServerError(err)
 	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[subject.Lessons[li]]
 
 	who, err := WhoIsUserInSubject(session.ID, &subject)
 	if err != nil {
@@ -1190,7 +1184,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 
 		SubmissionVerifyChannel <- submission
 
-		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+		w.RedirectID("/lesson/", lessonID, http.StatusSeeOther)
 		return nil
 	}
 }

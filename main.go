@@ -43,8 +43,6 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 			return CoursePageHandler(w, r)
 		case "/create", "/edit":
 			return CourseCreateEditPageHandler(w, r)
-		case "/lesson":
-			return CourseLessonPageHandler(w, r)
 		}
 	case strings.StartsWith(path, "/group"):
 		switch path[len("/group"):] {
@@ -55,26 +53,21 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		case "/edit":
 			return GroupEditPageHandler(w, r)
 		}
-	case strings.StartsWith(path, "/subject"):
-		path = path[len("/subject"):]
-
-		switch {
+	case strings.StartsWith(path, "/lesson"):
+		switch path[len("/lesson"):] {
 		default:
-			switch path {
-			default:
-				return SubjectPageHandler(w, r)
-			case "/create":
-				return SubjectCreatePageHandler(w, r)
-			case "/edit":
-				return SubjectEditPageHandler(w, r)
-			}
-		case strings.StartsWith(path, "/lesson"):
-			switch path[len("/lesson"):] {
-			default:
-				return SubjectLessonPageHandler(w, r)
-			case "/edit":
-				return SubjectLessonEditPageHandler(w, r)
-			}
+			return LessonPageHandler(w, r)
+		}
+	case strings.StartsWith(path, "/subject"):
+		switch path[len("/subject"):] {
+		default:
+			return SubjectPageHandler(w, r)
+		case "/create":
+			return SubjectCreatePageHandler(w, r)
+		case "/edit":
+			return SubjectEditPageHandler(w, r)
+		case "/lesson/edit":
+			return SubjectLessonEditPageHandler(w, r)
 		}
 	case strings.StartsWith(path, "/submission"):
 		switch path[len("/submission"):] {

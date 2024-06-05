@@ -18,137 +18,6 @@ func SubjectLessonVerify(subject *Subject) error {
 	return nil
 }
 
-func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
-	var subject Subject
-
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	subjectID, err := r.Form.GetInt("ID")
-	if err != nil {
-		return http.ClientError(err)
-	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
-			return http.NotFound("subject with this ID does not exist")
-		}
-		return http.ServerError(err)
-	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[subject.Lessons[li]]
-
-	who, err := WhoIsUserInSubject(session.ID, &subject)
-	if err != nil {
-		return http.ServerError(err)
-	}
-	if who == SubjectUserNone {
-		return http.ForbiddenError
-	}
-
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<h2>Theory</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<h2>Evaluation</h2>`)
-
-	w.AppendString(`<div style="max-width: max-content">`)
-	for i := 0; i < len(lesson.Steps); i++ {
-		step := &lesson.Steps[i]
-		name := step.Name
-		stepType := GetStepStringType(step)
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-	w.AppendString(`</div>`)
-
-	if who == SubjectUserStudent {
-		var submission *Submission
-		var i int
-
-		for i = 0; i < len(lesson.Submissions); i++ {
-			if session.ID == DB.Submissions[lesson.Submissions[i]].UserID {
-				submission = &DB.Submissions[lesson.Submissions[i]]
-				break
-			}
-		}
-
-		if (submission != nil) && (!submission.Draft) {
-			w.AppendString(`<form method="POST" action="/submission">`)
-		} else {
-			w.AppendString(`<form method="POST" action="/submission/new">`)
-		}
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteHTMLString(r.Form.Get("ID"))
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-		w.WriteHTMLString(r.Form.Get("LessonIndex"))
-		w.AppendString(`">`)
-
-		if submission == nil {
-			w.AppendString(`<input type="submit" value="Pass">`)
-		} else {
-			w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-			w.WriteInt(i)
-			w.AppendString(`">`)
-
-			if submission.Draft {
-				w.AppendString(`<input type="submit" value="Edit">`)
-			} else {
-				w.AppendString(`<input type="submit" value="See submission">`)
-			}
-		}
-
-		w.AppendString(`</form>`)
-	}
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
-}
-
 func SubjectLessonEditMainPageHandler(w *http.Response, r *http.Request, subject *Subject) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>Edit subject lessons</title></head>`)
@@ -270,6 +139,11 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 
 		/* TODO(anton2920): check if it's still a draft. */
 		LessonsDeepCopy(&subject.Lessons, course.Lessons)
+		for i := 0; i < len(subject.Lessons); i++ {
+			lesson := &DB.Lessons[subject.Lessons[i]]
+			lesson.ContainerID = subject.ID
+			lesson.ContainerType = ContainerTypeSubject
+		}
 	case "give as is":
 		var course Course
 
@@ -288,6 +162,11 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		LessonsDeepCopy(&subject.Lessons, course.Lessons)
+		for i := 0; i < len(subject.Lessons); i++ {
+			lesson := &DB.Lessons[subject.Lessons[i]]
+			lesson.ContainerID = subject.ID
+			lesson.ContainerType = ContainerTypeSubject
+		}
 
 		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 		return nil
@@ -380,7 +259,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 
 		return SubjectLessonEditMainPageHandler(w, r, &subject)
 	case "Add lesson":
-		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft})
+		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft, ContainerID: subject.ID, ContainerType: ContainerTypeSubject})
 		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
 		subject.Lessons = append(subject.Lessons, lesson.ID)

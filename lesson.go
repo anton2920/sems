@@ -47,6 +47,9 @@ type (
 		ID    int32
 		Flags int32
 
+		ContainerID   int32
+		ContainerType ContainerType
+
 		Name   string
 		Theory string
 
@@ -54,6 +57,13 @@ type (
 
 		Submissions []int32
 	}
+)
+
+type ContainerType int32
+
+const (
+	ContainerTypeCourse ContainerType = iota
+	ContainerTypeSubject
 )
 
 type CheckType int
@@ -107,6 +117,153 @@ func GetStepStringType(s *Step) string {
 	case StepTypeProgramming:
 		return "Programming task"
 	}
+}
+
+func DisplayLessonLink(w *http.Response, lesson *Lesson) {
+	w.AppendString(`<a href="/lesson/`)
+	w.WriteInt(int(lesson.ID))
+	w.AppendString(`">Open</a>`)
+}
+
+func LessonPageHandler(w *http.Response, r *http.Request) error {
+	var who SubjectUserType
+	var container string
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	_ = session
+
+	id, err := GetIDFromURL(r.URL, "/lesson/")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if (id < 0) || (id >= len(DB.Lessons)) {
+		return http.NotFound("lesson with this ID does not exist")
+	}
+	lesson := &DB.Lessons[id]
+
+	switch lesson.ContainerType {
+	default:
+		panic("invalid container type")
+	case ContainerTypeCourse:
+		var course Course
+		var user User
+
+		if err := GetUserByID(DB2, session.ID, &user); err != nil {
+			return http.ServerError(err)
+		}
+		if !UserOwnsCourse(&user, lesson.ContainerID) {
+			return http.ForbiddenError
+		}
+		if err := GetCourseByID(DB2, lesson.ContainerID, &course); err != nil {
+			return http.ServerError(err)
+		}
+		container = course.Name
+	case ContainerTypeSubject:
+		var subject Subject
+		var err error
+
+		if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+			return http.ServerError(err)
+		}
+		who, err = WhoIsUserInSubject(session.ID, &subject)
+		if err != nil {
+			return http.ServerError(err)
+		}
+		if who == SubjectUserNone {
+			return http.ForbiddenError
+		}
+		container = subject.Name
+	}
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>`)
+	w.WriteHTMLString(container)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</title></head>`)
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.WriteHTMLString(container)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</h1>`)
+
+	w.AppendString(`<h2>Theory</h2>`)
+	w.AppendString(`<p>`)
+	w.WriteHTMLString(lesson.Theory)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<h2>Evaluation</h2>`)
+
+	w.AppendString(`<div style="max-width: max-content">`)
+	for i := 0; i < len(lesson.Steps); i++ {
+		step := &lesson.Steps[i]
+
+		w.AppendString(`<fieldset>`)
+
+		w.AppendString(`<legend>Step #`)
+		w.WriteInt(i + 1)
+		w.AppendString(`</legend>`)
+
+		w.AppendString(`<p>Name: `)
+		w.WriteHTMLString(step.Name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>Type: `)
+		w.AppendString(GetStepStringType(step))
+		w.AppendString(`</p>`)
+
+		w.AppendString(`</fieldset>`)
+		w.AppendString(`<br>`)
+	}
+	w.AppendString(`</div>`)
+
+	if who == SubjectUserStudent {
+		var submission *Submission
+		var i int
+
+		for i = 0; i < len(lesson.Submissions); i++ {
+			if session.ID == DB.Submissions[lesson.Submissions[i]].UserID {
+				submission = &DB.Submissions[lesson.Submissions[i]]
+				break
+			}
+		}
+
+		if (submission != nil) && (!submission.Draft) {
+			w.AppendString(`<form method="POST" action="/submission">`)
+		} else {
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+		}
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteInt(int(lesson.ID))
+		w.AppendString(`">`)
+
+		if submission == nil {
+			w.AppendString(`<input type="submit" value="Pass">`)
+		} else {
+			w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
+			w.WriteInt(i)
+			w.AppendString(`">`)
+
+			if submission.Draft {
+				w.AppendString(`<input type="submit" value="Edit">`)
+			} else {
+				w.AppendString(`<input type="submit" value="See submission">`)
+			}
+		}
+
+		w.AppendString(`</form>`)
+	}
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
+
+	return nil
 }
 
 func StepsDeepCopy(dst *[]Step, src []Step) {
