@@ -479,6 +479,9 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 			return WritePageEx(w, r, LessonAddPageHandler, &lesson, err)
 		}
 		lesson.Flags = LessonActive
+		if err := SaveLesson(DB2, &lesson); err != nil {
+			return http.ServerError(err)
+		}
 
 		return CourseCreateEditCoursePageHandler(w, r, &course)
 	case "Add lesson":
