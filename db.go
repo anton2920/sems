@@ -16,6 +16,7 @@ type Database struct {
 	UsersFile    int32
 	GroupsFile   int32
 	CoursesFile  int32
+	LessonsFile  int32
 	SubjectsFile int32
 }
 
@@ -34,7 +35,6 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
-	Lessons     []Lesson
 	Submissions []Submission
 }
 
@@ -85,7 +85,7 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Lessons = []Lesson{
+	lessons := [...]Lesson{
 		Lesson{
 			ContainerID:   0,
 			ContainerType: ContainerTypeCourse,
@@ -108,10 +108,7 @@ func CreateInitialDB() error {
 			Submissions:   []int32{0},
 		},
 	}
-	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
-		DB.Lessons[id].ID = id
-	}
-	*((*StepTest)(unsafe.Pointer(&DB.Lessons[0].Steps[0]))) = StepTest{
+	*((*StepTest)(unsafe.Pointer(&lessons[0].Steps[0]))) = StepTest{
 		StepCommon: StepCommon{Name: "Back-end development basics", Type: StepTypeTest},
 		Questions: []Question{
 			Question{
@@ -144,7 +141,7 @@ func CreateInitialDB() error {
 			},
 		},
 	}
-	*((*StepProgramming)(unsafe.Pointer(&DB.Lessons[0].Steps[1]))) = StepProgramming{
+	*((*StepProgramming)(unsafe.Pointer(&lessons[0].Steps[1]))) = StepProgramming{
 		StepCommon:  StepCommon{Name: "Hello, world", Type: StepTypeProgramming},
 		Description: "Print 'hello, world' in your favorite language",
 		Checks: [2][]Check{
@@ -156,6 +153,14 @@ func CreateInitialDB() error {
 				Check{Input: "fff", Output: "eee"},
 			},
 		},
+	}
+	if err := DropData(DB2.LessonsFile); err != nil {
+		return fmt.Errorf("failed to drop lessons data: %w", err)
+	}
+	for id := int32(0); id < int32(len(lessons)); id++ {
+		if err := CreateLesson(DB2, &lessons[id]); err != nil {
+			return err
+		}
 	}
 
 	courses := [...]Course{
@@ -291,6 +296,11 @@ func OpenDB(dir string) (*Database, error) {
 	db.CoursesFile, err = OpenDBFile(dir, "Courses.db")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open courses DB file: %w", err)
+	}
+
+	db.LessonsFile, err = OpenDBFile(dir, "Lessons.db")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open lessons DB file: %w", err)
 	}
 
 	db.SubjectsFile, err = OpenDBFile(dir, "Subjects.db")

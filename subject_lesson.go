@@ -6,11 +6,15 @@ import (
 )
 
 func SubjectLessonVerify(subject *Subject) error {
+	var lesson Lesson
+
 	if len(subject.Lessons) == 0 {
 		return http.BadRequest("create at least one lesson")
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
-		lesson := &DB.Lessons[subject.Lessons[li]]
+		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
 		if lesson.Flags == LessonDraft {
 			return http.BadRequest("lesson %d is a draft", li+1)
 		}
@@ -53,6 +57,8 @@ func SubjectLessonEditMainPageHandler(w *http.Response, r *http.Request, subject
 }
 
 func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *Subject, currentPage, k, command string) error {
+	var lesson Lesson
+
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -69,11 +75,16 @@ func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
 			}
-			lesson := &DB.Lessons[subject.Lessons[pindex]]
+			if err := GetLessonByID(DB2, subject.Lessons[pindex], &lesson); err != nil {
+				return http.ServerError(err)
+			}
 			lesson.Flags = LessonDraft
+			if err := SaveLesson(DB2, &lesson); err != nil {
+				return http.ServerError(err)
+			}
 
 			r.Form.Set("LessonIndex", spindex)
-			return LessonAddPageHandler(w, r, lesson)
+			return LessonAddPageHandler(w, r, &lesson)
 		case "↑", "^|":
 			MoveUp(subject.Lessons, pindex)
 		case "↓", "|v":
@@ -86,6 +97,7 @@ func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *
 
 func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	var subject Subject
+	var lesson Lesson
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -138,12 +150,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		/* TODO(anton2920): check if it's still a draft. */
-		LessonsDeepCopy(&subject.Lessons, course.Lessons)
-		for i := 0; i < len(subject.Lessons); i++ {
-			lesson := &DB.Lessons[subject.Lessons[i]]
-			lesson.ContainerID = subject.ID
-			lesson.ContainerType = ContainerTypeSubject
-		}
+		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
 	case "give as is":
 		var course Course
 
@@ -161,12 +168,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			return http.ServerError(err)
 		}
 
-		LessonsDeepCopy(&subject.Lessons, course.Lessons)
-		for i := 0; i < len(subject.Lessons); i++ {
-			lesson := &DB.Lessons[subject.Lessons[i]]
-			lesson.ContainerID = subject.ID
-			lesson.ContainerType = ContainerTypeSubject
-		}
+		/* TODO(anton2920): check if it's still a draft. */
+		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
 
 		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 		return nil
@@ -193,15 +196,21 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
+		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
-		LessonFillFromRequest(r.Form, lesson)
+		LessonFillFromRequest(r.Form, &lesson)
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
+		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -223,7 +232,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
+		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -246,46 +258,35 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	default:
 		return SubjectLessonEditMainPageHandler(w, r, &subject)
 	case "Next":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-		if err != nil {
-			return http.ClientError(err)
-		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
-
-		if err := LessonVerify(lesson); err != nil {
-			return WritePageEx(w, r, LessonAddPageHandler, lesson, err)
+		if err := LessonVerify(&lesson); err != nil {
+			return WritePageEx(w, r, LessonAddPageHandler, &lesson, err)
 		}
 		lesson.Flags = LessonActive
 
 		return SubjectLessonEditMainPageHandler(w, r, &subject)
 	case "Add lesson":
-		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons)), Flags: LessonDraft, ContainerID: subject.ID, ContainerType: ContainerTypeSubject})
-		lesson := &DB.Lessons[len(DB.Lessons)-1]
+		lesson.Flags = LessonDraft
+		lesson.ContainerID = subject.ID
+		lesson.ContainerType = ContainerTypeSubject
+
+		if err := CreateLesson(DB2, &lesson); err != nil {
+			return http.ServerError(err)
+		}
 
 		subject.Lessons = append(subject.Lessons, lesson.ID)
 		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
 
-		return LessonAddPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, &lesson)
 	case "Continue":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-		if err != nil {
-			return http.ClientError(err)
-		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
-
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson.Steps[si].Draft = false
+		step := &lesson.Steps[si]
+		step.Draft = false
 
-		return LessonAddPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, &lesson)
 	case "Add test":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-		if err != nil {
-			return http.ClientError(err)
-		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeTest, Draft: true}})
@@ -294,11 +295,6 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddTestPageHandler(w, r, test)
 	case "Add programming task":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-		if err != nil {
-			return http.ClientError(err)
-		}
-		lesson := &DB.Lessons[subject.Lessons[li]]
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeProgramming, Draft: true}})

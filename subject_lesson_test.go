@@ -139,9 +139,9 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 		/* Lesson page. */
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"Command0", []string{"Edit"}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command2", []string{"Edit"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Add test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Add programming task"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Add test"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Add programming task"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"1"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"Theory", []string{"This is an introduction"}}},
@@ -191,7 +191,14 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 	if err := GetSubjectByID(DB2, 1, &subject); err != nil {
 		t.Fatalf("Failed to get subject by ID 1: %v", err)
 	}
-	DB.Lessons[subject.Lessons[0]].Flags = LessonDraft
+	var lesson Lesson
+	if err := GetLessonByID(DB2, subject.Lessons[0], &lesson); err != nil {
+		t.Fatalf("Failed to get lesson by ID: %v", err)
+	}
+	lesson.Flags = LessonDraft
+	if err := SaveLesson(DB2, &lesson); err != nil {
+		t.Fatalf("Failed to save lesson: %v", err)
+	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{"Save"}}}, http.StatusBadRequest)
 	subject.Lessons = nil
 	if err := SaveSubject(DB2, &subject); err != nil {

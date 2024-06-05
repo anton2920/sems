@@ -158,6 +158,7 @@ func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	var subject Subject
+	var lesson Lesson
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -174,7 +175,10 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	}
 	submission := &DB.Submissions[id]
 
-	lesson := &DB.Lessons[submission.LessonID]
+	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+		return http.ServerError(err)
+	}
+
 	if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
 		return http.ServerError(err)
 	}
@@ -703,7 +707,11 @@ func SubmissionNewProgrammingVerifyRequest(vs url.Values, submittedTask *Submitt
 }
 
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
-	lesson := &DB.Lessons[submission.LessonID]
+	var lesson Lesson
+
+	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+		return http.ServerError(err)
+	}
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -727,10 +735,6 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
 	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("LessonIndex"))
 	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
@@ -814,10 +818,6 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
 	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("LessonIndex"))
 	w.AppendString(`">`)
 
 	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
@@ -960,10 +960,6 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.WriteHTMLString(r.Form.Get("ID"))
 	w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="LessonIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("LessonIndex"))
-	w.AppendString(`">`)
-
 	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
 	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
 	w.AppendString(`">`)
@@ -1061,6 +1057,7 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *S
 
 func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	var subject Subject
+	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -1071,11 +1068,16 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	lessonID, err := GetValidIndex(r.Form.Get("ID"), len(DB.Lessons))
+	lessonID, err := r.Form.GetInt("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	lesson := &DB.Lessons[lessonID]
+	if err := GetLessonByID(DB2, int32(lessonID), &lesson); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("lesson with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
 
 	if lesson.ContainerType != ContainerTypeSubject {
 		return http.ClientError(nil)
@@ -1102,6 +1104,9 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		submission.SubmittedSteps = make([]interface{}, len(lesson.Steps))
 
 		lesson.Submissions = append(lesson.Submissions, submission.ID)
+		if err := SaveLesson(DB2, &lesson); err != nil {
+			return http.ServerError(err)
+		}
 		r.Form.SetInt("SubmissionIndex", len(lesson.Submissions)-1)
 	} else {
 		si, err := GetValidIndex(submissionIndex, len(lesson.Submissions))
@@ -1191,46 +1196,4 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		w.RedirectID("/lesson/", lessonID, http.StatusSeeOther)
 		return nil
 	}
-}
-
-func SubmissionDiscardHandler(w *http.Response, r *http.Request) error {
-	var subject Subject
-
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	subjectID, err := r.Form.GetInt("ID")
-	if err != nil {
-		return http.ClientError(err)
-	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
-			return http.NotFound("subject with this ID does not exist")
-		}
-		return http.ServerError(err)
-	}
-	if (session.ID != AdminID) && (session.ID != subject.TeacherID) {
-		return http.ForbiddenError
-	}
-
-	li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson := &DB.Lessons[subject.Lessons[li]]
-
-	si, err := GetValidIndex(r.Form.Get("SubmissionIndex"), len(lesson.Submissions))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	lesson.Submissions = RemoveAtIndex(lesson.Submissions, si)
-
-	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
-	return nil
 }

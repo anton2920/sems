@@ -151,7 +151,7 @@ func SaveSubject(db *Database, subject *Subject) error {
 	if len(subject.Lessons) > 0 {
 		nbytes = copy(subjectDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&subject.Lessons[0])), len(subject.Lessons)*int(unsafe.Sizeof(subject.Lessons[0]))))
 		subjectDB.Lessons = Slice2Offset(subject.Lessons, n)
-		nbytes += n
+		n += nbytes
 	}
 
 	subjectDB.CreatedOn = subject.CreatedOn
@@ -187,6 +187,7 @@ func DisplaySubjectLink(w *http.Response, subject *Subject) {
 
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	var subject Subject
+	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -285,7 +286,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<h2>Lessons</h2>`)
 	}
 	for i := 0; i < len(subject.Lessons); i++ {
-		lesson := &DB.Lessons[subject.Lessons[i]]
+		if err := GetLessonByID(DB2, subject.Lessons[i], &lesson); err != nil {
+			return http.ServerError(err)
+		}
 
 		w.AppendString(`<fieldset>`)
 
@@ -304,7 +307,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		DisplayLessonLink(w, lesson)
+		DisplayLessonLink(w, &lesson)
 
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)

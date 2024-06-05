@@ -184,7 +184,7 @@ func SaveUser(db *Database, user *User) error {
 	if len(user.Courses) > 0 {
 		nbytes = copy(userDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(user.Courses[0]))))
 		userDB.Courses = Slice2Offset(user.Courses, n)
-		nbytes += n
+		n += nbytes
 	}
 
 	userDB.CreatedOn = user.CreatedOn

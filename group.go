@@ -128,7 +128,7 @@ func SaveGroup(db *Database, group *Group) error {
 
 	nbytes = copy(groupDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&group.Students[0])), len(group.Students)*int(unsafe.Sizeof(group.Students[0]))))
 	groupDB.Students = Slice2Offset(group.Students, n)
-	nbytes += n
+	n += nbytes
 
 	groupDB.CreatedOn = group.CreatedOn
 

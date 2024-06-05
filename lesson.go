@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/syscall"
 )
 
 type (
@@ -36,7 +38,7 @@ type (
 		Description string
 		Checks      [2][]Check
 	}
-	Step struct {
+	Step/* union */ struct {
 		StepCommon
 
 		/* TODO(anton2920): garbage collector cannot see pointers inside. */
@@ -44,18 +46,17 @@ type (
 	}
 
 	Lesson struct {
-		ID    int32
-		Flags int32
-
+		ID            int32
+		Flags         int32
 		ContainerID   int32
 		ContainerType ContainerType
 
-		Name   string
-		Theory string
-
-		Steps []Step
-
+		Name        string
+		Theory      string
+		Steps       []Step
 		Submissions []int32
+
+		Data [16384]byte
 	}
 )
 
@@ -108,6 +109,236 @@ func Step2Programming(s *Step) (*StepProgramming, error) {
 	return (*StepProgramming)(unsafe.Pointer(s)), nil
 }
 
+func CreateLesson(db *Database, lesson *Lesson) error {
+	var err error
+
+	lesson.ID, err = IncrementNextID(db.LessonsFile)
+	if err != nil {
+		return fmt.Errorf("failed to increment lesson ID: %w", err)
+	}
+
+	return SaveLesson(db, lesson)
+}
+
+func DBLesson2Lesson(lesson *Lesson) {
+	lesson.Name = Offset2String(lesson.Name, &lesson.Data[0])
+	lesson.Theory = Offset2String(lesson.Theory, &lesson.Data[0])
+	lesson.Steps = Offset2Slice(lesson.Steps, &lesson.Data[0])
+
+	for s := 0; s < len(lesson.Steps); s++ {
+		step := &lesson.Steps[s]
+		step.Name = Offset2String(step.Name, &lesson.Data[0])
+
+		switch step.Type {
+		case StepTypeTest:
+			test, _ := Step2Test(step)
+			test.Questions = Offset2Slice(test.Questions, &lesson.Data[0])
+
+			for q := 0; q < len(test.Questions); q++ {
+				question := &test.Questions[q]
+				question.Name = Offset2String(question.Name, &lesson.Data[0])
+				question.Answers = Offset2Slice(question.Answers, &lesson.Data[0])
+				question.CorrectAnswers = Offset2Slice(question.CorrectAnswers, &lesson.Data[0])
+
+				for a := 0; a < len(question.Answers); a++ {
+					answer := &question.Answers[a]
+					*answer = Offset2String(*answer, &lesson.Data[0])
+				}
+			}
+		case StepTypeProgramming:
+			task, _ := Step2Programming(step)
+			task.Description = Offset2String(task.Description, &lesson.Data[0])
+
+			for i := 0; i < len(task.Checks); i++ {
+				task.Checks[i] = Offset2Slice(task.Checks[i], &lesson.Data[0])
+
+				for c := 0; c < len(task.Checks[i]); c++ {
+					check := &task.Checks[i][c]
+					check.Input = Offset2String(check.Input, &lesson.Data[0])
+					check.Output = Offset2String(check.Output, &lesson.Data[0])
+				}
+			}
+		}
+	}
+
+	lesson.Submissions = Offset2Slice(lesson.Submissions, &lesson.Data[0])
+}
+
+func GetLessonByID(db *Database, id int32, lesson *Lesson) error {
+	size := int(unsafe.Sizeof(*lesson))
+	offset := int64(int(id)*size) + DataOffset
+
+	n, err := syscall.Pread(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(lesson)), size), offset)
+	if err != nil {
+		return fmt.Errorf("failed to read lesson from DB: %w", err)
+	}
+	if n < size {
+		return DBNotFound
+	}
+
+	DBLesson2Lesson(lesson)
+	return nil
+}
+
+func GetLessons(db *Database, pos *int64, lessons []Lesson) (int, error) {
+	if *pos < DataOffset {
+		*pos = DataOffset
+	}
+	size := int(unsafe.Sizeof(lessons[0]))
+
+	n, err := syscall.Pread(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(lessons))), len(lessons)*size), *pos)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read lesson from DB: %w", err)
+	}
+	*pos += int64(n)
+
+	n /= size
+	for i := 0; i < n; i++ {
+		DBLesson2Lesson(&lessons[i])
+	}
+
+	return n, nil
+}
+
+func DeleteLessonByID(db *Database, id int32) error {
+	flags := LessonDeleted
+	var lesson Lesson
+
+	offset := int64(int(id)*int(unsafe.Sizeof(lesson))) + DataOffset + int64(unsafe.Offsetof(lesson.Flags))
+	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
+	if err != nil {
+		return fmt.Errorf("failed to delete lesson from DB: %w", err)
+	}
+
+	return nil
+}
+
+func SaveLesson(db *Database, lesson *Lesson) error {
+	var lessonDB Lesson
+
+	size := int(unsafe.Sizeof(*lesson))
+	offset := int64(int(lesson.ID)*size) + DataOffset
+
+	n := DataStartOffset
+	var nbytes int
+
+	lessonDB.ID = lesson.ID
+	lessonDB.Flags = lesson.Flags
+	lessonDB.ContainerID = lesson.ContainerID
+	lessonDB.ContainerType = lesson.ContainerType
+
+	/* TODO(anton2920): saving up to a sizeof(lesson.Data). */
+	nbytes = copy(lessonDB.Data[n:], lesson.Name)
+	lessonDB.Name = String2Offset(lesson.Name, n)
+	n += nbytes
+
+	nbytes = copy(lessonDB.Data[n:], lesson.Theory)
+	lessonDB.Theory = String2Offset(lesson.Theory, n)
+	n += nbytes
+
+	if len(lesson.Steps) > 0 {
+		lessonDB.Steps = make([]Step, len(lesson.Steps))
+		for s := 0; s < len(lesson.Steps); s++ {
+			ss := &lesson.Steps[s]
+			ds := &lessonDB.Steps[s]
+
+			nbytes = copy(lessonDB.Data[n:], ss.Name)
+			ds.Name = String2Offset(ss.Name, n)
+			n += nbytes
+
+			switch ss.Type {
+			case StepTypeTest:
+				st, _ := Step2Test(ss)
+
+				ds.Type = StepTypeTest
+				dt, _ := Step2Test(ds)
+
+				if len(st.Questions) > 0 {
+					dt.Questions = make([]Question, len(st.Questions))
+					for q := 0; q < len(st.Questions); q++ {
+						sq := &st.Questions[q]
+						dq := &dt.Questions[q]
+
+						nbytes = copy(lessonDB.Data[n:], sq.Name)
+						dq.Name = String2Offset(sq.Name, n)
+						n += nbytes
+
+						if len(sq.Answers) > 0 {
+							dq.Answers = make([]string, len(sq.Answers))
+							for a := 0; a < len(sq.Answers); a++ {
+								nbytes = copy(lessonDB.Data[n:], sq.Answers[a])
+								dq.Answers[a] = String2Offset(sq.Answers[a], n)
+								n += nbytes
+							}
+
+							nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dq.Answers[0])), len(sq.Answers)*int(unsafe.Sizeof(dq.Answers[0]))))
+							dq.Answers = Slice2Offset(dq.Answers, n)
+							n += nbytes
+						}
+
+						if len(sq.CorrectAnswers) > 0 {
+							nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&sq.CorrectAnswers[0])), len(sq.CorrectAnswers)*int(unsafe.Sizeof(sq.CorrectAnswers[0]))))
+							dq.CorrectAnswers = Slice2Offset(sq.CorrectAnswers, n)
+							n += nbytes
+						}
+					}
+
+					nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dt.Questions[0])), len(dt.Questions)*int(unsafe.Sizeof(dt.Questions[0]))))
+					dt.Questions = Slice2Offset(dt.Questions, n)
+					n += nbytes
+				}
+			case StepTypeProgramming:
+				st, _ := Step2Programming(ss)
+
+				ds.Type = StepTypeProgramming
+				dt, _ := Step2Programming(ds)
+
+				nbytes = copy(lessonDB.Data[n:], st.Description)
+				dt.Description = String2Offset(st.Description, n)
+				n += nbytes
+
+				for i := 0; i < len(st.Checks); i++ {
+					if len(st.Checks[i]) > 0 {
+						dt.Checks[i] = make([]Check, len(st.Checks[i]))
+						for c := 0; c < len(st.Checks[i]); c++ {
+							sc := &st.Checks[i][c]
+							dc := &dt.Checks[i][c]
+
+							nbytes = copy(lessonDB.Data[n:], sc.Input)
+							dc.Input = String2Offset(sc.Input, n)
+							n += nbytes
+
+							nbytes = copy(lessonDB.Data[n:], sc.Output)
+							dc.Output = String2Offset(sc.Output, n)
+							n += nbytes
+						}
+
+						nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dt.Checks[i][0])), len(dt.Checks[i])*int(unsafe.Sizeof(dt.Checks[i][0]))))
+						dt.Checks[i] = Slice2Offset(dt.Checks[i], n)
+						n += nbytes
+					}
+				}
+			}
+		}
+		nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB.Steps[0])), len(lessonDB.Steps)*int(unsafe.Sizeof(lessonDB.Steps[0]))))
+		lessonDB.Steps = Slice2Offset(lessonDB.Steps, n)
+		n += nbytes
+	}
+
+	if len(lesson.Submissions) > 0 {
+		nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&lesson.Submissions[0])), len(lesson.Submissions)*int(unsafe.Sizeof(lesson.Submissions[0]))))
+		lessonDB.Submissions = Slice2Offset(lesson.Submissions, n)
+		n += nbytes
+	}
+
+	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB)), size), offset)
+	if err != nil {
+		return fmt.Errorf("failed to write lesson to DB: %w", err)
+	}
+
+	return nil
+}
+
 func GetStepStringType(s *Step) string {
 	switch s.Type {
 	default:
@@ -128,6 +359,7 @@ func DisplayLessonLink(w *http.Response, lesson *Lesson) {
 func LessonPageHandler(w *http.Response, r *http.Request) error {
 	var who SubjectUserType
 	var container string
+	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -138,10 +370,12 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if (id < 0) || (id >= len(DB.Lessons)) {
-		return http.NotFound("lesson with this ID does not exist")
+	if err := GetLessonByID(DB2, int32(id), &lesson); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("lesson with this ID does not exist")
+		}
+		return http.ServerError(err)
 	}
-	lesson := &DB.Lessons[id]
 
 	switch lesson.ContainerType {
 	default:
@@ -334,26 +568,38 @@ func StepsDeepCopy(dst *[]Step, src []Step) {
 	}
 }
 
-func LessonsDeepCopy(dst *[]int32, src []int32) {
+func LessonsDeepCopy(dst *[]int32, src []int32, containerID int32, containerType ContainerType) {
 	*dst = make([]int32, len(src))
 
 	for l := 0; l < len(src); l++ {
-		sl := &DB.Lessons[src[l]]
+		var sl, dl Lesson
 
-		DB.Lessons = append(DB.Lessons, Lesson{ID: int32(len(DB.Lessons))})
-		dl := &DB.Lessons[len(DB.Lessons)-1]
-		(*dst)[l] = dl.ID
+		if err := GetLessonByID(DB2, src[l], &sl); err != nil {
+			/* TODO(anton2920): report error. */
+		}
 
 		dl.Flags = sl.Flags
+		dl.ContainerID = containerID
+		dl.ContainerType = containerType
+
 		dl.Name = sl.Name
 		dl.Theory = sl.Theory
 		StepsDeepCopy(&dl.Steps, sl.Steps)
+
+		if err := CreateLesson(DB2, &dl); err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		(*dst)[l] = dl.ID
 	}
 }
 
 func DisplayLessonsEditableList(w *http.Response, lessons []int32) {
+	var lesson Lesson
+
 	for i := 0; i < len(lessons); i++ {
-		lesson := &DB.Lessons[lessons[i]]
+		if err := GetLessonByID(DB2, lessons[i], &lesson); err != nil {
+			/* TODO(anton2920): report error. */
+		}
 
 		w.AppendString(`<fieldset>`)
 

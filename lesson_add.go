@@ -510,6 +510,8 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) err
 }
 
 func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, currentPage, k, command string) error {
+	var lesson Lesson
+
 	/* TODO(anton2920): pass these as parameters. */
 	pindex, spindex, sindex, ssindex, err := GetIndicies(k[len("Command"):])
 	if err != nil {
@@ -524,7 +526,10 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[lessons[li]]
+		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
 		switch command {
 		case "Delete":
@@ -544,13 +549,16 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 			MoveDown(lesson.Steps, pindex)
 		}
 
-		return LessonAddPageHandler(w, r, lesson)
+		return LessonAddPageHandler(w, r, &lesson)
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[lessons[li]]
+		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -656,7 +664,10 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		lesson := &DB.Lessons[lessons[li]]
+		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+			return http.ServerError(err)
+		}
+		defer SaveLesson(DB2, &lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {

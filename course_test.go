@@ -164,9 +164,9 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 		/* Lesson page. */
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"Command0", []string{"Edit"}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command2", []string{"Edit"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Add test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Add programming task"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Add test"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Add programming task"}}},
+		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"1"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
 		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{"Next"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"Theory", []string{"This is an introduction"}}},

@@ -115,11 +115,6 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		case "/edit":
 			return SubjectEditHandler(w, r)
 		}
-	case strings.StartsWith(path, "/submission"):
-		switch path[len("/submission"):] {
-		case "/discard":
-			return SubmissionDiscardHandler(w, r)
-		}
 	case strings.StartsWith(path, "/user"):
 		switch path[len("/user"):] {
 		case "/create":
