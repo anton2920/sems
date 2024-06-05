@@ -34,7 +34,8 @@ const AdminID = 0
 const DBFile = "db.gob"
 
 var DB struct {
-	Lessons []Lesson
+	Lessons     []Lesson
+	Submissions []Submission
 }
 
 var DBNotFound = errors.New("not found")
@@ -95,12 +96,10 @@ func CreateInitialDB() error {
 			Theory: "This is a test lesson.",
 		},
 		Lesson{
-			Name:   "New lesson",
-			Theory: "New theory",
-			Steps:  make([]Step, 2),
-			Submissions: []*Submission{
-				{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone},
-			},
+			Name:        "New lesson",
+			Theory:      "New theory",
+			Steps:       make([]Step, 2),
+			Submissions: []int32{0},
 		},
 	}
 	for id := int32(0); id < int32(len(DB.Lessons)); id++ {
@@ -177,6 +176,10 @@ func CreateInitialDB() error {
 		if err := CreateSubject(DB2, &subjects[id]); err != nil {
 			return err
 		}
+	}
+
+	DB.Submissions = []Submission{
+		{Steps: make([]Step, 2), SubmittedSteps: make([]interface{}, 2), Status: SubmissionCheckDone},
 	}
 
 	return nil

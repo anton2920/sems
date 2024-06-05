@@ -575,7 +575,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
 		course.Lessons = append(course.Lessons, lesson.ID)
-		r.Form.SetInt("LessonIndex", int(lesson.ID))
+		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":

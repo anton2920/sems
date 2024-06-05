@@ -52,7 +52,7 @@ type (
 
 		Steps []Step
 
-		Submissions []*Submission
+		Submissions []int32
 	}
 )
 

@@ -53,9 +53,10 @@ type (
 	}
 
 	Submission struct {
-		LessonName string
-		UserID     int32
+		ID     int32
+		UserID int32
 
+		LessonName     string
 		Steps          []Step
 		StartedAt      time.Time
 		SubmittedSteps []interface{}
@@ -594,7 +595,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	submission := lesson.Submissions[si]
+	submission := &DB.Submissions[lesson.Submissions[si]]
 
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
@@ -1096,22 +1097,20 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	submissionIndex := r.Form.Get("SubmissionIndex")
 	var submission *Submission
 	if submissionIndex == "" {
-		submission = new(Submission)
-		submission.Draft = true
-		submission.LessonName = lesson.Name
-		submission.StartedAt = time.Now()
-		submission.UserID = session.ID
+		DB.Submissions = append(DB.Submissions, Submission{ID: int32(len(DB.Submissions)), Draft: true, LessonName: lesson.Name, StartedAt: time.Now(), UserID: session.ID})
+		submission = &DB.Submissions[len(DB.Submissions)-1]
+
 		StepsDeepCopy(&submission.Steps, lesson.Steps)
 		submission.SubmittedSteps = make([]interface{}, len(lesson.Steps))
 
-		lesson.Submissions = append(lesson.Submissions, submission)
+		lesson.Submissions = append(lesson.Submissions, submission.ID)
 		r.Form.SetInt("SubmissionIndex", len(lesson.Submissions)-1)
 	} else {
 		si, err := GetValidIndex(submissionIndex, len(lesson.Submissions))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		submission = lesson.Submissions[si]
+		submission = &DB.Submissions[lesson.Submissions[si]]
 	}
 
 	currentPage := r.Form.Get("CurrentPage")

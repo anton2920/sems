@@ -307,7 +307,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
 			var displaySubmissions bool
 			for j := 0; j < len(lesson.Submissions); j++ {
-				submission := lesson.Submissions[j]
+				submission := &DB.Submissions[lesson.Submissions[j]]
 				if !submission.Draft {
 					displaySubmissions = true
 					break
@@ -327,7 +327,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`<label>Submissions: `)
 				w.AppendString(`<select name="SubmissionIndex">`)
 				for j := 0; j < len(lesson.Submissions); j++ {
-					submission := lesson.Submissions[j]
+					submission := &DB.Submissions[lesson.Submissions[j]]
 					if submission.Draft {
 						continue
 					}

@@ -106,8 +106,8 @@ func SubjectLessonPageHandler(w *http.Response, r *http.Request) error {
 		var i int
 
 		for i = 0; i < len(lesson.Submissions); i++ {
-			if session.ID == lesson.Submissions[i].UserID {
-				submission = lesson.Submissions[i]
+			if session.ID == DB.Submissions[lesson.Submissions[i]].UserID {
+				submission = &DB.Submissions[lesson.Submissions[i]]
 				break
 			}
 		}
@@ -384,7 +384,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		lesson := &DB.Lessons[len(DB.Lessons)-1]
 
 		subject.Lessons = append(subject.Lessons, lesson.ID)
-		r.Form.SetInt("LessonIndex", int(lesson.ID))
+		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
 
 		return LessonAddPageHandler(w, r, lesson)
 	case "Continue":
