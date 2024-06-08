@@ -120,48 +120,51 @@ func CreateLesson(db *Database, lesson *Lesson) error {
 	return SaveLesson(db, lesson)
 }
 
-func DBLesson2Lesson(lesson *Lesson) {
-	lesson.Name = Offset2String(lesson.Name, &lesson.Data[0])
-	lesson.Theory = Offset2String(lesson.Theory, &lesson.Data[0])
-	lesson.Steps = Offset2Slice(lesson.Steps, &lesson.Data[0])
+func DBStep2Step(step *Step, data *byte) {
+	step.Name = Offset2String(step.Name, data)
 
-	for s := 0; s < len(lesson.Steps); s++ {
-		step := &lesson.Steps[s]
-		step.Name = Offset2String(step.Name, &lesson.Data[0])
+	switch step.Type {
+	case StepTypeTest:
+		test, _ := Step2Test(step)
+		test.Questions = Offset2Slice(test.Questions, data)
 
-		switch step.Type {
-		case StepTypeTest:
-			test, _ := Step2Test(step)
-			test.Questions = Offset2Slice(test.Questions, &lesson.Data[0])
+		for q := 0; q < len(test.Questions); q++ {
+			question := &test.Questions[q]
+			question.Name = Offset2String(question.Name, data)
+			question.Answers = Offset2Slice(question.Answers, data)
+			question.CorrectAnswers = Offset2Slice(question.CorrectAnswers, data)
 
-			for q := 0; q < len(test.Questions); q++ {
-				question := &test.Questions[q]
-				question.Name = Offset2String(question.Name, &lesson.Data[0])
-				question.Answers = Offset2Slice(question.Answers, &lesson.Data[0])
-				question.CorrectAnswers = Offset2Slice(question.CorrectAnswers, &lesson.Data[0])
-
-				for a := 0; a < len(question.Answers); a++ {
-					answer := &question.Answers[a]
-					*answer = Offset2String(*answer, &lesson.Data[0])
-				}
+			for a := 0; a < len(question.Answers); a++ {
+				question.Answers[a] = Offset2String(question.Answers[a], data)
 			}
-		case StepTypeProgramming:
-			task, _ := Step2Programming(step)
-			task.Description = Offset2String(task.Description, &lesson.Data[0])
+		}
+	case StepTypeProgramming:
+		task, _ := Step2Programming(step)
+		task.Description = Offset2String(task.Description, data)
 
-			for i := 0; i < len(task.Checks); i++ {
-				task.Checks[i] = Offset2Slice(task.Checks[i], &lesson.Data[0])
-
-				for c := 0; c < len(task.Checks[i]); c++ {
-					check := &task.Checks[i][c]
-					check.Input = Offset2String(check.Input, &lesson.Data[0])
-					check.Output = Offset2String(check.Output, &lesson.Data[0])
-				}
+		for i := 0; i < len(task.Checks); i++ {
+			task.Checks[i] = Offset2Slice(task.Checks[i], data)
+			for c := 0; c < len(task.Checks[i]); c++ {
+				check := &task.Checks[i][c]
+				check.Input = Offset2String(check.Input, data)
+				check.Output = Offset2String(check.Output, data)
 			}
 		}
 	}
+}
 
-	lesson.Submissions = Offset2Slice(lesson.Submissions, &lesson.Data[0])
+func DBLesson2Lesson(lesson *Lesson) {
+	data := &lesson.Data[0]
+
+	lesson.Name = Offset2String(lesson.Name, data)
+	lesson.Theory = Offset2String(lesson.Theory, data)
+	lesson.Steps = Offset2Slice(lesson.Steps, data)
+
+	for s := 0; s < len(lesson.Steps); s++ {
+		DBStep2Step(&lesson.Steps[s], data)
+	}
+
+	lesson.Submissions = Offset2Slice(lesson.Submissions, data)
 }
 
 func GetLessonByID(db *Database, id int32, lesson *Lesson) error {
@@ -213,123 +216,81 @@ func DeleteLessonByID(db *Database, id int32) error {
 	return nil
 }
 
+func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
+	n += String2DBString(&ds.Name, ss.Name, data, n)
+
+	switch ss.Type {
+	case StepTypeTest:
+		st, _ := Step2Test(ss)
+
+		ds.Type = StepTypeTest
+		dt, _ := Step2Test(ds)
+
+		dt.Questions = make([]Question, len(st.Questions))
+		for i := 0; i < len(st.Questions); i++ {
+			sq := &st.Questions[i]
+			dq := &dt.Questions[i]
+
+			n += String2DBString(&dq.Name, sq.Name, data, n)
+
+			dq.Answers = make([]string, len(sq.Answers))
+			for j := 0; j < len(sq.Answers); j++ {
+				n += String2DBString(&dq.Answers[j], sq.Answers[j], data, n)
+			}
+			n += Slice2DBSlice(&dq.Answers, dq.Answers, data, n)
+
+			n += Slice2DBSlice(&dq.CorrectAnswers, sq.CorrectAnswers, data, n)
+		}
+		n += Slice2DBSlice(&dt.Questions, dt.Questions, data, n)
+	case StepTypeProgramming:
+		st, _ := Step2Programming(ss)
+
+		ds.Type = StepTypeProgramming
+		dt, _ := Step2Programming(ds)
+
+		n += String2DBString(&dt.Description, st.Description, data, n)
+
+		for i := 0; i < len(st.Checks); i++ {
+			dt.Checks[i] = make([]Check, len(st.Checks[i]))
+			for j := 0; j < len(st.Checks[i]); j++ {
+				sc := &st.Checks[i][j]
+				dc := &dt.Checks[i][j]
+
+				n += String2DBString(&dc.Input, sc.Input, data, n)
+				n += String2DBString(&dc.Output, sc.Output, data, n)
+			}
+			n += Slice2DBSlice(&dt.Checks[i], dt.Checks[i], data, n)
+		}
+	}
+
+	return n
+}
+
 func SaveLesson(db *Database, lesson *Lesson) error {
 	var lessonDB Lesson
 
 	size := int(unsafe.Sizeof(*lesson))
 	offset := int64(int(lesson.ID)*size) + DataOffset
 
+	data := unsafe.Slice(&lessonDB.Data[0], len(lessonDB.Data))
 	n := DataStartOffset
-	var nbytes int
 
 	lessonDB.ID = lesson.ID
 	lessonDB.Flags = lesson.Flags
 	lessonDB.ContainerID = lesson.ContainerID
 	lessonDB.ContainerType = lesson.ContainerType
 
-	/* TODO(anton2920): saving up to a sizeof(lesson.Data). */
-	nbytes = copy(lessonDB.Data[n:], lesson.Name)
-	lessonDB.Name = String2Offset(lesson.Name, n)
-	n += nbytes
+	/* TODO(anton2920): save up to a sizeof(lesson.Data). */
+	n += String2DBString(&lessonDB.Name, lesson.Name, data, n)
+	n += String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
 
-	nbytes = copy(lessonDB.Data[n:], lesson.Theory)
-	lessonDB.Theory = String2Offset(lesson.Theory, n)
-	n += nbytes
-
-	if len(lesson.Steps) > 0 {
-		lessonDB.Steps = make([]Step, len(lesson.Steps))
-		for s := 0; s < len(lesson.Steps); s++ {
-			ss := &lesson.Steps[s]
-			ds := &lessonDB.Steps[s]
-
-			nbytes = copy(lessonDB.Data[n:], ss.Name)
-			ds.Name = String2Offset(ss.Name, n)
-			n += nbytes
-
-			switch ss.Type {
-			case StepTypeTest:
-				st, _ := Step2Test(ss)
-
-				ds.Type = StepTypeTest
-				dt, _ := Step2Test(ds)
-
-				if len(st.Questions) > 0 {
-					dt.Questions = make([]Question, len(st.Questions))
-					for q := 0; q < len(st.Questions); q++ {
-						sq := &st.Questions[q]
-						dq := &dt.Questions[q]
-
-						nbytes = copy(lessonDB.Data[n:], sq.Name)
-						dq.Name = String2Offset(sq.Name, n)
-						n += nbytes
-
-						if len(sq.Answers) > 0 {
-							dq.Answers = make([]string, len(sq.Answers))
-							for a := 0; a < len(sq.Answers); a++ {
-								nbytes = copy(lessonDB.Data[n:], sq.Answers[a])
-								dq.Answers[a] = String2Offset(sq.Answers[a], n)
-								n += nbytes
-							}
-
-							nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dq.Answers[0])), len(sq.Answers)*int(unsafe.Sizeof(dq.Answers[0]))))
-							dq.Answers = Slice2Offset(dq.Answers, n)
-							n += nbytes
-						}
-
-						if len(sq.CorrectAnswers) > 0 {
-							nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&sq.CorrectAnswers[0])), len(sq.CorrectAnswers)*int(unsafe.Sizeof(sq.CorrectAnswers[0]))))
-							dq.CorrectAnswers = Slice2Offset(sq.CorrectAnswers, n)
-							n += nbytes
-						}
-					}
-
-					nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dt.Questions[0])), len(dt.Questions)*int(unsafe.Sizeof(dt.Questions[0]))))
-					dt.Questions = Slice2Offset(dt.Questions, n)
-					n += nbytes
-				}
-			case StepTypeProgramming:
-				st, _ := Step2Programming(ss)
-
-				ds.Type = StepTypeProgramming
-				dt, _ := Step2Programming(ds)
-
-				nbytes = copy(lessonDB.Data[n:], st.Description)
-				dt.Description = String2Offset(st.Description, n)
-				n += nbytes
-
-				for i := 0; i < len(st.Checks); i++ {
-					if len(st.Checks[i]) > 0 {
-						dt.Checks[i] = make([]Check, len(st.Checks[i]))
-						for c := 0; c < len(st.Checks[i]); c++ {
-							sc := &st.Checks[i][c]
-							dc := &dt.Checks[i][c]
-
-							nbytes = copy(lessonDB.Data[n:], sc.Input)
-							dc.Input = String2Offset(sc.Input, n)
-							n += nbytes
-
-							nbytes = copy(lessonDB.Data[n:], sc.Output)
-							dc.Output = String2Offset(sc.Output, n)
-							n += nbytes
-						}
-
-						nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&dt.Checks[i][0])), len(dt.Checks[i])*int(unsafe.Sizeof(dt.Checks[i][0]))))
-						dt.Checks[i] = Slice2Offset(dt.Checks[i], n)
-						n += nbytes
-					}
-				}
-			}
-		}
-		nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB.Steps[0])), len(lessonDB.Steps)*int(unsafe.Sizeof(lessonDB.Steps[0]))))
-		lessonDB.Steps = Slice2Offset(lessonDB.Steps, n)
-		n += nbytes
+	lessonDB.Steps = make([]Step, len(lesson.Steps))
+	for i := 0; i < len(lesson.Steps); i++ {
+		n += Step2DBStep(&lessonDB.Steps[i], &lesson.Steps[i], data, n)
 	}
+	n += Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
 
-	if len(lesson.Submissions) > 0 {
-		nbytes = copy(lessonDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&lesson.Submissions[0])), len(lesson.Submissions)*int(unsafe.Sizeof(lesson.Submissions[0]))))
-		lessonDB.Submissions = Slice2Offset(lesson.Submissions, n)
-		n += nbytes
-	}
+	n += Slice2DBSlice(&lessonDB.Submissions, lesson.Submissions, data, n)
 
 	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB)), size), offset)
 	if err != nil {

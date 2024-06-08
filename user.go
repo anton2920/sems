@@ -96,11 +96,13 @@ func CreateUser(db *Database, user *User) error {
 }
 
 func DBUser2User(user *User) {
-	user.FirstName = Offset2String(user.FirstName, &user.Data[0])
-	user.LastName = Offset2String(user.LastName, &user.Data[0])
-	user.Email = Offset2String(user.Email, &user.Data[0])
-	user.Password = Offset2String(user.Password, &user.Data[0])
-	user.Courses = Offset2Slice(user.Courses, &user.Data[0])
+	data := &user.Data[0]
+
+	user.FirstName = Offset2String(user.FirstName, data)
+	user.LastName = Offset2String(user.LastName, data)
+	user.Email = Offset2String(user.Email, data)
+	user.Password = Offset2String(user.Password, data)
+	user.Courses = Offset2Slice(user.Courses, data)
 }
 
 func GetUserByID(db *Database, id int32, user *User) error {
@@ -158,34 +160,18 @@ func SaveUser(db *Database, user *User) error {
 	size := int(unsafe.Sizeof(*user))
 	offset := int64(int(user.ID)*size) + DataOffset
 
+	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
 	n := DataStartOffset
-	var nbytes int
 
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags
 
-	/* TODO(anton2920): saving up to a sizeof(user.Data). */
-	nbytes = copy(userDB.Data[n:], user.FirstName)
-	userDB.FirstName = String2Offset(user.FirstName, n)
-	n += nbytes
-
-	nbytes = copy(userDB.Data[n:], user.LastName)
-	userDB.LastName = String2Offset(user.LastName, n)
-	n += nbytes
-
-	nbytes = copy(userDB.Data[n:], user.Email)
-	userDB.Email = String2Offset(user.Email, n)
-	n += nbytes
-
-	nbytes = copy(userDB.Data[n:], user.Password)
-	userDB.Password = String2Offset(user.Password, n)
-	n += nbytes
-
-	if len(user.Courses) > 0 {
-		nbytes = copy(userDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&user.Courses[0])), len(user.Courses)*int(unsafe.Sizeof(user.Courses[0]))))
-		userDB.Courses = Slice2Offset(user.Courses, n)
-		n += nbytes
-	}
+	/* TODO(anton2920): save up to a sizeof(user.Data). */
+	n += String2DBString(&userDB.FirstName, user.FirstName, data, n)
+	n += String2DBString(&userDB.LastName, user.LastName, data, n)
+	n += String2DBString(&userDB.Email, user.Email, data, n)
+	n += String2DBString(&userDB.Password, user.Password, data, n)
+	n += Slice2DBSlice(&userDB.Courses, user.Courses, data, n)
 
 	userDB.CreatedOn = user.CreatedOn
 

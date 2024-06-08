@@ -13,11 +13,12 @@ import (
 )
 
 type Database struct {
-	UsersFile    int32
-	GroupsFile   int32
-	CoursesFile  int32
-	LessonsFile  int32
-	SubjectsFile int32
+	UsersFile       int32
+	GroupsFile      int32
+	CoursesFile     int32
+	LessonsFile     int32
+	SubjectsFile    int32
+	SubmissionsFile int32
 }
 
 const (
@@ -54,6 +55,21 @@ func String2Offset(s string, offset int) string {
 
 func Slice2Offset[T any](s []T, offset int) []T {
 	return unsafe.Slice((*T)(unsafe.Pointer(uintptr(offset))), len(s))
+}
+
+func String2DBString(ds *string, ss string, data []byte, n int) int {
+	nbytes := copy(data[n:], ss)
+	*ds = String2Offset(ss, n)
+	return nbytes
+}
+
+func Slice2DBSlice[T any](ds *[]T, ss []T, data []byte, n int) int {
+	var nbytes int
+	if len(ss) > 0 {
+		nbytes = copy(data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&ss[0])), len(ss)*int(unsafe.Sizeof(ss[0]))))
+		*ds = Slice2Offset(ss, n)
+	}
+	return nbytes
 }
 
 func CreateInitialDB() error {
@@ -308,6 +324,11 @@ func OpenDB(dir string) (*Database, error) {
 		return nil, fmt.Errorf("failed to open subjects DB file: %w", err)
 	}
 
+	db.SubmissionsFile, err = OpenDBFile(dir, "Submissions.db")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open subjects DB file: %w", err)
+	}
+
 	return db, nil
 }
 
@@ -326,7 +347,15 @@ func CloseDB(db *Database) error {
 		err = errors.Join(err, err1)
 	}
 
+	if err1 := syscall.Close(db.LessonsFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
 	if err1 := syscall.Close(db.SubjectsFile); err1 != nil {
+		err = errors.Join(err, err1)
+	}
+
+	if err1 := syscall.Close(db.SubmissionsFile); err1 != nil {
 		err = errors.Join(err, err1)
 	}
 

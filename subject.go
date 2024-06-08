@@ -75,8 +75,10 @@ func CreateSubject(db *Database, subject *Subject) error {
 }
 
 func DBSubject2Subject(subject *Subject) {
-	subject.Name = Offset2String(subject.Name, &subject.Data[0])
-	subject.Lessons = Offset2Slice(subject.Lessons, &subject.Data[0])
+	data := &subject.Data[0]
+
+	subject.Name = Offset2String(subject.Name, data)
+	subject.Lessons = Offset2Slice(subject.Lessons, data)
 }
 
 func GetSubjectByID(db *Database, id int32, subject *Subject) error {
@@ -134,25 +136,18 @@ func SaveSubject(db *Database, subject *Subject) error {
 	size := int(unsafe.Sizeof(*subject))
 	offset := int64(int(subject.ID)*size) + DataOffset
 
+	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
 	n := DataStartOffset
-	var nbytes int
 
 	subjectDB.ID = subject.ID
 	subjectDB.Flags = subject.Flags
 
-	subjectDB.GroupID = subject.GroupID
 	subjectDB.TeacherID = subject.TeacherID
+	subjectDB.GroupID = subject.GroupID
 
-	/* TODO(anton2920): saving up to a sizeof(subject.Data). */
-	nbytes = copy(subjectDB.Data[n:], subject.Name)
-	subjectDB.Name = String2Offset(subject.Name, n)
-	n += nbytes
-
-	if len(subject.Lessons) > 0 {
-		nbytes = copy(subjectDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&subject.Lessons[0])), len(subject.Lessons)*int(unsafe.Sizeof(subject.Lessons[0]))))
-		subjectDB.Lessons = Slice2Offset(subject.Lessons, n)
-		n += nbytes
-	}
+	/* TODO(anton2920): save up to a sizeof(subject.Data). */
+	n += String2DBString(&subjectDB.Name, subject.Name, data, n)
+	n += Slice2DBSlice(&subjectDB.Lessons, subject.Lessons, data, n)
 
 	subjectDB.CreatedOn = subject.CreatedOn
 

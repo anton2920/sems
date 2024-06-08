@@ -44,8 +44,10 @@ func CreateCourse(db *Database, course *Course) error {
 }
 
 func DBCourse2Course(course *Course) {
-	course.Name = Offset2String(course.Name, &course.Data[0])
-	course.Lessons = Offset2Slice(course.Lessons, &course.Data[0])
+	data := &course.Data[0]
+
+	course.Name = Offset2String(course.Name, data)
+	course.Lessons = Offset2Slice(course.Lessons, data)
 }
 
 func GetCourseByID(db *Database, id int32, course *Course) error {
@@ -103,22 +105,15 @@ func SaveCourse(db *Database, course *Course) error {
 	size := int(unsafe.Sizeof(*course))
 	offset := int64(int(course.ID)*size) + DataOffset
 
+	data := unsafe.Slice(&courseDB.Data[0], len(courseDB.Data))
 	n := DataStartOffset
-	var nbytes int
 
 	courseDB.ID = course.ID
 	courseDB.Flags = course.Flags
 
-	/* TODO(anton2920): saving up to a sizeof(course.Data). */
-	nbytes = copy(courseDB.Data[n:], course.Name)
-	courseDB.Name = String2Offset(course.Name, n)
-	n += nbytes
-
-	if len(course.Lessons) > 0 {
-		nbytes = copy(courseDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&course.Lessons[0])), len(course.Lessons)*int(unsafe.Sizeof(course.Lessons[0]))))
-		courseDB.Lessons = Slice2Offset(course.Lessons, n)
-		n += nbytes
-	}
+	/* TODO(anton2920): save up to a sizeof(course.Data). */
+	n += String2DBString(&courseDB.Name, course.Name, data, n)
+	n += Slice2DBSlice(&courseDB.Lessons, course.Lessons, data, n)
 
 	_, err := syscall.Pwrite(db.CoursesFile, unsafe.Slice((*byte)(unsafe.Pointer(&courseDB)), size), offset)
 	if err != nil {

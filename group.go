@@ -56,8 +56,10 @@ func CreateGroup(db *Database, group *Group) error {
 }
 
 func DBGroup2Group(group *Group) {
-	group.Name = Offset2String(group.Name, &group.Data[0])
-	group.Students = Offset2Slice(group.Students, &group.Data[0])
+	data := &group.Data[0]
+
+	group.Name = Offset2String(group.Name, data)
+	group.Students = Offset2Slice(group.Students, data)
 }
 
 func GetGroupByID(db *Database, id int32, group *Group) error {
@@ -115,20 +117,15 @@ func SaveGroup(db *Database, group *Group) error {
 	size := int(unsafe.Sizeof(*group))
 	offset := int64(int(group.ID)*size) + DataOffset
 
+	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
 	n := DataStartOffset
-	var nbytes int
 
 	groupDB.ID = group.ID
 	groupDB.Flags = group.Flags
 
-	/* TODO(anton2920): saving up to a sizeof(group.Data). */
-	nbytes = copy(groupDB.Data[n:], group.Name)
-	groupDB.Name = String2Offset(group.Name, n)
-	n += nbytes
-
-	nbytes = copy(groupDB.Data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&group.Students[0])), len(group.Students)*int(unsafe.Sizeof(group.Students[0]))))
-	groupDB.Students = Slice2Offset(group.Students, n)
-	n += nbytes
+	/* TODO(anton2920): save up to a sizeof(group.Data). */
+	n += String2DBString(&groupDB.Name, group.Name, data, n)
+	n += Slice2DBSlice(&groupDB.Students, group.Students, data, n)
 
 	groupDB.CreatedOn = group.CreatedOn
 
