@@ -124,28 +124,31 @@ func DBStep2Step(step *Step, data *byte) {
 	step.Name = Offset2String(step.Name, data)
 
 	switch step.Type {
+	default:
+		panic("invalid step type")
 	case StepTypeTest:
 		test, _ := Step2Test(step)
-		test.Questions = Offset2Slice(test.Questions, data)
 
-		for q := 0; q < len(test.Questions); q++ {
-			question := &test.Questions[q]
+		test.Questions = Offset2Slice(test.Questions, data)
+		for i := 0; i < len(test.Questions); i++ {
+			question := &test.Questions[i]
 			question.Name = Offset2String(question.Name, data)
 			question.Answers = Offset2Slice(question.Answers, data)
 			question.CorrectAnswers = Offset2Slice(question.CorrectAnswers, data)
 
-			for a := 0; a < len(question.Answers); a++ {
-				question.Answers[a] = Offset2String(question.Answers[a], data)
+			for j := 0; j < len(question.Answers); j++ {
+				question.Answers[j] = Offset2String(question.Answers[j], data)
 			}
 		}
 	case StepTypeProgramming:
 		task, _ := Step2Programming(step)
+
 		task.Description = Offset2String(task.Description, data)
 
 		for i := 0; i < len(task.Checks); i++ {
 			task.Checks[i] = Offset2Slice(task.Checks[i], data)
-			for c := 0; c < len(task.Checks[i]); c++ {
-				check := &task.Checks[i][c]
+			for j := 0; j < len(task.Checks[i]); j++ {
+				check := &task.Checks[i][j]
 				check.Input = Offset2String(check.Input, data)
 				check.Output = Offset2String(check.Output, data)
 			}
@@ -160,8 +163,8 @@ func DBLesson2Lesson(lesson *Lesson) {
 	lesson.Theory = Offset2String(lesson.Theory, data)
 	lesson.Steps = Offset2Slice(lesson.Steps, data)
 
-	for s := 0; s < len(lesson.Steps); s++ {
-		DBStep2Step(&lesson.Steps[s], data)
+	for i := 0; i < len(lesson.Steps); i++ {
+		DBStep2Step(&lesson.Steps[i], data)
 	}
 
 	lesson.Submissions = Offset2Slice(lesson.Submissions, data)
@@ -220,6 +223,8 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 	n += String2DBString(&ds.Name, ss.Name, data, n)
 
 	switch ss.Type {
+	default:
+		panic("invalid step type")
 	case StepTypeTest:
 		st, _ := Step2Test(ss)
 
@@ -318,8 +323,10 @@ func DisplayLessonLink(w *http.Response, lesson *Lesson) {
 }
 
 func LessonPageHandler(w *http.Response, r *http.Request) error {
+	var submission Submission
 	var who SubjectUserType
 	var container string
+	var displayed bool
 	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
@@ -422,34 +429,44 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	switch who {
 	case SubjectUserAdmin, SubjectUserTeacher:
 		if len(lesson.Submissions) > 0 {
-			w.AppendString(`<h2>Submissions</h2>`)
-			w.AppendString(`<ul>`)
 			for i := 0; i < len(lesson.Submissions); i++ {
-				submission := &DB.Submissions[lesson.Submissions[i]]
+				if err := GetSubmissionByID(DB2, lesson.Submissions[i], &submission); err != nil {
+					return http.ServerError(err)
+				}
 
-				w.AppendString(`<li>`)
-				DisplaySubmissionLink(w, submission)
-				w.AppendString(`</li>`)
+				if submission.Flags == SubmissionActive {
+					if !displayed {
+						w.AppendString(`<h2>Submissions</h2>`)
+						w.AppendString(`<ul>`)
+						displayed = true
+					}
+
+					w.AppendString(`<li>`)
+					DisplaySubmissionLink(w, &submission)
+					w.AppendString(`</li>`)
+				}
 			}
-			w.AppendString(`</ul>`)
+			if displayed {
+				w.AppendString(`</ul>`)
+			}
 		}
 	case SubjectUserStudent:
-		var submission *Submission
-		var displayed bool
-		var si int
+		si := -1
 
 		for i := 0; i < len(lesson.Submissions); i++ {
-			submission = &DB.Submissions[lesson.Submissions[i]]
+			if err := GetSubmissionByID(DB2, lesson.Submissions[i], &submission); err != nil {
+				return http.ServerError(err)
+			}
 
 			if submission.UserID == session.ID {
-				if !displayed {
-					w.AppendString(`<h2>Submissions</h2>`)
-					w.AppendString(`<ul>`)
-					displayed = true
-				}
 				if submission.Flags == SubmissionActive {
+					if !displayed {
+						w.AppendString(`<h2>Submissions</h2>`)
+						w.AppendString(`<ul>`)
+						displayed = true
+					}
 					w.AppendString(`<li>`)
-					DisplaySubmissionLink(w, submission)
+					DisplaySubmissionLink(w, &submission)
 					w.AppendString(`</li>`)
 				} else if submission.Flags == SubmissionDraft {
 					si = i
@@ -468,7 +485,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		w.WriteInt(int(lesson.ID))
 		w.AppendString(`">`)
 
-		if (submission == nil) || (submission.Flags == SubmissionDraft) {
+		if si == -1 {
 			w.AppendString(`<input type="submit" value="Pass">`)
 		} else {
 			w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
@@ -487,55 +504,55 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	return nil
 }
 
-func StepsDeepCopy(dst *[]Step, src []Step) {
-	*dst = make([]Step, len(src))
+func StepDeepCopy(dst *Step, src *Step) {
+	switch src.Type {
+	default:
+		panic("invalid step type")
+	case StepTypeTest:
+		ss, _ := Step2Test(src)
 
-	for s := 0; s < len(src); s++ {
-		switch src[s].Type {
-		default:
-			panic("invalid step type")
-		case StepTypeTest:
-			ss, _ := Step2Test(&src[s])
+		dst.Type = StepTypeTest
+		ds, _ := Step2Test(dst)
 
-			(*dst)[s].Type = StepTypeTest
-			ds, _ := Step2Test(&(*dst)[s])
+		ds.Name = ss.Name
 
-			ds.Name = ss.Name
-			ds.Questions = make([]Question, len(ss.Questions))
+		ds.Questions = make([]Question, len(ss.Questions))
+		for i := 0; i < len(ss.Questions); i++ {
+			sq := &ss.Questions[i]
+			dq := &ds.Questions[i]
 
-			for q := 0; q < len(ss.Questions); q++ {
-				sq := &ss.Questions[q]
+			dq.Name = sq.Name
 
-				dq := &ds.Questions[q]
-				dq.Name = sq.Name
-				dq.Answers = make([]string, len(sq.Answers))
-				copy(dq.Answers, sq.Answers)
-				dq.CorrectAnswers = make([]int, len(sq.CorrectAnswers))
-				copy(dq.CorrectAnswers, sq.CorrectAnswers)
-			}
-		case StepTypeProgramming:
-			ss, _ := Step2Programming(&src[s])
+			dq.Answers = make([]string, len(sq.Answers))
+			copy(dq.Answers, sq.Answers)
 
-			(*dst)[s].Type = StepTypeProgramming
-			ds, _ := Step2Programming(&(*dst)[s])
-
-			ds.Name = ss.Name
-			ds.Description = ss.Description
-			ds.Checks[CheckTypeExample] = make([]Check, len(ss.Checks[CheckTypeExample]))
-			copy(ds.Checks[CheckTypeExample], ss.Checks[CheckTypeExample])
-			ds.Checks[CheckTypeTest] = make([]Check, len(ss.Checks[CheckTypeTest]))
-			copy(ds.Checks[CheckTypeTest], ss.Checks[CheckTypeTest])
+			dq.CorrectAnswers = make([]int, len(sq.CorrectAnswers))
+			copy(dq.CorrectAnswers, sq.CorrectAnswers)
 		}
+	case StepTypeProgramming:
+		ss, _ := Step2Programming(src)
+
+		dst.Type = StepTypeProgramming
+		ds, _ := Step2Programming(dst)
+
+		ds.Name = ss.Name
+		ds.Description = ss.Description
+
+		ds.Checks[CheckTypeExample] = make([]Check, len(ss.Checks[CheckTypeExample]))
+		copy(ds.Checks[CheckTypeExample], ss.Checks[CheckTypeExample])
+
+		ds.Checks[CheckTypeTest] = make([]Check, len(ss.Checks[CheckTypeTest]))
+		copy(ds.Checks[CheckTypeTest], ss.Checks[CheckTypeTest])
 	}
 }
 
 func LessonsDeepCopy(dst *[]int32, src []int32, containerID int32, containerType ContainerType) {
 	*dst = make([]int32, len(src))
 
-	for l := 0; l < len(src); l++ {
+	for i := 0; i < len(src); i++ {
 		var sl, dl Lesson
 
-		if err := GetLessonByID(DB2, src[l], &sl); err != nil {
+		if err := GetLessonByID(DB2, src[i], &sl); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 
@@ -545,12 +562,15 @@ func LessonsDeepCopy(dst *[]int32, src []int32, containerID int32, containerType
 
 		dl.Name = sl.Name
 		dl.Theory = sl.Theory
-		StepsDeepCopy(&dl.Steps, sl.Steps)
+		dl.Steps = make([]Step, len(sl.Steps))
+		for j := 0; j < len(sl.Steps); j++ {
+			StepDeepCopy(&dl.Steps[j], &sl.Steps[j])
+		}
 
 		if err := CreateLesson(DB2, &dl); err != nil {
 			/* TODO(anton2920): report error. */
 		}
-		(*dst)[l] = dl.ID
+		(*dst)[i] = dl.ID
 	}
 }
 

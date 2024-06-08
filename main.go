@@ -238,10 +238,6 @@ func main() {
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		log.Warnf("Failed to restore sessions from file: %v", err)
 	}
-	if err := RestoreDBFromFile(DBFile); err != nil {
-		log.Warnf("Failed to restore DB from file: %v", err)
-		CreateInitialDB()
-	}
 
 	go SubmissionVerifyWorker()
 
@@ -345,9 +341,6 @@ func main() {
 		q.Pause(FPS)
 	}
 
-	if err := StoreDBToFile(DBFile); err != nil {
-		log.Warnf("Failed to store DB to file: %v", err)
-	}
 	if err := StoreSessionsToFile(SessionsFile); err != nil {
 		log.Warnf("Failed to store sessions to file: %v", err)
 	}

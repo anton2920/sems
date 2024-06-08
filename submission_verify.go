@@ -25,7 +25,7 @@ const (
 	SubmissionCheckDone
 )
 
-var SubmissionVerifyChannel = make(chan *Submission, 128)
+var SubmissionVerifyChannel = make(chan int32, 128)
 
 func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
@@ -312,11 +312,23 @@ func SubmissionVerify(submission *Submission) {
 }
 
 func SubmissionVerifyWorker() {
-	for submission := range SubmissionVerifyChannel {
+	var submission Submission
+
+	for submissionID := range SubmissionVerifyChannel {
+		start := time.Now()
+
+		if err := GetSubmissionByID(DB2, submissionID, &submission); err != nil {
+			/* TODO(anton2920): report error. */
+		}
 		if submission.Status == SubmissionCheckPending {
 			submission.Status = SubmissionCheckInProgress
-			SubmissionVerify(submission)
+			SubmissionVerify(&submission)
 			submission.Status = SubmissionCheckDone
 		}
+		if err := SaveSubmission(DB2, &submission); err != nil {
+			/* TODO(anton2920): report error. */
+		}
+
+		log.Debugf("Verified submission with ID = %d, took %v", submission.ID, time.Since(start))
 	}
 }

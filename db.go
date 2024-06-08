@@ -1,11 +1,8 @@
-/* TODO(anton2920): this is all temporary! */
 package main
 
 import (
-	"encoding/gob"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 	"unsafe"
 
@@ -32,12 +29,6 @@ const (
 )
 
 const AdminID = 0
-
-const DBFile = "db.gob"
-
-var DB struct {
-	Submissions []Submission
-}
 
 var DBNotFound = errors.New("not found")
 
@@ -205,38 +196,16 @@ func CreateInitialDB() error {
 		}
 	}
 
-	DB.Submissions = make([]Submission, 0, 1024)
-	DB.Submissions = append(DB.Submissions, Submission{LessonID: 2, UserID: 2, SubmittedSteps: make([]SubmittedStep, 2), Status: SubmissionCheckDone})
-	for i := int32(0); i < int32(len(DB.Submissions)); i++ {
-		DB.Submissions[i].ID = i
+	submissions := [...]Submission{
+		{LessonID: 2, UserID: 2, SubmittedSteps: make([]SubmittedStep, 2), Status: SubmissionCheckDone},
 	}
-
-	return nil
-}
-
-func StoreDBToFile(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
+	if err := DropData(DB2.SubmissionsFile); err != nil {
+		return fmt.Errorf("failed to drop submissions data: %w", err)
 	}
-	defer f.Close()
-
-	if err := gob.NewEncoder(f).Encode(DB); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RestoreDBFromFile(filename string) error {
-	f, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if err := gob.NewDecoder(f).Decode(&DB); err != nil {
-		return err
+	for id := int32(0); id < int32(len(submissions)); id++ {
+		if err := CreateSubmission(DB2, &submissions[id]); err != nil {
+			return err
+		}
 	}
 
 	return nil
