@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/gob"
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/slices"
@@ -14,17 +14,6 @@ import (
 type (
 	SubmittedQuestion struct {
 		SelectedAnswers []int
-	}
-	SubmittedTest struct {
-		Test               *StepTest
-		SubmittedQuestions []SubmittedQuestion
-
-		Scores []int
-
-		Status SubmissionCheckStatus
-
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
 	}
 
 	ProgrammingLanguage struct {
@@ -37,41 +26,80 @@ type (
 		Executable   string
 		Available    bool
 	}
+
+	SubmittedCommon struct {
+		Type   SubmittedType
+		Flags  SubmittedFlag
+		Status SubmissionCheckStatus
+		Error  string
+
+		Step Step
+	}
+	SubmittedTest struct {
+		SubmittedCommon
+		SubmittedQuestions []SubmittedQuestion
+
+		Scores []int
+	}
 	SubmittedProgramming struct {
-		Task     *StepProgramming
-		Language *ProgrammingLanguage
-		Solution string
+		SubmittedCommon
+		LanguageID int32
+		Solution   string
 
 		Scores   [2][]int
 		Messages [2][]string
-		Error    error
+	}
+	SubmittedStep/* union */ struct {
+		SubmittedCommon
 
-		Status SubmissionCheckStatus
-
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
+		/* TODO(anton2920): garbage collector cannot see pointers inside. */
+		_ [max(unsafe.Sizeof(stdt), unsafe.Sizeof(stdp)) - unsafe.Sizeof(stdc)]byte
 	}
 
 	Submission struct {
 		ID       int32
+		Flags    int32
 		UserID   int32
 		LessonID int32
 
-		Steps          []Step
-		StartedAt      time.Time
-		SubmittedSteps []interface{}
-		FinishedAt     time.Time
+		StartedAt      int64
+		FinishedAt     int64
+		SubmittedSteps []SubmittedStep
 
 		Status SubmissionCheckStatus
-
-		/* TODO(anton2920): I don't like this. Replace with 'pointer|1'. */
-		Draft bool
 	}
+)
+
+type SubmittedType int32
+
+const (
+	SubmittedTypeTest        SubmittedType = SubmittedType(StepTypeTest)
+	SubmittedTypeProgramming               = SubmittedType(StepTypeProgramming)
+)
+
+type SubmittedFlag int32
+
+const (
+	SubmittedStepSkipped SubmittedFlag = iota
+	SubmittedStepDraft
+	SubmittedStepPassed
+)
+
+const (
+	SubmissionActive  int32 = 0
+	SubmissionDeleted       = 1
+	SubmissionDraft         = 2
 )
 
 const (
 	MinSolutionLen = 1
 	MaxSolutionLen = 1024
+)
+
+var (
+	stdc SubmittedCommon
+	stdt SubmittedTest
+	stdp SubmittedProgramming
 )
 
 var ProgrammingLanguages = []ProgrammingLanguage{
@@ -82,57 +110,77 @@ var ProgrammingLanguages = []ProgrammingLanguage{
 	{"python3", "python3", []string{"-c", `import ast; ast.parse(open("main.py").read())`}, "python3", nil, "main.py", "", true},
 }
 
-func init() {
-	gob.Register(&SubmittedTest{})
-	gob.Register(&SubmittedProgramming{})
+func Submitted2Test(submittedStep *SubmittedStep) (*SubmittedTest, error) {
+	if submittedStep.Type != SubmittedTypeTest {
+		return nil, errors.New("invalid submitted type for test")
+	}
+	return (*SubmittedTest)(unsafe.Pointer(submittedStep)), nil
 }
 
-func GetSubmittedStepScore(step *Step, submittedStep interface{}) (int, int) {
-	var nsteps int
-	switch step.Type {
-	default:
-		panic("invalid step type")
-	case StepTypeTest:
-		test, _ := Step2Test(step)
-		nsteps = len(test.Questions)
-	case StepTypeProgramming:
-		task, _ := Step2Programming(step)
-		nsteps = len(task.Checks[CheckTypeTest])
+func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming, error) {
+	if submittedStep.Type != SubmittedTypeProgramming {
+		return nil, errors.New("invalid submitted type for programming")
 	}
+	return (*SubmittedProgramming)(unsafe.Pointer(submittedStep)), nil
+}
 
-	if submittedStep == nil {
-		return 0, nsteps
+func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
+	if submittedStep.Flags == SubmittedStepSkipped {
+		return 0
 	}
 
 	var scores []int
-	switch step := submittedStep.(type) {
+	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
-	case *SubmittedTest:
-		scores = step.Scores
-	case *SubmittedProgramming:
-		scores = step.Scores[CheckTypeTest]
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		scores = submittedTest.Scores
+	case SubmittedTypeProgramming:
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		scores = submittedTask.Scores[CheckTypeTest]
 	}
 
 	var score int
 	for i := 0; i < len(scores); i++ {
 		score += scores[i]
 	}
+	return score
+}
 
-	return score, nsteps
+func GetStepMaximumScore(step *Step) int {
+	var maximum int
+	switch step.Type {
+	default:
+		panic("invalid step type")
+	case StepTypeTest:
+		test, _ := Step2Test(step)
+		maximum = len(test.Questions)
+	case StepTypeProgramming:
+		task, _ := Step2Programming(step)
+		maximum = len(task.Checks[CheckTypeTest])
+	}
+	return maximum
+}
+
+func DisplaySubmittedStepScore(w *http.Response, submittedStep *SubmittedStep) {
+	w.AppendString(`<p>Score: `)
+	w.WriteInt(GetSubmittedStepScore(submittedStep))
+	w.AppendString(`/`)
+	w.WriteInt(GetStepMaximumScore(&submittedStep.Step))
+	w.AppendString(`</p>`)
 }
 
 func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
-	var totalScore, totalMaximum int
-
+	var score, maximum int
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		score, maximum := GetSubmittedStepScore(&submission.Steps[i], submission.SubmittedSteps[i])
-		totalScore += score
-		totalMaximum += maximum
+		score += GetSubmittedStepScore(&submission.SubmittedSteps[i])
+		maximum += GetStepMaximumScore(&submission.SubmittedSteps[i].Step)
 	}
-	w.WriteInt(totalScore)
+
+	w.WriteInt(score)
 	w.AppendString(`/`)
-	w.WriteInt(totalMaximum)
+	w.WriteInt(maximum)
 }
 
 func DisplaySubmissionLink(w *http.Response, submission *Submission) {
@@ -148,12 +196,39 @@ func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
-	if submission.Status == SubmissionCheckDone {
-		w.AppendString(` (`)
+	w.AppendString(` (`)
+	switch submission.Status {
+	case SubmissionCheckPending:
+		w.AppendString(`<i>pending</i>`)
+	case SubmissionCheckInProgress:
+		w.AppendString(`<i>in progress</i>`)
+	case SubmissionCheckDone:
 		DisplaySubmissionTotalScore(w, submission)
-		w.AppendString(`)`)
 	}
+	w.AppendString(`)`)
 	w.AppendString(`</a>`)
+}
+
+func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
+	w.AppendString(`<select name="LanguageID"`)
+	if !enabled {
+		w.AppendString(` disabled`)
+	}
+	w.AppendString(`>`)
+	for i := int32(0); i < int32(len(ProgrammingLanguages)); i++ {
+		lang := &ProgrammingLanguages[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteInt(int(i))
+		w.AppendString(`"`)
+		if i == submittedTask.LanguageID {
+			w.AppendString(` selected`)
+		}
+		w.AppendString(`>`)
+		w.AppendString(lang.Name)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
@@ -225,20 +300,8 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	w.WriteInt(int(submission.ID))
 	w.AppendString(`">`)
 
-	for i := 0; i < len(submission.Steps); i++ {
-		step := &submission.Steps[i]
-
-		name := step.Name
-
-		var stepType string
-		switch step.Type {
-		default:
-			panic("invalid step type")
-		case StepTypeTest:
-			stepType = "Test"
-		case StepTypeProgramming:
-			stepType = "Programming task"
-		}
+	for i := 0; i < len(submission.SubmittedSteps); i++ {
+		submittedStep := &submission.SubmittedSteps[i]
 
 		if i > 0 {
 			w.AppendString(`<br>`)
@@ -251,53 +314,27 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</legend>`)
 
 		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
+		w.WriteHTMLString(submittedStep.Step.Name)
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
+		w.AppendString(StepStringType(&submittedStep.Step))
 		w.AppendString(`</p>`)
 
-		submittedStep := submission.SubmittedSteps[i]
-		if submittedStep == nil {
-			score, maximum := GetSubmittedStepScore(step, submittedStep)
-			w.AppendString(`<p>Score: `)
-			w.WriteInt(score)
-			w.AppendString(`/`)
-			w.WriteInt(maximum)
-			w.AppendString(`</p>`)
+		if submittedStep.Flags == SubmittedStepSkipped {
+			DisplaySubmittedStepScore(w, submittedStep)
 
 			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
 		} else {
-			var status SubmissionCheckStatus
-			var err error
-
-			switch submittedStep := submittedStep.(type) {
-			case *SubmittedTest:
-				status = submittedStep.Status
-			case *SubmittedProgramming:
-				status = submittedStep.Status
-				err = submittedStep.Error
-			}
-
-			switch status {
+			switch submittedStep.Status {
 			case SubmissionCheckPending:
 				w.AppendString(`<p><i>Verification is pending...</i></p>`)
 			case SubmissionCheckInProgress:
 				w.AppendString(`<p><i>Verification is in progress...</i></p>`)
 			case SubmissionCheckDone:
-				score, maximum := GetSubmittedStepScore(step, submittedStep)
-				w.AppendString(`<p>Score: `)
-				w.WriteInt(score)
-				w.AppendString(`/`)
-				w.WriteInt(maximum)
-				w.AppendString(`</p>`)
+				DisplaySubmittedStepScore(w, submittedStep)
+				DisplayErrorMessage(w, submittedStep.Error)
 
-				if err != nil {
-					w.AppendString(`<p>Error: `)
-					w.WriteHTMLString(err.Error())
-					w.AppendString(`</p>`)
-				}
 				DisplayIndexedCommand(w, i, "Open")
 				if teacher {
 					DisplayIndexedCommand(w, i, "Re-check")
@@ -331,7 +368,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
-	test := submittedTest.Test
+	test, _ := Step2Test(&submittedTest.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -426,7 +463,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submitt
 }
 
 func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *SubmittedProgramming, checkType CheckType) {
-	task := submittedTask.Task
+	task, _ := Step2Programming(&submittedTask.Step)
 	scores := submittedTask.Scores[checkType]
 	messages := submittedTask.Messages[checkType]
 
@@ -470,7 +507,7 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *
 }
 
 func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
-	task := submittedTask.Task
+	task, _ := Step2Programming(&submittedTask.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -493,26 +530,12 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<h2>Examples</h2>`)
-	SubmissionNewProgrammingDisplayChecks(w, task, CheckTypeExample)
+	SubmissionNewDisplayProgrammingChecks(w, task, CheckTypeExample)
 
 	w.AppendString(`<h2>Solution</h2>`)
 
 	w.AppendString(`<label>Programming language: `)
-	w.AppendString(`<select name="LanguageID" disabled>`)
-	for i := 0; i < len(ProgrammingLanguages); i++ {
-		lang := &ProgrammingLanguages[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(i)
-		w.AppendString(`"`)
-		if lang == submittedTask.Language {
-			w.AppendString(` selected`)
-		}
-		w.AppendString(`>`)
-		w.AppendString(lang.Name)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	SubmissionDisplayLanguageSelect(w, submittedTask, false)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -531,6 +554,19 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	return nil
 }
 
+func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, submittedStep *SubmittedStep) error {
+	switch submittedStep.Type {
+	default:
+		panic("invalid step type")
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		return SubmissionResultsTestPageHandler(w, r, submittedTest)
+	case SubmittedTypeProgramming:
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		return SubmissionResultsProgrammingPageHandler(w, r, submittedTask)
+	}
+}
+
 func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submission *Submission, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
@@ -541,48 +577,25 @@ func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submissio
 	default:
 		return http.ClientError(nil)
 	case "Open":
-		if (pindex < 0) || (pindex >= len(submission.Steps)) {
+		if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 			return http.ClientError(nil)
 		}
+		submittedStep := &submission.SubmittedSteps[pindex]
 
-		switch submittedStep := submission.SubmittedSteps[pindex].(type) {
-		default:
-			panic("invalid step type")
-		case *SubmittedTest:
-			return SubmissionResultsTestPageHandler(w, r, submittedStep)
-		case *SubmittedProgramming:
-			return SubmissionResultsProgrammingPageHandler(w, r, submittedStep)
-		}
+		return SubmissionResultsStepPageHandler(w, r, submittedStep)
 	case "Re-check":
 		if spindex != "" {
-			if (pindex < 0) || (pindex >= len(submission.Steps)) {
+			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 				return http.ClientError(nil)
 			}
-			submission.Status = SubmissionCheckPending
+			submittedStep := &submission.SubmittedSteps[pindex]
 
-			switch submittedStep := submission.SubmittedSteps[pindex].(type) {
-			default:
-				panic("invaid step type")
-			case *SubmittedTest:
-				submittedStep.Status = SubmissionCheckPending
-			case *SubmittedProgramming:
-				submittedStep.Status = SubmissionCheckPending
-			}
+			submission.Status = SubmissionCheckPending
+			submittedStep.Status = SubmissionCheckPending
 		} else {
 			submission.Status = SubmissionCheckPending
-
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
-				submittedStep := submission.SubmittedSteps[i]
-				if submittedStep != nil {
-					switch submittedStep := submittedStep.(type) {
-					default:
-						panic("invaid step type")
-					case *SubmittedTest:
-						submittedStep.Status = SubmissionCheckPending
-					case *SubmittedProgramming:
-						submittedStep.Status = SubmissionCheckPending
-					}
-				}
+				submission.SubmittedSteps[i].Status = SubmissionCheckPending
 			}
 		}
 
@@ -629,20 +642,11 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 func SubmissionNewVerify(submission *Submission) error {
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		step := submission.SubmittedSteps[i]
-		if step != nil {
+		submittedStep := &submission.SubmittedSteps[i]
+		if submittedStep.Flags != SubmittedStepSkipped {
 			empty = false
 
-			var draft bool
-			switch step := step.(type) {
-			default:
-				panic("invalid step type")
-			case *SubmittedTest:
-				draft = step.Draft
-			case *SubmittedProgramming:
-				draft = step.Draft
-			}
-			if draft {
+			if submittedStep.Flags == SubmittedStepDraft {
 				return http.BadRequest("step %d is still a draft", i+1)
 			}
 		}
@@ -653,24 +657,19 @@ func SubmissionNewVerify(submission *Submission) error {
 	return nil
 }
 
-func SubmissionNewTestVerifyRequest(vs url.Values, submittedTest *SubmittedTest) error {
-	test := submittedTest.Test
+func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTest) error {
+	test, _ := Step2Test(&submittedTest.Step)
 
 	selectedAnswerKey := make([]byte, 30)
 	copy(selectedAnswerKey, "SelectedAnswer")
 
-	for i := 0; i < len(test.Questions); i++ {
-		question := &test.Questions[i]
+	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
 		submittedQuestion := &submittedTest.SubmittedQuestions[i]
+		question := &test.Questions[i]
 
 		n := slices.PutInt(selectedAnswerKey[len("SelectedAnswer"):], i)
 		selectedAnswers := vs.GetMany(unsafe.String(unsafe.SliceData(selectedAnswerKey), len("SelectedAnswer")+n))
-		if len(selectedAnswers) == 0 {
-			return http.BadRequest("question %d: select at least one answer", i+1)
-		}
-		if (len(question.CorrectAnswers) == 1) && (len(selectedAnswers) > 1) {
-			return http.ClientError(nil)
-		}
+
 		for j := 0; j < len(selectedAnswers); j++ {
 			if j >= len(submittedQuestion.SelectedAnswers) {
 				submittedQuestion.SelectedAnswers = append(submittedQuestion.SelectedAnswers, 0)
@@ -688,17 +687,40 @@ func SubmissionNewTestVerifyRequest(vs url.Values, submittedTest *SubmittedTest)
 	return nil
 }
 
-func SubmissionNewProgrammingVerifyRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
+func SubmissionNewTestVerify(submittedTest *SubmittedTest) error {
+	test, _ := Step2Test(&submittedTest.Step)
+
+	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
+		submittedQuestion := &submittedTest.SubmittedQuestions[i]
+		question := &test.Questions[i]
+
+		if len(submittedQuestion.SelectedAnswers) == 0 {
+			return http.BadRequest("question %d: select at least one answer", i+1)
+		}
+		if (len(question.CorrectAnswers) == 1) && (len(submittedQuestion.SelectedAnswers) > 1) {
+			return http.ClientError(nil)
+		}
+	}
+
+	return nil
+}
+
+func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
 	id, err := GetValidIndex(vs.Get("LanguageID"), len(ProgrammingLanguages))
 	if err != nil {
 		return http.ClientError(err)
 	}
-	submittedTask.Language = &ProgrammingLanguages[id]
-	if !submittedTask.Language.Available {
+
+	submittedTask.LanguageID = int32(id)
+	submittedTask.Solution = vs.Get("Solution")
+	return nil
+}
+
+func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
+	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
 		return http.BadRequest("selected language is not available")
 	}
 
-	submittedTask.Solution = vs.Get("Solution")
 	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
 		return http.BadRequest("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
 	}
@@ -727,9 +749,7 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 	DisplayErrorMessage(w, r.Form.Get("Error"))
 
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Main">`)
 
@@ -741,40 +761,27 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
 	w.AppendString(`">`)
 
-	for i := 0; i < len(submission.Steps); i++ {
-		step := &submission.Steps[i]
-		name := step.Name
-		stepType := GetStepStringType(step)
-
-		var draft bool
-		submittedStep := submission.SubmittedSteps[i]
-		if submittedStep != nil {
-			switch submittedStep := submittedStep.(type) {
-			case *SubmittedTest:
-				draft = submittedStep.Draft
-			case *SubmittedProgramming:
-				draft = submittedStep.Draft
-			}
-		}
+	for i := 0; i < len(submission.SubmittedSteps); i++ {
+		submittedStep := &submission.SubmittedSteps[i]
 
 		w.AppendString(`<fieldset>`)
 
 		w.AppendString(`<legend>Step #`)
 		w.WriteInt(i + 1)
-		if draft {
+		if submittedStep.Flags == SubmittedStepDraft {
 			w.AppendString(` (draft)`)
 		}
 		w.AppendString(`</legend>`)
 
 		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
+		w.WriteHTMLString(submittedStep.Step.Name)
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
+		w.AppendString(StepStringType(&submittedStep.Step))
 		w.AppendString(`</p>`)
 
-		if submission.SubmittedSteps[i] == nil {
+		if submittedStep.Flags == SubmittedStepSkipped {
 			DisplayIndexedCommand(w, i, "Pass")
 		} else {
 			DisplayIndexedCommand(w, i, "Edit")
@@ -796,7 +803,7 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 }
 
 func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
-	test := submittedTest.Test
+	test, _ := Step2Test(&submittedTest.Step)
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -831,7 +838,8 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 	if submittedTest.SubmittedQuestions == nil {
 		submittedTest.SubmittedQuestions = make([]SubmittedQuestion, len(test.Questions))
 	}
-	for i := 0; i < len(test.Questions); i++ {
+	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
+		submittedQuestion := &submittedTest.SubmittedQuestions[i]
 		question := &test.Questions[i]
 
 		w.AppendString(`<fieldset>`)
@@ -864,9 +872,8 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 			w.WriteInt(j)
 			w.AppendString(`"`)
 
-			for k := 0; k < len(submittedTest.SubmittedQuestions[i].SelectedAnswers); k++ {
-				selectedAnswer := submittedTest.SubmittedQuestions[i].SelectedAnswers[k]
-				if j == selectedAnswer {
+			for k := 0; k < len(submittedQuestion.SelectedAnswers); k++ {
+				if j == submittedQuestion.SelectedAnswers[k] {
 					w.AppendString(` checked`)
 					break
 				}
@@ -897,7 +904,7 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 	return nil
 }
 
-func SubmissionNewProgrammingDisplayChecks(w *http.Response, task *StepProgramming, checkType CheckType) {
+func SubmissionNewDisplayProgrammingChecks(w *http.Response, task *StepProgramming, checkType CheckType) {
 	w.AppendString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
@@ -926,7 +933,7 @@ func SubmissionNewProgrammingDisplayChecks(w *http.Response, task *StepProgrammi
 }
 
 func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
-	task := submittedTask.Task
+	task, _ := Step2Programming(&submittedTask.Step)
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
@@ -948,11 +955,9 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<h2>Examples</h2>`)
-	SubmissionNewProgrammingDisplayChecks(w, task, CheckTypeExample)
+	SubmissionNewDisplayProgrammingChecks(w, task, CheckTypeExample)
 
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+	w.AppendString(`<form method="POST" action="/submission/new">`)
 
 	w.AppendString(`<input type="hidden" name="CurrentPage" value="Programming">`)
 
@@ -971,21 +976,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.AppendString(`<h2>Solution</h2>`)
 
 	w.AppendString(`<label>Programming language: `)
-	w.AppendString(`<select name="LanguageID">`)
-	for i := 0; i < len(ProgrammingLanguages); i++ {
-		lang := &ProgrammingLanguages[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteInt(i)
-		w.AppendString(`"`)
-		if lang == submittedTask.Language {
-			w.AppendString(` selected`)
-		}
-		w.AppendString(`>`)
-		w.AppendString(lang.Name)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
+	SubmissionDisplayLanguageSelect(w, submittedTask, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -998,10 +989,23 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
 
 	w.AppendString(`</form>`)
+
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
-
 	return nil
+}
+
+func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, submittedStep *SubmittedStep) error {
+	switch submittedStep.Type {
+	default:
+		panic("invalid step type")
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		return SubmissionNewTestPageHandler(w, r, submittedTest)
+	case SubmittedTypeProgramming:
+		submittedProgramming, _ := Submitted2Programming(submittedStep)
+		return SubmissionNewProgrammingPageHandler(w, r, submittedProgramming)
+	}
 }
 
 func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *Submission, currentPage, k, command string) error {
@@ -1018,39 +1022,15 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *S
 		default:
 			return http.ClientError(nil)
 		case "Pass", "Edit":
-			if (pindex < 0) || (pindex >= len(submission.Steps)) {
+			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 				return http.ClientError(nil)
 			}
-			step := &submission.Steps[pindex]
+			submittedStep := &submission.SubmittedSteps[pindex]
+			submittedStep.Flags = SubmittedStepDraft
+			submittedStep.Type = SubmittedType(submittedStep.Step.Type)
 
-			switch step.Type {
-			default:
-				panic("invalid step type")
-			case StepTypeTest:
-				submittedStep, ok := submission.SubmittedSteps[pindex].(*SubmittedTest)
-				if !ok {
-					test, _ := Step2Test(step)
-					submittedStep = new(SubmittedTest)
-					submittedStep.Test = test
-					submittedStep.Draft = true
-					submission.SubmittedSteps[pindex] = submittedStep
-				}
-
-				r.Form.Set("StepIndex", spindex)
-				return SubmissionNewTestPageHandler(w, r, submittedStep)
-			case StepTypeProgramming:
-				submittedStep, ok := submission.SubmittedSteps[pindex].(*SubmittedProgramming)
-				if !ok {
-					task, _ := Step2Programming(step)
-					submittedStep = new(SubmittedProgramming)
-					submittedStep.Task = task
-					submittedStep.Draft = true
-					submission.SubmittedSteps[pindex] = submittedStep
-				}
-
-				r.Form.Set("StepIndex", spindex)
-				return SubmissionNewProgrammingPageHandler(w, r, submittedStep)
-			}
+			r.Form.Set("StepIndex", spindex)
+			return SubmissionNewStepPageHandler(w, r, submittedStep)
 		}
 	}
 }
@@ -1067,6 +1047,9 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	if err := r.ParseForm(); err != nil {
 		return http.ClientError(err)
 	}
+
+	currentPage := r.Form.Get("CurrentPage")
+	nextPage := r.Form.Get("NextPage")
 
 	lessonID, err := r.Form.GetInt("ID")
 	if err != nil {
@@ -1097,11 +1080,14 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	submissionIndex := r.Form.Get("SubmissionIndex")
 	var submission *Submission
 	if submissionIndex == "" {
-		DB.Submissions = append(DB.Submissions, Submission{ID: int32(len(DB.Submissions)), Draft: true, LessonID: lesson.ID, StartedAt: time.Now(), UserID: session.ID})
+		DB.Submissions = append(DB.Submissions, Submission{ID: int32(len(DB.Submissions)), Flags: SubmissionDraft, UserID: session.ID, LessonID: lesson.ID, StartedAt: time.Now().Unix()})
 		submission = &DB.Submissions[len(DB.Submissions)-1]
+		submission.SubmittedSteps = make([]SubmittedStep, len(lesson.Steps))
 
-		StepsDeepCopy(&submission.Steps, lesson.Steps)
-		submission.SubmittedSteps = make([]interface{}, len(lesson.Steps))
+		for i := 0; i < len(submission.SubmittedSteps); i++ {
+			submittedStep := &submission.SubmittedSteps[i]
+			submittedStep.Step = lesson.Steps[i]
+		}
 
 		lesson.Submissions = append(lesson.Submissions, submission.ID)
 		if err := SaveLesson(DB2, &lesson); err != nil {
@@ -1115,9 +1101,6 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		}
 		submission = &DB.Submissions[lesson.Submissions[si]]
 	}
-
-	currentPage := r.Form.Get("CurrentPage")
-	nextPage := r.Form.Get("NextPage")
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
@@ -1139,26 +1122,32 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
+		submittedStep := &submission.SubmittedSteps[si]
+
 		if nextPage != "Discard" {
 			switch currentPage {
 			case "Test":
-				submittedTest, ok := submission.SubmittedSteps[si].(*SubmittedTest)
-				if !ok {
-					return http.ClientError(nil)
+				submittedTest, err := Submitted2Test(submittedStep)
+				if err != nil {
+					return http.ClientError(err)
 				}
 
-				if err := SubmissionNewTestVerifyRequest(r.Form, submittedTest); err != nil {
+				if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
 					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
 				}
-
-				submittedTest.Draft = false
+				if err := SubmissionNewTestVerify(submittedTest); err != nil {
+					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
+				}
 			case "Programming":
-				submittedTask, ok := submission.SubmittedSteps[si].(*SubmittedProgramming)
-				if !ok {
-					return http.ClientError(nil)
+				submittedTask, err := Submitted2Programming(submittedStep)
+				if err != nil {
+					return http.ClientError(err)
 				}
 
-				if err := SubmissionNewProgrammingVerifyRequest(r.Form, submittedTask); err != nil {
+				if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
+					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
+				}
+				if err := SubmissionNewProgrammingVerify(submittedTask); err != nil {
 					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 
@@ -1173,11 +1162,11 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest("example %d: %s", i+1, messages[i]))
 					}
 				}
-
-				submittedTask.Draft = false
 			}
+
+			submittedStep.Flags = SubmittedStepPassed
 		} else {
-			submission.SubmittedSteps[si] = nil
+			submittedStep.Flags = SubmittedStepSkipped
 		}
 	}
 
@@ -1188,8 +1177,8 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		if err := SubmissionNewVerify(submission); err != nil {
 			return WritePageEx(w, r, SubmissionNewMainPageHandler, submission, err)
 		}
-		submission.Draft = false
-		submission.FinishedAt = time.Now()
+		submission.Flags = SubmissionActive
+		submission.FinishedAt = time.Now().Unix()
 
 		SubmissionVerifyChannel <- submission
 

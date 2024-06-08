@@ -235,7 +235,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 		step := &lesson.Steps[i]
 		name := step.Name
 		draft := step.Draft
-		stepType := GetStepStringType(step)
+		stepType := StepStringType(step)
 
 		w.AppendString(`<fieldset>`)
 

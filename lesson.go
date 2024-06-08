@@ -339,7 +339,7 @@ func SaveLesson(db *Database, lesson *Lesson) error {
 	return nil
 }
 
-func GetStepStringType(s *Step) string {
+func StepStringType(s *Step) string {
 	switch s.Type {
 	default:
 		panic("invalid step type")
@@ -451,7 +451,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<p>Type: `)
-		w.AppendString(GetStepStringType(step))
+		w.AppendString(StepStringType(step))
 		w.AppendString(`</p>`)
 
 		w.AppendString(`</fieldset>`)
@@ -486,11 +486,11 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 					w.AppendString(`<ul>`)
 					displayed = true
 				}
-				if !submission.Draft {
+				if submission.Flags == SubmissionActive {
 					w.AppendString(`<li>`)
 					DisplaySubmissionLink(w, submission)
 					w.AppendString(`</li>`)
-				} else {
+				} else if submission.Flags == SubmissionDraft {
 					si = i
 				}
 			}
@@ -507,7 +507,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		w.WriteInt(int(lesson.ID))
 		w.AppendString(`">`)
 
-		if (submission == nil) || (!submission.Draft) {
+		if (submission == nil) || (submission.Flags == SubmissionDraft) {
 			w.AppendString(`<input type="submit" value="Pass">`)
 		} else {
 			w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)

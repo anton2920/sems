@@ -28,7 +28,7 @@ const (
 var SubmissionVerifyChannel = make(chan *Submission, 128)
 
 func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
-	test := submittedTest.Test
+	test, _ := Step2Test(&submittedTest.Step)
 
 	scores := make([]int, len(test.Questions))
 	for i := 0; i < len(test.Questions); i++ {
@@ -213,8 +213,8 @@ func SubmissionVerifyProgrammingRun(j jail.Jail, lang *ProgrammingLanguage, inpu
 func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
 	var output bytes.Buffer
 
-	task := submittedTask.Task
-	lang := submittedTask.Language
+	task, _ := Step2Programming(&submittedTask.Step)
+	lang := &ProgrammingLanguages[submittedTask.LanguageID]
 
 	scores := make([]int, len(task.Checks[checkType]))
 	messages := make([]string, len(task.Checks[checkType]))
@@ -249,7 +249,7 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 }
 
 func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType CheckType) error {
-	lang := submittedTask.Language
+	lang := &ProgrammingLanguages[submittedTask.LanguageID]
 
 	j, err := jail.New("/usr/local/jails/templates/workster", WorkingDirectory)
 	if err != nil {
@@ -284,26 +284,30 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 	return nil
 }
 
-func SubmissionVerifyStep(step interface{}) {
-	switch step := step.(type) {
-	case *SubmittedTest:
-		if step.Status == SubmissionCheckPending {
-			step.Status = SubmissionCheckInProgress
-			SubmissionVerifyTest(step)
-			step.Status = SubmissionCheckDone
+func SubmissionVerifyStep(submittedStep *SubmittedStep) {
+	switch submittedStep.Type {
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		if submittedTest.Status == SubmissionCheckPending {
+			submittedTest.Status = SubmissionCheckInProgress
+			SubmissionVerifyTest(submittedTest)
+			submittedTest.Status = SubmissionCheckDone
 		}
-	case *SubmittedProgramming:
-		if step.Status == SubmissionCheckPending {
-			step.Status = SubmissionCheckInProgress
-			step.Error = SubmissionVerifyProgramming(step, CheckTypeTest)
-			step.Status = SubmissionCheckDone
+	case SubmittedTypeProgramming:
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		if submittedTask.Status == SubmissionCheckPending {
+			submittedTask.Status = SubmissionCheckInProgress
+			if err := SubmissionVerifyProgramming(submittedTask, CheckTypeTest); err != nil {
+				submittedTask.Error = err.Error()
+			}
+			submittedTask.Status = SubmissionCheckDone
 		}
 	}
 }
 
 func SubmissionVerify(submission *Submission) {
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		SubmissionVerifyStep(submission.SubmittedSteps[i])
+		SubmissionVerifyStep(&submission.SubmittedSteps[i])
 	}
 }
 
