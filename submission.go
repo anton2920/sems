@@ -607,7 +607,10 @@ func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submissio
 }
 
 func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
-	_, err := GetSessionFromRequest(r)
+	var subject Subject
+	var lesson Lesson
+
+	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
 	}
@@ -621,6 +624,27 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 	submission := &DB.Submissions[submissionID]
+
+	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+		return http.ServerError(err)
+	}
+
+	if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+		return http.ServerError(err)
+	}
+
+	who, err := WhoIsUserInSubject(session.ID, &subject)
+	if err != nil {
+		return http.ServerError(err)
+	}
+	switch who {
+	default:
+		return http.ForbiddenError
+	case SubjectUserAdmin, SubjectUserTeacher:
+		r.Form.Set("Teacher", "yay")
+	case SubjectUserStudent:
+		r.Form.Set("Teacher", "")
+	}
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
