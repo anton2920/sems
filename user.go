@@ -211,17 +211,20 @@ func DisplayUserGroups(w *http.Response, userID int32) {
 			break
 		}
 		for i := 0; i < n; i++ {
-			if UserInGroup(userID, &groups[i]) {
-				if !displayed {
-					w.AppendString(`<h2>Groups</h2>`)
-					w.AppendString(`<ul>`)
-					displayed = true
-				}
-
-				w.AppendString(`<li>`)
-				DisplayGroupLink(w, &groups[i])
-				w.AppendString(`</li>`)
+			group := &groups[i]
+			if (group.Flags == GroupDeleted) || (!UserInGroup(userID, group)) {
+				continue
 			}
+
+			if !displayed {
+				w.AppendString(`<h2>Groups</h2>`)
+				w.AppendString(`<ul>`)
+				displayed = true
+			}
+
+			w.AppendString(`<li>`)
+			DisplayGroupLink(w, group)
+			w.AppendString(`</li>`)
 		}
 	}
 	if displayed {
@@ -237,6 +240,9 @@ func DisplayUserCourses(w *http.Response, user *User) {
 	for i := 0; i < len(user.Courses); i++ {
 		if err := GetCourseByID(DB2, user.Courses[i], &course); err != nil {
 			/* TODO(anton2920): report error. */
+		}
+		if course.Flags == CourseDeleted {
+			continue
 		}
 
 		w.AppendString(`<li>`)
@@ -264,21 +270,26 @@ func DisplayUserSubjects(w *http.Response, userID int32) {
 		}
 		for i := 0; i < n; i++ {
 			subject := &subjects[i]
+			if subject.Flags == SubjectDeleted {
+				continue
+			}
 
 			who, err := WhoIsUserInSubject(userID, subject)
 			if err != nil {
 				/* TODO(anton2920): report error. */
 			}
-			if who != SubjectUserNone {
-				if !displayed {
-					w.AppendString(`<h2>Subjects</h2>`)
-					w.AppendString(`<ul>`)
-					displayed = true
-				}
-				w.AppendString(`<li>`)
-				DisplaySubjectLink(w, subject)
-				w.AppendString(`</li>`)
+			if who == SubjectUserNone {
+				continue
 			}
+
+			if !displayed {
+				w.AppendString(`<h2>Subjects</h2>`)
+				w.AppendString(`<ul>`)
+				displayed = true
+			}
+			w.AppendString(`<li>`)
+			DisplaySubjectLink(w, subject)
+			w.AppendString(`</li>`)
 		}
 	}
 	if displayed {

@@ -105,6 +105,8 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/group"):] {
 		case "/create":
 			return GroupCreateHandler(w, r)
+		case "/delete":
+			return GroupDeleteHandler(w, r)
 		case "/edit":
 			return GroupEditHandler(w, r)
 		}

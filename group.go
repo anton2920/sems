@@ -144,6 +144,9 @@ func DisplayGroupLink(w *http.Response, group *Group) {
 	w.AppendString(` (ID: `)
 	w.WriteInt(int(group.ID))
 	w.AppendString(`)`)
+	if group.Flags == GroupDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</a>`)
 }
 
@@ -173,11 +176,17 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.WriteHTMLString(group.Name)
+	if group.Flags == GroupDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
 	w.WriteHTMLString(group.Name)
+	if group.Flags == GroupDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Info</h2>`)
@@ -205,7 +214,8 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`</ul>`)
 
 	if session.ID == AdminID {
-		w.AppendString(`<form method="POST" action="/group/edit">`)
+		w.AppendString(`<div>`)
+		w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteString(r.URL.Path[len("/group/"):])
@@ -225,6 +235,18 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<input type="submit" value="Edit">`)
 
 		w.AppendString(`</form>`)
+
+		w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteString(r.URL.Path[len("/group/"):])
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="submit" value="Delete">`)
+
+		w.AppendString(`</form>`)
+
+		w.AppendString(`</div>`)
 	}
 
 	subjects := make([]Subject, 32)
@@ -262,12 +284,12 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayStudentsSelect(w *http.Response, ids []string) {
-	students := make([]User, 32)
+	users := make([]User, 32)
 	var pos int64
 
 	w.AppendString(`<select name="StudentID" multiple>`)
 	for {
-		n, err := GetUsers(DB2, &pos, students)
+		n, err := GetUsers(DB2, &pos, users)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -275,27 +297,27 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 			break
 		}
 		for i := 0; i < n; i++ {
-			student := &students[i]
-			if student.ID == AdminID {
+			user := &users[i]
+			if (user.Flags == UserDeleted) || (user.ID == AdminID) {
 				continue
 			}
 
 			w.AppendString(`<option value="`)
-			w.WriteInt(int(student.ID))
+			w.WriteInt(int(user.ID))
 			w.AppendString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := strconv.Atoi(ids[j])
 				if err != nil {
 					continue
 				}
-				if int32(id) == student.ID {
+				if int32(id) == user.ID {
 					w.AppendString(` selected`)
 				}
 			}
 			w.AppendString(`>`)
-			w.WriteHTMLString(student.LastName)
+			w.WriteHTMLString(user.LastName)
 			w.AppendString(` `)
-			w.WriteHTMLString(student.FirstName)
+			w.WriteHTMLString(user.FirstName)
 			w.AppendString(`</option>`)
 		}
 	}
@@ -434,6 +456,40 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 	group.CreatedOn = time.Now().Unix()
 
 	if err := CreateGroup(DB2, &group); err != nil {
+		return http.ServerError(err)
+	}
+
+	w.Redirect("/", http.StatusSeeOther)
+	return nil
+}
+
+func GroupDeleteHandler(w *http.Response, r *http.Request) error {
+	var group Group
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	groupID, err := r.Form.GetInt("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if err := GetGroupByID(DB2, int32(groupID), &group); err != nil {
+		if err == DBNotFound {
+			return WritePage(w, r, GroupEditPageHandler, http.NotFound("group with this ID is not found"))
+		}
+		return http.ServerError(err)
+	}
+
+	if err := DeleteGroupByID(DB2, int32(groupID)); err != nil {
 		return http.ServerError(err)
 	}
 

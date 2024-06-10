@@ -46,8 +46,13 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 			break
 		}
 		for i := 0; i < n; i++ {
+			group := &groups[i]
+			if group.Flags == GroupDeleted {
+				continue
+			}
+
 			w.AppendString(`<li>`)
-			DisplayGroupLink(w, &groups[i])
+			DisplayGroupLink(w, group)
 			w.AppendString(`</li>`)
 		}
 	}

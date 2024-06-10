@@ -362,12 +362,12 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayTeacherSelect(w *http.Response, ids []string) {
-	teachers := make([]User, 32)
+	users := make([]User, 32)
 	var pos int64
 
 	w.AppendString(`<select name="TeacherID">`)
 	for {
-		n, err := GetUsers(DB2, &pos, teachers)
+		n, err := GetUsers(DB2, &pos, users)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -375,24 +375,27 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 			break
 		}
 		for i := 0; i < n; i++ {
-			teacher := &teachers[i]
+			user := &users[i]
+			if user.Flags == UserDeleted {
+				continue
+			}
 
 			w.AppendString(`<option value="`)
-			w.WriteInt(int(teacher.ID))
+			w.WriteInt(int(user.ID))
 			w.AppendString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := strconv.Atoi(ids[j])
 				if err != nil {
 					continue
 				}
-				if int32(id) == teacher.ID {
+				if int32(id) == user.ID {
 					w.AppendString(` selected`)
 				}
 			}
 			w.AppendString(`>`)
-			w.WriteHTMLString(teacher.LastName)
+			w.WriteHTMLString(user.LastName)
 			w.AppendString(` `)
-			w.WriteHTMLString(teacher.FirstName)
+			w.WriteHTMLString(user.FirstName)
 			w.AppendString(`</option>`)
 		}
 	}
@@ -414,6 +417,9 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 		}
 		for i := 0; i < n; i++ {
 			group := &groups[i]
+			if group.Flags == GroupDeleted {
+				continue
+			}
 
 			w.AppendString(`<option value="`)
 			w.WriteInt(int(group.ID))
