@@ -175,6 +175,9 @@ func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	w.AppendString(` (ID: `)
 	w.WriteInt(int(subject.ID))
 	w.AppendString(`)`)
+	if subject.Flags == SubjectDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</a>`)
 }
 
@@ -252,7 +255,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`</p>`)
 
 	if session.ID == AdminID {
-		w.AppendString(`<form method="POST" action="/subject/edit">`)
+		w.AppendString(`<div>`)
+
+		w.AppendString(`<form style="display:inline" method="POST" action="/subject/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteString(r.URL.Path[len("/subject/"):])
@@ -273,6 +278,18 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<input type="submit" value="Edit">`)
 
 		w.AppendString(`</form>`)
+
+		w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteString(r.URL.Path[len("/subject/"):])
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="submit" value="Delete">`)
+
+		w.AppendString(`</form>`)
+
+		w.AppendString(`</div>`)
 	}
 
 	if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
@@ -586,6 +603,40 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 	subject.CreatedOn = time.Now().Unix()
 
 	if err := CreateSubject(DB2, &subject); err != nil {
+		return http.ServerError(err)
+	}
+
+	w.Redirect("/", http.StatusSeeOther)
+	return nil
+}
+
+func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
+	var subject Subject
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	subjectID, err := r.Form.GetInt("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("subject with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
+
+	if err := DeleteSubjectByID(DB2, int32(subjectID)); err != nil {
 		return http.ServerError(err)
 	}
 

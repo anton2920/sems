@@ -114,6 +114,8 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/subject"):] {
 		case "/create":
 			return SubjectCreateHandler(w, r)
+		case "/delete":
+			return SubjectDeleteHandler(w, r)
 		case "/edit":
 			return SubjectEditHandler(w, r)
 		}

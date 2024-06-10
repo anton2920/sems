@@ -263,17 +263,18 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		}
 		for i := 0; i < n; i++ {
 			subject := &subjects[i]
-
-			if group.ID == subject.GroupID {
-				if !displayed {
-					w.AppendString(`<h2>Subjects</h2>`)
-					w.AppendString(`<ul>`)
-					displayed = true
-				}
-				w.AppendString(`<li>`)
-				DisplaySubjectLink(w, subject)
-				w.AppendString(`</li>`)
+			if (subject.Flags == SubjectDeleted) || (group.ID != subject.GroupID) {
+				continue
 			}
+
+			if !displayed {
+				w.AppendString(`<h2>Subjects</h2>`)
+				w.AppendString(`<ul>`)
+				displayed = true
+			}
+			w.AppendString(`<li>`)
+			DisplaySubjectLink(w, subject)
+			w.AppendString(`</li>`)
 		}
 	}
 	if displayed {
