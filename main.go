@@ -119,6 +119,8 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/user"):] {
 		case "/create":
 			return UserCreateHandler(w, r)
+		case "/delete":
+			return UserDeleteHandler(w, r)
 		case "/edit":
 			return UserEditHandler(w, r)
 		case "/signin":
@@ -234,7 +236,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open DB: %v", err)
 	}
-	// CreateInitialDB()
+	CreateInitialDB()
 
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		log.Warnf("Failed to restore sessions from file: %v", err)

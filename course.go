@@ -22,9 +22,9 @@ type Course struct {
 }
 
 const (
-	CourseActive  int32 = 0
-	CourseDeleted       = 1
-	CourseDraft         = 2
+	CourseActive int32 = iota
+	CourseDeleted
+	CourseDraft
 )
 
 const (

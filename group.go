@@ -23,8 +23,8 @@ type Group struct {
 }
 
 const (
-	GroupActive  int32 = 0
-	GroupDeleted       = 1
+	GroupActive int32 = iota
+	GroupDeleted
 )
 
 const (

@@ -28,8 +28,8 @@ type User struct {
 }
 
 const (
-	UserActive  int32 = 0
-	UserDeleted       = 1
+	UserActive int32 = iota
+	UserDeleted
 )
 
 const (
@@ -74,7 +74,7 @@ func GetUserByEmail(db *Database, email string, user *User) error {
 			break
 		}
 		for i := 0; i < n; i++ {
-			if users[i].Email == email {
+			if (users[i].Flags != UserDeleted) && (users[i].Email == email) {
 				*user = users[i]
 				return nil
 			}
@@ -296,6 +296,9 @@ func DisplayUserLink(w *http.Response, user *User) {
 	w.AppendString(` (ID: `)
 	w.WriteInt(int(user.ID))
 	w.AppendString(`)`)
+	if user.Flags == UserDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</a>`)
 }
 
@@ -326,6 +329,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
+	if user.Flags == UserDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)
@@ -334,6 +340,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
+	if user.Flags == UserDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Info</h2>`)
@@ -350,8 +359,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	DisplayFormattedTime(w, user.CreatedOn)
 	w.AppendString(`</p>`)
 
+	w.AppendString(`<div>`)
 	if (session.ID == int32(id)) || (session.ID == AdminID) {
-		w.AppendString(`<form method="POST" action="/user/edit">`)
+		w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
 		w.WriteString(r.URL.Path[len("/user/"):])
@@ -373,6 +383,18 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 
 		w.AppendString(`</form>`)
 	}
+	if (session.ID == AdminID) && (int32(id) != AdminID) {
+		w.AppendString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
+
+		w.AppendString(`<input type="hidden" name="ID" value="`)
+		w.WriteString(r.URL.Path[len("/user/"):])
+		w.AppendString(`">`)
+
+		w.AppendString(`<input type="submit" value="Delete">`)
+
+		w.AppendString(`</form>`)
+	}
+	w.AppendString(`</div>`)
 
 	DisplayUserGroups(w, user.ID)
 
@@ -606,6 +628,52 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 	w.Redirect("/", http.StatusSeeOther)
 	return nil
 
+}
+
+func UserDeleteHandler(w *http.Response, r *http.Request) error {
+	var user User
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	userID, err := r.Form.GetInt("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if err := GetUserByID(DB2, int32(userID), &user); err != nil {
+		if err == DBNotFound {
+			return http.NotFound("user with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+	if userID == AdminID {
+		return http.Conflict("cannot delete Admin user")
+	}
+
+	/* TODO(anton2920): maybe race with 'UserSigninHandler'. */
+	RemoveAllUserSessions(int32(userID))
+
+	if err := DeleteUserByID(DB2, int32(userID)); err != nil {
+		return http.ServerError(err)
+	}
+
+	for i := 0; i < len(user.Courses); i++ {
+		if err := DeleteCourseByID(DB2, user.Courses[i]); err != nil {
+			return http.ServerError(err)
+		}
+	}
+
+	w.Redirect("/", http.StatusSeeOther)
+	return nil
 }
 
 func UserEditHandler(w *http.Response, r *http.Request) error {

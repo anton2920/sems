@@ -17,8 +17,13 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 			break
 		}
 		for i := 0; i < n; i++ {
+			user := &users[i]
+			if user.Flags == UserDeleted {
+				continue
+			}
+
 			w.AppendString(`<li>`)
-			DisplayUserLink(w, &users[i])
+			DisplayUserLink(w, user)
 			w.AppendString(`</li>`)
 		}
 	}

@@ -70,6 +70,20 @@ func GenerateSessionToken() (string, error) {
 	return string(token), nil
 }
 
+func RemoveAllUserSessions(userID int32) {
+	SessionsLock.RLock()
+	for token, session := range Sessions {
+		if session.ID == userID {
+			SessionsLock.RUnlock()
+			SessionsLock.Lock()
+			delete(Sessions, token)
+			SessionsLock.Unlock()
+			SessionsLock.RLock()
+		}
+	}
+	SessionsLock.RUnlock()
+}
+
 func StoreSessionsToFile(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {

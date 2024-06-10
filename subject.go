@@ -25,8 +25,8 @@ type Subject struct {
 }
 
 const (
-	SubjectActive  int32 = 0
-	SubjectDeleted       = 1
+	SubjectActive int32 = iota
+	SubjectDeleted
 )
 
 type SubjectUserType int
