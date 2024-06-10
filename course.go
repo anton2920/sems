@@ -23,8 +23,8 @@ type Course struct {
 
 const (
 	CourseActive int32 = iota
-	CourseDeleted
 	CourseDraft
+	CourseDeleted
 )
 
 const (
@@ -130,6 +130,9 @@ func DisplayCourseLink(w *http.Response, course *Course) {
 	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
 	}
+	if course.Flags == CourseDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</a>`)
 }
 
@@ -165,6 +168,9 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
 	}
+	if course.Flags == CourseDeleted {
+		w.AppendString(` [deleted]`)
+	}
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
@@ -172,6 +178,9 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	w.WriteHTMLString(course.Name)
 	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
+	}
+	if course.Flags == CourseDeleted {
+		w.AppendString(` [deleted]`)
 	}
 	w.AppendString(`</h1>`)
 
@@ -525,4 +534,36 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		w.RedirectID("/course/", int(course.ID), http.StatusSeeOther)
 		return nil
 	}
+}
+
+func CourseDeleteHandler(w *http.Response, r *http.Request) error {
+	var user User
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	courseID, err := r.Form.GetInt("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+
+	if err := GetUserByID(DB2, session.ID, &user); err != nil {
+		return http.ServerError(err)
+	}
+	if !UserOwnsCourse(&user, int32(courseID)) {
+		return http.ForbiddenError
+	}
+
+	if err := DeleteCourseByID(DB2, int32(courseID)); err != nil {
+		return http.ServerError(err)
+	}
+
+	w.Redirect("/", http.StatusSeeOther)
+	return nil
 }

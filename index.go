@@ -75,8 +75,13 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 			break
 		}
 		for i := 0; i < n; i++ {
+			course := &courses[i]
+			if course.Flags == CourseDeleted {
+				continue
+			}
+
 			w.AppendString(`<li>`)
-			DisplayCourseLink(w, &courses[i])
+			DisplayCourseLink(w, course)
 			w.AppendString(`</li>`)
 		}
 	}
@@ -99,8 +104,13 @@ func DisplayIndexAdminPage(w *http.Response, user *User) {
 			break
 		}
 		for i := 0; i < n; i++ {
+			subject := &subjects[i]
+			if subject.Flags == SubjectDeleted {
+				continue
+			}
+
 			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, &subjects[i])
+			DisplaySubjectLink(w, subject)
 			w.AppendString(`</li>`)
 		}
 	}

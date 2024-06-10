@@ -327,18 +327,20 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				}
 				for i := 0; i < n; i++ {
 					course := &courses[i]
-					if (course.Flags != CourseDraft) && (UserOwnsCourse(&teacher, course.ID)) {
-						if !displayed {
-							w.AppendString(`<label>Courses: `)
-							w.AppendString(`<select name="CourseID">`)
-							displayed = true
-						}
-						w.AppendString(`<option value="`)
-						w.WriteInt(i)
-						w.AppendString(`">`)
-						w.WriteHTMLString(course.Name)
-						w.AppendString(`</option>`)
+					if (course.Flags != CourseActive) || (!UserOwnsCourse(&teacher, course.ID)) {
+						continue
 					}
+
+					if !displayed {
+						w.AppendString(`<label>Courses: `)
+						w.AppendString(`<select name="CourseID">`)
+						displayed = true
+					}
+					w.AppendString(`<option value="`)
+					w.WriteInt(i)
+					w.AppendString(`">`)
+					w.WriteHTMLString(course.Name)
+					w.AppendString(`</option>`)
 				}
 			}
 			if displayed {
