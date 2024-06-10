@@ -113,12 +113,11 @@ func DeleteGroupByID(db *Database, id int32) error {
 
 func SaveGroup(db *Database, group *Group) error {
 	var groupDB Group
+	var n int
 
 	size := int(unsafe.Sizeof(*group))
 	offset := int64(int(group.ID)*size) + DataOffset
-
 	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
-	var n int
 
 	groupDB.ID = group.ID
 	groupDB.Flags = group.Flags

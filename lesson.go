@@ -259,12 +259,11 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 
 func SaveLesson(db *Database, lesson *Lesson) error {
 	var lessonDB Lesson
+	var n int
 
 	size := int(unsafe.Sizeof(*lesson))
 	offset := int64(int(lesson.ID)*size) + DataOffset
-
 	data := unsafe.Slice(&lessonDB.Data[0], len(lessonDB.Data))
-	var n int
 
 	lessonDB.ID = lesson.ID
 	lessonDB.Flags = lesson.Flags

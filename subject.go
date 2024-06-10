@@ -132,16 +132,14 @@ func DeleteSubjectByID(db *Database, id int32) error {
 
 func SaveSubject(db *Database, subject *Subject) error {
 	var subjectDB Subject
+	var n int
 
 	size := int(unsafe.Sizeof(*subject))
 	offset := int64(int(subject.ID)*size) + DataOffset
-
 	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
-	var n int
 
 	subjectDB.ID = subject.ID
 	subjectDB.Flags = subject.Flags
-
 	subjectDB.TeacherID = subject.TeacherID
 	subjectDB.GroupID = subject.GroupID
 

@@ -101,12 +101,11 @@ func DeleteCourseByID(db *Database, id int32) error {
 
 func SaveCourse(db *Database, course *Course) error {
 	var courseDB Course
+	var n int
 
 	size := int(unsafe.Sizeof(*course))
 	offset := int64(int(course.ID)*size) + DataOffset
-
 	data := unsafe.Slice(&courseDB.Data[0], len(courseDB.Data))
-	var n int
 
 	courseDB.ID = course.ID
 	courseDB.Flags = course.Flags

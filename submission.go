@@ -267,20 +267,17 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 
 func SaveSubmission(db *Database, submission *Submission) error {
 	var submissionDB Submission
+	var n int
 
 	size := int(unsafe.Sizeof(*submission))
 	offset := int64(int(submission.ID)*size) + DataOffset
-
 	data := unsafe.Slice(&submissionDB.Data[0], len(submissionDB.Data))
-	var n int
 
 	submissionDB.ID = submission.ID
 	submissionDB.Flags = submission.Flags
 	submissionDB.Status = submission.Status
-
 	submissionDB.UserID = submission.UserID
 	submissionDB.LessonID = submission.LessonID
-
 	submissionDB.StartedAt = submission.StartedAt
 	submissionDB.FinishedAt = submission.FinishedAt
 
