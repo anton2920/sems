@@ -118,7 +118,7 @@ func SaveGroup(db *Database, group *Group) error {
 	offset := int64(int(group.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
-	n := DataStartOffset
+	var n int
 
 	groupDB.ID = group.ID
 	groupDB.Flags = group.Flags

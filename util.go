@@ -92,3 +92,7 @@ func RemoveAtIndex[T any](ts []T, i int) []T {
 	}
 	return ts[:len(ts)-1]
 }
+
+func RoundUp(x int, quantum int) int {
+	return (x + (quantum - 1)) & ^(quantum - 1)
+}

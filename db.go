@@ -25,42 +25,54 @@ const (
 	NextIDOffset  = VersionOffset + 4
 	DataOffset    = NextIDOffset + 4
 
-	DataStartOffset = 1
+	/* NOTE(anton2920): to bypass check in runtime·adjustpoiners. */
+	MinValidPointer = 4096
 )
 
 const AdminID = 0
 
 var DBNotFound = errors.New("not found")
 
+//go:nosplit
 func Offset2String(s string, base *byte) string {
-	return unsafe.String((*byte)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.StringData(s))))), len(s))
+	return unsafe.String((*byte)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.StringData(s)))-MinValidPointer)), len(s))
 }
 
+//go:nosplit
 func Offset2Slice[T any](s []T, base *byte) []T {
-	return unsafe.Slice((*T)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.SliceData(s))))), len(s))
+	if len(s) == 0 {
+		return s
+	}
+	return unsafe.Slice((*T)(unsafe.Add(unsafe.Pointer(base), uintptr(unsafe.Pointer(unsafe.SliceData(s)))-MinValidPointer)), len(s))
 }
 
+//go:nosplit
 func String2Offset(s string, offset int) string {
-	return unsafe.String((*byte)(unsafe.Pointer(uintptr(offset))), len(s))
+	return unsafe.String((*byte)(unsafe.Pointer(uintptr(offset)+MinValidPointer)), len(s))
 }
 
+//go:nosplit
 func Slice2Offset[T any](s []T, offset int) []T {
-	return unsafe.Slice((*T)(unsafe.Pointer(uintptr(offset))), len(s))
+	return unsafe.Slice((*T)(unsafe.Pointer(uintptr(offset)+MinValidPointer)), len(s))
 }
 
+//go:nosplit
 func String2DBString(ds *string, ss string, data []byte, n int) int {
 	nbytes := copy(data[n:], ss)
 	*ds = String2Offset(ss, n)
 	return nbytes
 }
 
+//go:nosplit
 func Slice2DBSlice[T any](ds *[]T, ss []T, data []byte, n int) int {
-	var nbytes int
-	if len(ss) > 0 {
-		nbytes = copy(data[n:], unsafe.Slice((*byte)(unsafe.Pointer(&ss[0])), len(ss)*int(unsafe.Sizeof(ss[0]))))
-		*ds = Slice2Offset(ss, n)
+	if len(ss) == 0 {
+		return 0
 	}
-	return nbytes
+
+	start := RoundUp(n, int(unsafe.Alignof(&ss[0])))
+	nbytes := copy(data[start:], unsafe.Slice((*byte)(unsafe.Pointer(&ss[0])), len(ss)*int(unsafe.Sizeof(ss[0]))))
+	*ds = Slice2Offset(ss, start)
+	return nbytes + (start - n)
 }
 
 func CreateInitialDB() error {

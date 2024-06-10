@@ -161,7 +161,7 @@ func SaveUser(db *Database, user *User) error {
 	offset := int64(int(user.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
-	n := DataStartOffset
+	var n int
 
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags

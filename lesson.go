@@ -82,9 +82,8 @@ const (
 )
 
 const (
-	LessonActive  int32 = 0
-	LessonDeleted       = 1
-	LessonDraft         = 2
+	LessonActive int32 = iota
+	LessonDraft
 )
 
 const LessonTheoryMaxDisplayLen = 30
@@ -161,8 +160,8 @@ func DBLesson2Lesson(lesson *Lesson) {
 
 	lesson.Name = Offset2String(lesson.Name, data)
 	lesson.Theory = Offset2String(lesson.Theory, data)
-	lesson.Steps = Offset2Slice(lesson.Steps, data)
 
+	lesson.Steps = Offset2Slice(lesson.Steps, data)
 	for i := 0; i < len(lesson.Steps); i++ {
 		DBStep2Step(&lesson.Steps[i], data)
 	}
@@ -204,19 +203,6 @@ func GetLessons(db *Database, pos *int64, lessons []Lesson) (int, error) {
 	}
 
 	return n, nil
-}
-
-func DeleteLessonByID(db *Database, id int32) error {
-	flags := LessonDeleted
-	var lesson Lesson
-
-	offset := int64(int(id)*int(unsafe.Sizeof(lesson))) + DataOffset + int64(unsafe.Offsetof(lesson.Flags))
-	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
-	if err != nil {
-		return fmt.Errorf("failed to delete lesson from DB: %w", err)
-	}
-
-	return nil
 }
 
 func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
@@ -278,7 +264,7 @@ func SaveLesson(db *Database, lesson *Lesson) error {
 	offset := int64(int(lesson.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&lessonDB.Data[0], len(lessonDB.Data))
-	n := DataStartOffset
+	var n int
 
 	lessonDB.ID = lesson.ID
 	lessonDB.Flags = lesson.Flags
@@ -286,15 +272,14 @@ func SaveLesson(db *Database, lesson *Lesson) error {
 	lessonDB.ContainerType = lesson.ContainerType
 
 	/* TODO(anton2920): save up to a sizeof(lesson.Data). */
-	n += String2DBString(&lessonDB.Name, lesson.Name, data, n)
-	n += String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
-
 	lessonDB.Steps = make([]Step, len(lesson.Steps))
 	for i := 0; i < len(lesson.Steps); i++ {
 		n += Step2DBStep(&lessonDB.Steps[i], &lesson.Steps[i], data, n)
 	}
-	n += Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
 
+	n += String2DBString(&lessonDB.Name, lesson.Name, data, n)
+	n += String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
+	n += Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
 	n += Slice2DBSlice(&lessonDB.Submissions, lesson.Submissions, data, n)
 
 	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB)), size), offset)

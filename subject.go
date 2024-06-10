@@ -137,7 +137,7 @@ func SaveSubject(db *Database, subject *Subject) error {
 	offset := int64(int(subject.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
-	n := DataStartOffset
+	var n int
 
 	subjectDB.ID = subject.ID
 	subjectDB.Flags = subject.Flags

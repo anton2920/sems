@@ -234,6 +234,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open DB: %v", err)
 	}
+	// CreateInitialDB()
 
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		log.Warnf("Failed to restore sessions from file: %v", err)

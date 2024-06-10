@@ -90,9 +90,8 @@ const (
 )
 
 const (
-	SubmissionActive  int32 = 0
-	SubmissionDeleted       = 1
-	SubmissionDraft         = 2
+	SubmissionActive int32 = iota
+	SubmissionDraft
 )
 
 const (
@@ -217,25 +216,12 @@ func GetSubmissions(db *Database, pos *int64, submissions []Submission) (int, er
 	return n, nil
 }
 
-func DeleteSubmissionByID(db *Database, id int32) error {
-	flags := SubmissionDeleted
-	var submission Submission
-
-	offset := int64(int(id)*int(unsafe.Sizeof(submission))) + DataOffset + int64(unsafe.Offsetof(submission.Flags))
-	_, err := syscall.Pwrite(db.SubmissionsFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
-	if err != nil {
-		return fmt.Errorf("failed to delete submission from DB: %w", err)
-	}
-
-	return nil
-}
-
 func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n int) int {
 	ds.Flags = ss.Flags
 	ds.Status = ss.Status
 
-	n += String2DBString(&ds.Error, ss.Error, data, n)
 	n += Step2DBStep(&ds.Step, &ss.Step, data, n)
+	n += String2DBString(&ds.Error, ss.Error, data, n)
 
 	switch ss.Type {
 	default:
@@ -286,7 +272,7 @@ func SaveSubmission(db *Database, submission *Submission) error {
 	offset := int64(int(submission.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&submissionDB.Data[0], len(submissionDB.Data))
-	n := DataStartOffset
+	var n int
 
 	submissionDB.ID = submission.ID
 	submissionDB.Flags = submission.Flags

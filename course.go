@@ -106,7 +106,7 @@ func SaveCourse(db *Database, course *Course) error {
 	offset := int64(int(course.ID)*size) + DataOffset
 
 	data := unsafe.Slice(&courseDB.Data[0], len(courseDB.Data))
-	n := DataStartOffset
+	var n int
 
 	courseDB.ID = course.ID
 	courseDB.Flags = course.Flags
