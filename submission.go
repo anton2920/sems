@@ -54,8 +54,7 @@ type (
 	SubmittedStep/* union */ struct {
 		SubmittedCommon
 
-		/* TODO(anton2920): garbage collector cannot see pointers inside. */
-		Data [max(unsafe.Sizeof(stdt), unsafe.Sizeof(stdp)) - unsafe.Sizeof(stdc)]byte
+		_ [max(unsafe.Sizeof(stdt), unsafe.Sizeof(stdp)) - unsafe.Sizeof(stdc)]byte
 	}
 
 	Submission struct {
@@ -846,6 +845,20 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 	return http.ClientError(nil)
 }
 
+func SubmittedStepClear(submittedStep *SubmittedStep) {
+	switch submittedStep.Type {
+	default:
+		panic("invalid step type")
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		submittedTest.SubmittedQuestions = submittedTest.SubmittedQuestions[:0]
+	case SubmittedTypeProgramming:
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		submittedTask.LanguageID = 0
+		submittedTask.Solution = ""
+	}
+}
+
 func SubmissionNewVerify(submission *Submission) error {
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
@@ -1380,7 +1393,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 			submittedStep.Flags = SubmittedStepPassed
 		} else {
 			submittedStep.Flags = SubmittedStepSkipped
-			clear(submittedStep.Data[:])
+			SubmittedStepClear(submittedStep)
 		}
 	}
 

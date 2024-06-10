@@ -285,22 +285,24 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 }
 
 func SubmissionVerifyStep(submittedStep *SubmittedStep) {
-	switch submittedStep.Type {
-	case SubmittedTypeTest:
-		submittedTest, _ := Submitted2Test(submittedStep)
-		if submittedTest.Status == SubmissionCheckPending {
-			submittedTest.Status = SubmissionCheckInProgress
-			SubmissionVerifyTest(submittedTest)
-			submittedTest.Status = SubmissionCheckDone
-		}
-	case SubmittedTypeProgramming:
-		submittedTask, _ := Submitted2Programming(submittedStep)
-		if submittedTask.Status == SubmissionCheckPending {
-			submittedTask.Status = SubmissionCheckInProgress
-			if err := SubmissionVerifyProgramming(submittedTask, CheckTypeTest); err != nil {
-				submittedTask.Error = err.Error()
+	if submittedStep.Flags == SubmittedStepPassed {
+		switch submittedStep.Type {
+		case SubmittedTypeTest:
+			submittedTest, _ := Submitted2Test(submittedStep)
+			if submittedTest.Status == SubmissionCheckPending {
+				submittedTest.Status = SubmissionCheckInProgress
+				SubmissionVerifyTest(submittedTest)
+				submittedTest.Status = SubmissionCheckDone
 			}
-			submittedTask.Status = SubmissionCheckDone
+		case SubmittedTypeProgramming:
+			submittedTask, _ := Submitted2Programming(submittedStep)
+			if submittedTask.Status == SubmissionCheckPending {
+				submittedTask.Status = SubmissionCheckInProgress
+				if err := SubmissionVerifyProgramming(submittedTask, CheckTypeTest); err != nil {
+					submittedTask.Error = err.Error()
+				}
+				submittedTask.Status = SubmissionCheckDone
+			}
 		}
 	}
 }

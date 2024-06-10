@@ -148,6 +148,9 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			}
 			return http.ServerError(err)
 		}
+		if course.Flags == CourseDraft {
+			return http.BadRequest("cannot give a course that's still a draft")
+		}
 
 		/* TODO(anton2920): check if it's still a draft. */
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
@@ -167,8 +170,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			}
 			return http.ServerError(err)
 		}
+		if course.Flags == CourseDraft {
+			return http.BadRequest("cannot give a course that's still a draft")
+		}
 
-		/* TODO(anton2920): check if it's still a draft. */
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
 
 		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)

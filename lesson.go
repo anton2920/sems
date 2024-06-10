@@ -41,7 +41,6 @@ type (
 	Step/* union */ struct {
 		StepCommon
 
-		/* TODO(anton2920): garbage collector cannot see pointers inside. */
 		_ [max(unsafe.Sizeof(st), unsafe.Sizeof(sp)) - unsafe.Sizeof(sc)]byte
 	}
 
