@@ -2,23 +2,23 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
 
 type Subject struct {
-	ID    int32
+	ID    database.ID
 	Flags int32
 
-	TeacherID int32
-	GroupID   int32
+	TeacherID database.ID
+	GroupID   database.ID
 	Name      string
-	Lessons   []int32
+	Lessons   []database.ID
 	CreatedOn int64
 
 	Data [1024]byte
@@ -43,7 +43,7 @@ const (
 	MaxSubjectNameLen = 45
 )
 
-func WhoIsUserInSubject(userID int32, subject *Subject) (SubjectUserType, error) {
+func WhoIsUserInSubject(userID database.ID, subject *Subject) (SubjectUserType, error) {
 	if userID == AdminID {
 		return SubjectUserAdmin, nil
 	}
@@ -53,7 +53,7 @@ func WhoIsUserInSubject(userID int32, subject *Subject) (SubjectUserType, error)
 	}
 
 	var group Group
-	if err := GetGroupByID(DB2, subject.GroupID, &group); err != nil {
+	if err := GetGroupByID(subject.GroupID, &group); err != nil {
 		return SubjectUserNone, err
 	}
 	if UserInGroup(userID, &group) {
@@ -63,66 +63,51 @@ func WhoIsUserInSubject(userID int32, subject *Subject) (SubjectUserType, error)
 	return SubjectUserNone, nil
 }
 
-func CreateSubject(db *Database, subject *Subject) error {
+func CreateSubject(subject *Subject) error {
 	var err error
 
-	subject.ID, err = IncrementNextID(db.SubjectsFile)
+	subject.ID, err = database.IncrementNextID(SubjectsDB)
 	if err != nil {
 		return fmt.Errorf("failed to increment subject ID: %w", err)
 	}
 
-	return SaveSubject(db, subject)
+	return SaveSubject(subject)
 }
 
 func DBSubject2Subject(subject *Subject) {
 	data := &subject.Data[0]
 
-	subject.Name = Offset2String(subject.Name, data)
-	subject.Lessons = Offset2Slice(subject.Lessons, data)
+	subject.Name = database.Offset2String(subject.Name, data)
+	subject.Lessons = database.Offset2Slice(subject.Lessons, data)
 }
 
-func GetSubjectByID(db *Database, id int32, subject *Subject) error {
-	size := int(unsafe.Sizeof(*subject))
-	offset := int64(int(id)*size) + DataOffset
-
-	n, err := syscall.Pread(db.SubjectsFile, unsafe.Slice((*byte)(unsafe.Pointer(subject)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to read subject from DB: %w", err)
-	}
-	if n < size {
-		return DBNotFound
+func GetSubjectByID(id database.ID, subject *Subject) error {
+	if err := database.Read(SubjectsDB, id, subject); err != nil {
+		return err
 	}
 
 	DBSubject2Subject(subject)
 	return nil
 }
 
-func GetSubjects(db *Database, pos *int64, subjects []Subject) (int, error) {
-	if *pos < DataOffset {
-		*pos = DataOffset
-	}
-	size := int(unsafe.Sizeof(subjects[0]))
-
-	n, err := syscall.Pread(db.SubjectsFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(subjects))), len(subjects)*size), *pos)
+func GetSubjects(pos *int64, subjects []Subject) (int, error) {
+	n, err := database.ReadMany(SubjectsDB, pos, subjects)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read subject from DB: %w", err)
+		return 0, err
 	}
-	*pos += int64(n)
 
-	n /= size
 	for i := 0; i < n; i++ {
 		DBSubject2Subject(&subjects[i])
 	}
-
 	return n, nil
 }
 
-func DeleteSubjectByID(db *Database, id int32) error {
+func DeleteSubjectByID(id database.ID) error {
 	flags := SubjectDeleted
 	var subject Subject
 
-	offset := int64(int(id)*int(unsafe.Sizeof(subject))) + DataOffset + int64(unsafe.Offsetof(subject.Flags))
-	_, err := syscall.Pwrite(db.SubjectsFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
+	offset := int64(int(id)*int(unsafe.Sizeof(subject))) + database.DataOffset + int64(unsafe.Offsetof(subject.Flags))
+	_, err := syscall.Pwrite(SubjectsDB.FD, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
 	if err != nil {
 		return fmt.Errorf("failed to delete subject from DB: %w", err)
 	}
@@ -130,13 +115,9 @@ func DeleteSubjectByID(db *Database, id int32) error {
 	return nil
 }
 
-func SaveSubject(db *Database, subject *Subject) error {
+func SaveSubject(subject *Subject) error {
 	var subjectDB Subject
 	var n int
-
-	size := int(unsafe.Sizeof(*subject))
-	offset := int64(int(subject.ID)*size) + DataOffset
-	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
 
 	subjectDB.ID = subject.ID
 	subjectDB.Flags = subject.Flags
@@ -144,28 +125,24 @@ func SaveSubject(db *Database, subject *Subject) error {
 	subjectDB.GroupID = subject.GroupID
 
 	/* TODO(anton2920): save up to a sizeof(subject.Data). */
-	n += String2DBString(&subjectDB.Name, subject.Name, data, n)
-	n += Slice2DBSlice(&subjectDB.Lessons, subject.Lessons, data, n)
+	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
+	n += database.String2DBString(&subjectDB.Name, subject.Name, data, n)
+	n += database.Slice2DBSlice(&subjectDB.Lessons, subject.Lessons, data, n)
 
 	subjectDB.CreatedOn = subject.CreatedOn
 
-	_, err := syscall.Pwrite(db.SubjectsFile, unsafe.Slice((*byte)(unsafe.Pointer(&subjectDB)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to write subject to DB: %w", err)
-	}
-
-	return nil
+	return database.Write(SubjectsDB, subjectDB.ID, &subjectDB)
 }
 
 func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	var teacher User
-	if err := GetUserByID(DB2, subject.TeacherID, &teacher); err != nil {
+	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
 		/* TODO(anton2920): report error. */
 		return
 	}
 
 	w.AppendString(`<a href="/subject/`)
-	w.WriteInt(int(subject.ID))
+	w.WriteID(subject.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
@@ -173,7 +150,7 @@ func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	w.AppendString(` `)
 	w.WriteHTMLString(teacher.FirstName)
 	w.AppendString(` (ID: `)
-	w.WriteInt(int(subject.ID))
+	w.WriteID(subject.ID)
 	w.AppendString(`)`)
 	if subject.Flags == SubjectDeleted {
 		w.AppendString(` [deleted]`)
@@ -194,8 +171,8 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(id), &subject); err != nil {
-		if err == DBNotFound {
+	if err := GetSubjectByID(id, &subject); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("subject with this ID does not exist")
 		}
 		return http.ServerError(err)
@@ -210,12 +187,12 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	var teacher User
-	if err := GetUserByID(DB2, subject.TeacherID, &teacher); err != nil {
+	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
 		return http.ServerError(err)
 	}
 
 	var group Group
-	if err := GetGroupByID(DB2, subject.GroupID, &group); err != nil {
+	if err := GetGroupByID(subject.GroupID, &group); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -239,7 +216,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteInt(int(subject.ID))
+	w.WriteID(subject.ID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Teacher: `)
@@ -268,11 +245,11 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="TeacherID" value="`)
-		w.WriteInt(int(subject.TeacherID))
+		w.WriteID(subject.TeacherID)
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="hidden" name="GroupID" value="`)
-		w.WriteInt(int(subject.GroupID))
+		w.WriteID(subject.GroupID)
 		w.AppendString(`">`)
 
 		w.AppendString(`<input type="submit" value="Edit">`)
@@ -296,7 +273,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<h2>Lessons</h2>`)
 	}
 	for i := 0; i < len(subject.Lessons); i++ {
-		if err := GetLessonByID(DB2, subject.Lessons[i], &lesson); err != nil {
+		if err := GetLessonByID(subject.Lessons[i], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 
@@ -335,7 +312,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			var pos int64
 
 			for {
-				n, err := GetCourses(DB2, &pos, courses)
+				n, err := GetCourses(&pos, courses)
 				if err != nil {
 					return http.ServerError(err)
 				}
@@ -386,7 +363,7 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 
 	w.AppendString(`<select name="TeacherID">`)
 	for {
-		n, err := GetUsers(DB2, &pos, users)
+		n, err := GetUsers(&pos, users)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -400,14 +377,14 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 			}
 
 			w.AppendString(`<option value="`)
-			w.WriteInt(int(user.ID))
+			w.WriteID(user.ID)
 			w.AppendString(`"`)
 			for j := 0; j < len(ids); j++ {
-				id, err := strconv.Atoi(ids[j])
+				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
-				if int32(id) == user.ID {
+				if id == user.ID {
 					w.AppendString(` selected`)
 				}
 			}
@@ -427,7 +404,7 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 
 	w.AppendString(`<select name="GroupID">`)
 	for {
-		n, err := GetGroups(DB2, &pos, groups)
+		n, err := GetGroups(&pos, groups)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -441,14 +418,14 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 			}
 
 			w.AppendString(`<option value="`)
-			w.WriteInt(int(group.ID))
+			w.WriteID(group.ID)
 			w.AppendString(`"`)
 			for j := 0; j < len(ids); j++ {
-				id, err := strconv.Atoi(ids[j])
+				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
-				if int32(id) == group.ID {
+				if id == group.ID {
 					w.AppendString(` selected`)
 				}
 			}
@@ -578,31 +555,31 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
-	nextUserID, err := GetNextID(DB2.UsersFile)
+	nextUserID, err := database.GetNextID(UsersDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
-	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), int(nextUserID))
+	teacherID, err := GetValidID(r.Form.Get("TeacherID"), nextUserID)
 	if err != nil {
 		return http.ClientError(err)
 	}
 
-	nextGroupID, err := GetNextID(DB2.GroupsFile)
+	nextGroupID, err := database.GetNextID(GroupsDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), int(nextGroupID))
+	groupID, err := GetValidID(r.Form.Get("GroupID"), nextGroupID)
 	if err != nil {
 		return http.ClientError(err)
 	}
 
 	var subject Subject
 	subject.Name = name
-	subject.TeacherID = int32(teacherID)
-	subject.GroupID = int32(groupID)
+	subject.TeacherID = teacherID
+	subject.GroupID = groupID
 	subject.CreatedOn = time.Now().Unix()
 
-	if err := CreateSubject(DB2, &subject); err != nil {
+	if err := CreateSubject(&subject); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -625,18 +602,18 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := r.Form.GetInt("ID")
+	subjectID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
+	if err := GetSubjectByID(subjectID, &subject); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("subject with this ID does not exist")
 		}
 		return http.ServerError(err)
 	}
 
-	if err := DeleteSubjectByID(DB2, int32(subjectID)); err != nil {
+	if err := DeleteSubjectByID(subjectID); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -659,12 +636,12 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	subjectID, err := r.Form.GetInt("ID")
+	subjectID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
+	if err := GetSubjectByID(subjectID, &subject); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("subject with this ID does not exist")
 		}
 		return http.ServerError(err)
@@ -675,29 +652,29 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
-	nextUserID, err := GetNextID(DB2.UsersFile)
+	nextUserID, err := database.GetNextID(UsersDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
-	teacherID, err := GetValidIndex(r.Form.Get("TeacherID"), int(nextUserID))
+	teacherID, err := GetValidID(r.Form.Get("TeacherID"), nextUserID)
 	if err != nil {
 		return http.ClientError(err)
 	}
 
-	nextGroupID, err := GetNextID(DB2.GroupsFile)
+	nextGroupID, err := database.GetNextID(GroupsDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
-	groupID, err := GetValidIndex(r.Form.Get("GroupID"), int(nextGroupID))
+	groupID, err := GetValidID(r.Form.Get("GroupID"), nextGroupID)
 	if err != nil {
 		return http.ClientError(err)
 	}
 
 	subject.Name = name
-	subject.TeacherID = int32(teacherID)
-	subject.GroupID = int32(groupID)
+	subject.TeacherID = teacherID
+	subject.GroupID = groupID
 
-	if err := SaveSubject(DB2, &subject); err != nil {
+	if err := SaveSubject(&subject); err != nil {
 		return http.ServerError(err)
 	}
 

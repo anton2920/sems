@@ -10,7 +10,7 @@ import (
 func TestSubjectPageHandler(t *testing.T) {
 	const endpoint = "/subject/"
 
-	CreateInitialDB()
+	CreateInitialDBs()
 
 	expectedOK := [...]string{"0", "1"}
 

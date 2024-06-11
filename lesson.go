@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/syscall"
 )
 
 type (
@@ -45,15 +45,15 @@ type (
 	}
 
 	Lesson struct {
-		ID            int32
+		ID            database.ID
 		Flags         int32
-		ContainerID   int32
+		ContainerID   database.ID
 		ContainerType ContainerType
 
 		Name        string
 		Theory      string
 		Steps       []Step
-		Submissions []int32
+		Submissions []database.ID
 
 		Data [16384]byte
 	}
@@ -107,19 +107,19 @@ func Step2Programming(s *Step) (*StepProgramming, error) {
 	return (*StepProgramming)(unsafe.Pointer(s)), nil
 }
 
-func CreateLesson(db *Database, lesson *Lesson) error {
+func CreateLesson(lesson *Lesson) error {
 	var err error
 
-	lesson.ID, err = IncrementNextID(db.LessonsFile)
+	lesson.ID, err = database.IncrementNextID(LessonsDB)
 	if err != nil {
 		return fmt.Errorf("failed to increment lesson ID: %w", err)
 	}
 
-	return SaveLesson(db, lesson)
+	return SaveLesson(lesson)
 }
 
 func DBStep2Step(step *Step, data *byte) {
-	step.Name = Offset2String(step.Name, data)
+	step.Name = database.Offset2String(step.Name, data)
 
 	switch step.Type {
 	default:
@@ -127,28 +127,28 @@ func DBStep2Step(step *Step, data *byte) {
 	case StepTypeTest:
 		test, _ := Step2Test(step)
 
-		test.Questions = Offset2Slice(test.Questions, data)
+		test.Questions = database.Offset2Slice(test.Questions, data)
 		for i := 0; i < len(test.Questions); i++ {
 			question := &test.Questions[i]
-			question.Name = Offset2String(question.Name, data)
-			question.Answers = Offset2Slice(question.Answers, data)
-			question.CorrectAnswers = Offset2Slice(question.CorrectAnswers, data)
+			question.Name = database.Offset2String(question.Name, data)
+			question.Answers = database.Offset2Slice(question.Answers, data)
+			question.CorrectAnswers = database.Offset2Slice(question.CorrectAnswers, data)
 
 			for j := 0; j < len(question.Answers); j++ {
-				question.Answers[j] = Offset2String(question.Answers[j], data)
+				question.Answers[j] = database.Offset2String(question.Answers[j], data)
 			}
 		}
 	case StepTypeProgramming:
 		task, _ := Step2Programming(step)
 
-		task.Description = Offset2String(task.Description, data)
+		task.Description = database.Offset2String(task.Description, data)
 
 		for i := 0; i < len(task.Checks); i++ {
-			task.Checks[i] = Offset2Slice(task.Checks[i], data)
+			task.Checks[i] = database.Offset2Slice(task.Checks[i], data)
 			for j := 0; j < len(task.Checks[i]); j++ {
 				check := &task.Checks[i][j]
-				check.Input = Offset2String(check.Input, data)
-				check.Output = Offset2String(check.Output, data)
+				check.Input = database.Offset2String(check.Input, data)
+				check.Output = database.Offset2String(check.Output, data)
 			}
 		}
 	}
@@ -157,55 +157,39 @@ func DBStep2Step(step *Step, data *byte) {
 func DBLesson2Lesson(lesson *Lesson) {
 	data := &lesson.Data[0]
 
-	lesson.Name = Offset2String(lesson.Name, data)
-	lesson.Theory = Offset2String(lesson.Theory, data)
+	lesson.Name = database.Offset2String(lesson.Name, data)
+	lesson.Theory = database.Offset2String(lesson.Theory, data)
 
-	lesson.Steps = Offset2Slice(lesson.Steps, data)
+	lesson.Steps = database.Offset2Slice(lesson.Steps, data)
 	for i := 0; i < len(lesson.Steps); i++ {
 		DBStep2Step(&lesson.Steps[i], data)
 	}
-
-	lesson.Submissions = Offset2Slice(lesson.Submissions, data)
+	lesson.Submissions = database.Offset2Slice(lesson.Submissions, data)
 }
 
-func GetLessonByID(db *Database, id int32, lesson *Lesson) error {
-	size := int(unsafe.Sizeof(*lesson))
-	offset := int64(int(id)*size) + DataOffset
-
-	n, err := syscall.Pread(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(lesson)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to read lesson from DB: %w", err)
-	}
-	if n < size {
-		return DBNotFound
+func GetLessonByID(id database.ID, lesson *Lesson) error {
+	if err := database.Read(LessonsDB, id, lesson); err != nil {
+		return err
 	}
 
 	DBLesson2Lesson(lesson)
 	return nil
 }
 
-func GetLessons(db *Database, pos *int64, lessons []Lesson) (int, error) {
-	if *pos < DataOffset {
-		*pos = DataOffset
-	}
-	size := int(unsafe.Sizeof(lessons[0]))
-
-	n, err := syscall.Pread(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(lessons))), len(lessons)*size), *pos)
+func GetLessons(pos *int64, lessons []Lesson) (int, error) {
+	n, err := database.ReadMany(LessonsDB, pos, lessons)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read lesson from DB: %w", err)
+		return 0, err
 	}
-	*pos += int64(n)
 
-	n /= size
 	for i := 0; i < n; i++ {
 		DBLesson2Lesson(&lessons[i])
 	}
-
 	return n, nil
 }
 
 func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
-	n += String2DBString(&ds.Name, ss.Name, data, n)
+	n += database.String2DBString(&ds.Name, ss.Name, data, n)
 
 	switch ss.Type {
 	default:
@@ -221,24 +205,24 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 			sq := &st.Questions[i]
 			dq := &dt.Questions[i]
 
-			n += String2DBString(&dq.Name, sq.Name, data, n)
+			n += database.String2DBString(&dq.Name, sq.Name, data, n)
 
 			dq.Answers = make([]string, len(sq.Answers))
 			for j := 0; j < len(sq.Answers); j++ {
-				n += String2DBString(&dq.Answers[j], sq.Answers[j], data, n)
+				n += database.String2DBString(&dq.Answers[j], sq.Answers[j], data, n)
 			}
-			n += Slice2DBSlice(&dq.Answers, dq.Answers, data, n)
+			n += database.Slice2DBSlice(&dq.Answers, dq.Answers, data, n)
 
-			n += Slice2DBSlice(&dq.CorrectAnswers, sq.CorrectAnswers, data, n)
+			n += database.Slice2DBSlice(&dq.CorrectAnswers, sq.CorrectAnswers, data, n)
 		}
-		n += Slice2DBSlice(&dt.Questions, dt.Questions, data, n)
+		n += database.Slice2DBSlice(&dt.Questions, dt.Questions, data, n)
 	case StepTypeProgramming:
 		st, _ := Step2Programming(ss)
 
 		ds.Type = StepTypeProgramming
 		dt, _ := Step2Programming(ds)
 
-		n += String2DBString(&dt.Description, st.Description, data, n)
+		n += database.String2DBString(&dt.Description, st.Description, data, n)
 
 		for i := 0; i < len(st.Checks); i++ {
 			dt.Checks[i] = make([]Check, len(st.Checks[i]))
@@ -246,23 +230,19 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 				sc := &st.Checks[i][j]
 				dc := &dt.Checks[i][j]
 
-				n += String2DBString(&dc.Input, sc.Input, data, n)
-				n += String2DBString(&dc.Output, sc.Output, data, n)
+				n += database.String2DBString(&dc.Input, sc.Input, data, n)
+				n += database.String2DBString(&dc.Output, sc.Output, data, n)
 			}
-			n += Slice2DBSlice(&dt.Checks[i], dt.Checks[i], data, n)
+			n += database.Slice2DBSlice(&dt.Checks[i], dt.Checks[i], data, n)
 		}
 	}
 
 	return n
 }
 
-func SaveLesson(db *Database, lesson *Lesson) error {
+func SaveLesson(lesson *Lesson) error {
 	var lessonDB Lesson
 	var n int
-
-	size := int(unsafe.Sizeof(*lesson))
-	offset := int64(int(lesson.ID)*size) + DataOffset
-	data := unsafe.Slice(&lessonDB.Data[0], len(lessonDB.Data))
 
 	lessonDB.ID = lesson.ID
 	lessonDB.Flags = lesson.Flags
@@ -270,22 +250,18 @@ func SaveLesson(db *Database, lesson *Lesson) error {
 	lessonDB.ContainerType = lesson.ContainerType
 
 	/* TODO(anton2920): save up to a sizeof(lesson.Data). */
+	data := unsafe.Slice(&lessonDB.Data[0], len(lessonDB.Data))
 	lessonDB.Steps = make([]Step, len(lesson.Steps))
 	for i := 0; i < len(lesson.Steps); i++ {
 		n += Step2DBStep(&lessonDB.Steps[i], &lesson.Steps[i], data, n)
 	}
 
-	n += String2DBString(&lessonDB.Name, lesson.Name, data, n)
-	n += String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
-	n += Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
-	n += Slice2DBSlice(&lessonDB.Submissions, lesson.Submissions, data, n)
+	n += database.String2DBString(&lessonDB.Name, lesson.Name, data, n)
+	n += database.String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
+	n += database.Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
+	n += database.Slice2DBSlice(&lessonDB.Submissions, lesson.Submissions, data, n)
 
-	_, err := syscall.Pwrite(db.LessonsFile, unsafe.Slice((*byte)(unsafe.Pointer(&lessonDB)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to write lesson to DB: %w", err)
-	}
-
-	return nil
+	return database.Write(LessonsDB, lessonDB.ID, &lessonDB)
 }
 
 func StepStringType(s *Step) string {
@@ -301,7 +277,7 @@ func StepStringType(s *Step) string {
 
 func DisplayLessonLink(w *http.Response, lesson *Lesson) {
 	w.AppendString(`<a href="/lesson/`)
-	w.WriteInt(int(lesson.ID))
+	w.WriteID(lesson.ID)
 	w.AppendString(`">Open</a>`)
 }
 
@@ -321,8 +297,8 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetLessonByID(DB2, int32(id), &lesson); err != nil {
-		if err == DBNotFound {
+	if err := GetLessonByID(id, &lesson); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("lesson with this ID does not exist")
 		}
 		return http.ServerError(err)
@@ -335,13 +311,13 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		var course Course
 		var user User
 
-		if err := GetUserByID(DB2, session.ID, &user); err != nil {
+		if err := GetUserByID(session.ID, &user); err != nil {
 			return http.ServerError(err)
 		}
 		if !UserOwnsCourse(&user, lesson.ContainerID) {
 			return http.ForbiddenError
 		}
-		if err := GetCourseByID(DB2, lesson.ContainerID, &course); err != nil {
+		if err := GetCourseByID(lesson.ContainerID, &course); err != nil {
 			return http.ServerError(err)
 		}
 		container = course.Name
@@ -349,7 +325,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		var subject Subject
 		var err error
 
-		if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+		if err := GetSubjectByID(lesson.ContainerID, &subject); err != nil {
 			return http.ServerError(err)
 		}
 		who, err = WhoIsUserInSubject(session.ID, &subject)
@@ -413,7 +389,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	case SubjectUserAdmin, SubjectUserTeacher:
 		if len(lesson.Submissions) > 0 {
 			for i := 0; i < len(lesson.Submissions); i++ {
-				if err := GetSubmissionByID(DB2, lesson.Submissions[i], &submission); err != nil {
+				if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
 					return http.ServerError(err)
 				}
 
@@ -437,7 +413,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		si := -1
 
 		for i := 0; i < len(lesson.Submissions); i++ {
-			if err := GetSubmissionByID(DB2, lesson.Submissions[i], &submission); err != nil {
+			if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
 				return http.ServerError(err)
 			}
 
@@ -465,7 +441,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<form method="POST" action="/submission/new">`)
 
 		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteInt(int(lesson.ID))
+		w.WriteID(lesson.ID)
 		w.AppendString(`">`)
 
 		if si == -1 {
@@ -487,6 +463,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	return nil
 }
 
+/* TODO(anton2920): check whether this function is needed. */
 func StepDeepCopy(dst *Step, src *Step) {
 	switch src.Type {
 	default:
@@ -529,13 +506,13 @@ func StepDeepCopy(dst *Step, src *Step) {
 	}
 }
 
-func LessonsDeepCopy(dst *[]int32, src []int32, containerID int32, containerType ContainerType) {
-	*dst = make([]int32, len(src))
+func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database.ID, containerType ContainerType) {
+	*dst = make([]database.ID, len(src))
 
 	for i := 0; i < len(src); i++ {
 		var sl, dl Lesson
 
-		if err := GetLessonByID(DB2, src[i], &sl); err != nil {
+		if err := GetLessonByID(src[i], &sl); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 
@@ -550,18 +527,18 @@ func LessonsDeepCopy(dst *[]int32, src []int32, containerID int32, containerType
 			StepDeepCopy(&dl.Steps[j], &sl.Steps[j])
 		}
 
-		if err := CreateLesson(DB2, &dl); err != nil {
+		if err := CreateLesson(&dl); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 		(*dst)[i] = dl.ID
 	}
 }
 
-func DisplayLessonsEditableList(w *http.Response, lessons []int32) {
+func DisplayLessonsEditableList(w *http.Response, lessons []database.ID) {
 	var lesson Lesson
 
 	for i := 0; i < len(lessons); i++ {
-		if err := GetLessonByID(DB2, lessons[i], &lesson); err != nil {
+		if err := GetLessonByID(lessons[i], &lesson); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 

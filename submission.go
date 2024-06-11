@@ -5,12 +5,12 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
-	"github.com/anton2920/gofa/syscall"
 )
 
 type (
@@ -45,7 +45,7 @@ type (
 	}
 	SubmittedProgramming struct {
 		SubmittedCommon
-		LanguageID int32
+		LanguageID database.ID
 		Solution   string
 
 		Scores   [2][]int
@@ -58,10 +58,10 @@ type (
 	}
 
 	Submission struct {
-		ID       int32
+		ID       database.ID
 		Flags    int32
-		UserID   int32
-		LessonID int32
+		UserID   database.ID
+		LessonID database.ID
 
 		Status SubmissionCheckStatus
 
@@ -126,19 +126,19 @@ func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming,
 	return (*SubmittedProgramming)(unsafe.Pointer(submittedStep)), nil
 }
 
-func CreateSubmission(db *Database, submission *Submission) error {
+func CreateSubmission(submission *Submission) error {
 	var err error
 
-	submission.ID, err = IncrementNextID(db.SubmissionsFile)
+	submission.ID, err = database.IncrementNextID(SubmissionsDB)
 	if err != nil {
 		return fmt.Errorf("failed to increment submission ID: %w", err)
 	}
 
-	return SaveSubmission(db, submission)
+	return SaveSubmission(submission)
 }
 
 func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
-	submittedStep.Error = Offset2String(submittedStep.Error, data)
+	submittedStep.Error = database.Offset2String(submittedStep.Error, data)
 	DBStep2Step(&submittedStep.Step, data)
 
 	switch submittedStep.Type {
@@ -147,23 +147,23 @@ func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
 
-		submittedTest.SubmittedQuestions = Offset2Slice(submittedTest.SubmittedQuestions, data)
+		submittedTest.SubmittedQuestions = database.Offset2Slice(submittedTest.SubmittedQuestions, data)
 		for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
 			submittedQuestion := &submittedTest.SubmittedQuestions[i]
-			submittedQuestion.SelectedAnswers = Offset2Slice(submittedQuestion.SelectedAnswers, data)
+			submittedQuestion.SelectedAnswers = database.Offset2Slice(submittedQuestion.SelectedAnswers, data)
 		}
-		submittedTest.Scores = Offset2Slice(submittedTest.Scores, data)
+		submittedTest.Scores = database.Offset2Slice(submittedTest.Scores, data)
 	case SubmittedTypeProgramming:
 		submittedTask, _ := Submitted2Programming(submittedStep)
 
-		submittedTask.Solution = Offset2String(submittedTask.Solution, data)
+		submittedTask.Solution = database.Offset2String(submittedTask.Solution, data)
 
 		for i := 0; i < 2; i++ {
-			submittedTask.Scores[i] = Offset2Slice(submittedTask.Scores[i], data)
+			submittedTask.Scores[i] = database.Offset2Slice(submittedTask.Scores[i], data)
 
-			submittedTask.Messages[i] = Offset2Slice(submittedTask.Messages[i], data)
+			submittedTask.Messages[i] = database.Offset2Slice(submittedTask.Messages[i], data)
 			for j := 0; j < len(submittedTask.Messages[i]); j++ {
-				submittedTask.Messages[i][j] = Offset2String(submittedTask.Messages[i][j], data)
+				submittedTask.Messages[i][j] = database.Offset2String(submittedTask.Messages[i][j], data)
 			}
 		}
 	}
@@ -173,45 +173,30 @@ func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
 func DBSubmission2Submission(submission *Submission) {
 	data := &submission.Data[0]
 
-	submission.SubmittedSteps = Offset2Slice(submission.SubmittedSteps, data)
+	submission.SubmittedSteps = database.Offset2Slice(submission.SubmittedSteps, data)
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		DBSubmitted2Submitted(&submission.SubmittedSteps[i], data)
 	}
 }
 
-func GetSubmissionByID(db *Database, id int32, submission *Submission) error {
-	size := int(unsafe.Sizeof(*submission))
-	offset := int64(int(id)*size) + DataOffset
-
-	n, err := syscall.Pread(db.SubmissionsFile, unsafe.Slice((*byte)(unsafe.Pointer(submission)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to read submission from DB: %w", err)
-	}
-	if n < size {
-		return DBNotFound
+func GetSubmissionByID(id database.ID, submission *Submission) error {
+	if err := database.Read(SubmissionsDB, id, submission); err != nil {
+		return err
 	}
 
 	DBSubmission2Submission(submission)
 	return nil
 }
 
-func GetSubmissions(db *Database, pos *int64, submissions []Submission) (int, error) {
-	if *pos < DataOffset {
-		*pos = DataOffset
-	}
-	size := int(unsafe.Sizeof(submissions[0]))
-
-	n, err := syscall.Pread(db.SubmissionsFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(submissions))), len(submissions)*size), *pos)
+func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
+	n, err := database.ReadMany(SubmissionsDB, pos, submissions)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read submission from DB: %w", err)
+		return 0, err
 	}
-	*pos += int64(n)
 
-	n /= size
 	for i := 0; i < n; i++ {
 		DBSubmission2Submission(&submissions[i])
 	}
-
 	return n, nil
 }
 
@@ -220,7 +205,7 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 	ds.Status = ss.Status
 
 	n += Step2DBStep(&ds.Step, &ss.Step, data, n)
-	n += String2DBString(&ds.Error, ss.Error, data, n)
+	n += database.String2DBString(&ds.Error, ss.Error, data, n)
 
 	switch ss.Type {
 	default:
@@ -235,11 +220,11 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 		for i := 0; i < len(st.SubmittedQuestions); i++ {
 			sq := &st.SubmittedQuestions[i]
 			dq := &dt.SubmittedQuestions[i]
-			n += Slice2DBSlice(&dq.SelectedAnswers, sq.SelectedAnswers, data, n)
+			n += database.Slice2DBSlice(&dq.SelectedAnswers, sq.SelectedAnswers, data, n)
 		}
-		n += Slice2DBSlice(&dt.SubmittedQuestions, dt.SubmittedQuestions, data, n)
+		n += database.Slice2DBSlice(&dt.SubmittedQuestions, dt.SubmittedQuestions, data, n)
 
-		n += Slice2DBSlice(&dt.Scores, st.Scores, data, n)
+		n += database.Slice2DBSlice(&dt.Scores, st.Scores, data, n)
 	case SubmittedTypeProgramming:
 		st, _ := Submitted2Programming(ss)
 
@@ -248,29 +233,25 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 
 		dt.LanguageID = st.LanguageID
 
-		n += String2DBString(&dt.Solution, st.Solution, data, n)
+		n += database.String2DBString(&dt.Solution, st.Solution, data, n)
 
 		for i := 0; i < 2; i++ {
-			n += Slice2DBSlice(&dt.Scores[i], st.Scores[i], data, n)
+			n += database.Slice2DBSlice(&dt.Scores[i], st.Scores[i], data, n)
 
 			dt.Messages[i] = make([]string, len(st.Messages[i]))
 			for j := 0; j < len(st.Messages[i]); j++ {
-				n += String2DBString(&dt.Messages[i][j], st.Messages[i][j], data, n)
+				n += database.String2DBString(&dt.Messages[i][j], st.Messages[i][j], data, n)
 			}
-			n += Slice2DBSlice(&dt.Messages[i], dt.Messages[i], data, n)
+			n += database.Slice2DBSlice(&dt.Messages[i], dt.Messages[i], data, n)
 		}
 	}
 
 	return n
 }
 
-func SaveSubmission(db *Database, submission *Submission) error {
+func SaveSubmission(submission *Submission) error {
 	var submissionDB Submission
 	var n int
-
-	size := int(unsafe.Sizeof(*submission))
-	offset := int64(int(submission.ID)*size) + DataOffset
-	data := unsafe.Slice(&submissionDB.Data[0], len(submissionDB.Data))
 
 	submissionDB.ID = submission.ID
 	submissionDB.Flags = submission.Flags
@@ -281,18 +262,14 @@ func SaveSubmission(db *Database, submission *Submission) error {
 	submissionDB.FinishedAt = submission.FinishedAt
 
 	/* TODO(anton2920): save up to a sizeof(lesson.Data). */
+	data := unsafe.Slice(&submissionDB.Data[0], len(submissionDB.Data))
 	submissionDB.SubmittedSteps = make([]SubmittedStep, len(submission.SubmittedSteps))
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		n += Submitted2DBSubmitted(&submissionDB.SubmittedSteps[i], &submission.SubmittedSteps[i], data, n)
 	}
-	n += Slice2DBSlice(&submissionDB.SubmittedSteps, submissionDB.SubmittedSteps, data, n)
+	n += database.Slice2DBSlice(&submissionDB.SubmittedSteps, submissionDB.SubmittedSteps, data, n)
 
-	_, err := syscall.Pwrite(db.SubmissionsFile, unsafe.Slice((*byte)(unsafe.Pointer(&submissionDB)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to write submission to DB: %w", err)
-	}
-
-	return nil
+	return database.Write(SubmissionsDB, submissionDB.ID, &submissionDB)
 }
 
 func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
@@ -357,12 +334,12 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	var user User
 
-	if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
+	if err := GetUserByID(submission.UserID, &user); err != nil {
 		/* TODO(anton2920): report error. */
 	}
 
 	w.AppendString(`<a href="/submission/`)
-	w.WriteInt(int(submission.ID))
+	w.WriteID(submission.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
@@ -386,11 +363,11 @@ func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedP
 		w.AppendString(` disabled`)
 	}
 	w.AppendString(`>`)
-	for i := int32(0); i < int32(len(ProgrammingLanguages)); i++ {
+	for i := database.ID(0); i < database.ID(len(ProgrammingLanguages)); i++ {
 		lang := &ProgrammingLanguages[i]
 
 		w.AppendString(`<option value="`)
-		w.WriteInt(int(i))
+		w.WriteID(i)
 		w.AppendString(`"`)
 		if i == submittedTask.LanguageID {
 			w.AppendString(` selected`)
@@ -417,18 +394,18 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubmissionByID(DB2, int32(id), &submission); err != nil {
-		if err == DBNotFound {
+	if err := GetSubmissionByID(id, &submission); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("lesson with this ID does not exist")
 		}
 		return http.ServerError(err)
 	}
 
-	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
 		return http.ServerError(err)
 	}
 
-	if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+	if err := GetSubjectByID(lesson.ContainerID, &subject); err != nil {
 		return http.ServerError(err)
 	}
 	who, err := WhoIsUserInSubject(session.ID, &subject)
@@ -440,7 +417,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	}
 	teacher := (who == SubjectUserAdmin) || (who == SubjectUserTeacher)
 
-	if err := GetUserByID(DB2, submission.UserID, &user); err != nil {
+	if err := GetUserByID(submission.UserID, &user); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -471,7 +448,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/results">`)
 
 	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteInt(int(submission.ID))
+	w.WriteID(submission.ID)
 	w.AppendString(`">`)
 
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
@@ -772,13 +749,13 @@ func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submissio
 				submission.SubmittedSteps[i].Status = SubmissionCheckPending
 			}
 		}
-		if err := SaveSubmission(DB2, submission); err != nil {
+		if err := SaveSubmission(submission); err != nil {
 			return http.ServerError(err)
 		}
 
 		SubmissionVerifyChannel <- submission.ID
 
-		w.RedirectID("/submission/", int(submission.ID), http.StatusSeeOther)
+		w.RedirectID("/submission/", submission.ID, http.StatusSeeOther)
 		return nil
 	}
 }
@@ -797,22 +774,22 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	submissionID, err := r.Form.GetInt("ID")
+	submissionID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubmissionByID(DB2, int32(submissionID), &submission); err != nil {
-		if err == DBNotFound {
+	if err := GetSubmissionByID(submissionID, &submission); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("submission with this ID does not exist")
 		}
 		return http.ServerError(err)
 	}
 
-	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
 		return http.ServerError(err)
 	}
 
-	if err := GetSubjectByID(DB2, lesson.ContainerID, &subject); err != nil {
+	if err := GetSubjectByID(lesson.ContainerID, &subject); err != nil {
 		return http.ServerError(err)
 	}
 	who, err := WhoIsUserInSubject(session.ID, &subject)
@@ -926,12 +903,12 @@ func SubmissionNewTestVerify(submittedTest *SubmittedTest) error {
 }
 
 func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
-	id, err := GetValidIndex(vs.Get("LanguageID"), len(ProgrammingLanguages))
+	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
 	if err != nil {
 		return http.ClientError(err)
 	}
+	submittedTask.LanguageID = id
 
-	submittedTask.LanguageID = int32(id)
 	submittedTask.Solution = vs.Get("Solution")
 	return nil
 }
@@ -951,7 +928,7 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
 	var lesson Lesson
 
-	if err := GetLessonByID(DB2, submission.LessonID, &lesson); err != nil {
+	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -1272,12 +1249,12 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
-	lessonID, err := r.Form.GetInt("ID")
+	lessonID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetLessonByID(DB2, int32(lessonID), &lesson); err != nil {
-		if err == DBNotFound {
+	if err := GetLessonByID(lessonID, &lesson); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("lesson with this ID does not exist")
 		}
 		return http.ServerError(err)
@@ -1286,7 +1263,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(nil)
 	}
 
-	if err := GetSubjectByID(DB2, int32(lesson.ContainerID), &subject); err != nil {
+	if err := GetSubjectByID(lesson.ContainerID, &subject); err != nil {
 		return http.ServerError(err)
 	}
 	who, err := WhoIsUserInSubject(session.ID, &subject)
@@ -1308,12 +1285,12 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 			submittedStep := &submission.SubmittedSteps[i]
 			StepDeepCopy(&submittedStep.Step, &lesson.Steps[i])
 		}
-		if err := CreateSubmission(DB2, &submission); err != nil {
+		if err := CreateSubmission(&submission); err != nil {
 			return http.ServerError(err)
 		}
 
 		lesson.Submissions = append(lesson.Submissions, submission.ID)
-		if err := SaveLesson(DB2, &lesson); err != nil {
+		if err := SaveLesson(&lesson); err != nil {
 			return http.ServerError(err)
 		}
 		r.Form.SetInt("SubmissionIndex", len(lesson.Submissions)-1)
@@ -1322,11 +1299,11 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetSubmissionByID(DB2, lesson.Submissions[si], &submission); err != nil {
+		if err := GetSubmissionByID(lesson.Submissions[si], &submission); err != nil {
 			return http.ServerError(err)
 		}
 	}
-	defer SaveSubmission(DB2, &submission)
+	defer SaveSubmission(&submission)
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key
@@ -1407,7 +1384,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		submission.Flags = SubmissionActive
 		submission.FinishedAt = time.Now().Unix()
 
-		if err := SaveSubmission(DB2, &submission); err != nil {
+		if err := SaveSubmission(&submission); err != nil {
 			return http.ServerError(err)
 		}
 		SubmissionVerifyChannel <- submission.ID

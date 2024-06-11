@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/syscall"
@@ -14,7 +15,7 @@ import (
 
 type Session struct {
 	GobMutex
-	ID     int32
+	ID     database.ID
 	Expiry time.Time
 }
 
@@ -70,7 +71,7 @@ func GenerateSessionToken() (string, error) {
 	return string(token), nil
 }
 
-func RemoveAllUserSessions(userID int32) {
+func RemoveAllUserSessions(userID database.ID) {
 	SessionsLock.RLock()
 	for token, session := range Sessions {
 		if session.ID == userID {

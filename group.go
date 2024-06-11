@@ -2,21 +2,21 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
 
 type Group struct {
-	ID    int32
+	ID    database.ID
 	Flags int32
 
 	Name      string
-	Students  []int32
+	Students  []database.ID
 	CreatedOn int64
 
 	Data [1024]byte
@@ -32,7 +32,7 @@ const (
 	MaxGroupNameLen = 15
 )
 
-func UserInGroup(userID int32, group *Group) bool {
+func UserInGroup(userID database.ID, group *Group) bool {
 	if userID == AdminID {
 		return true
 	}
@@ -44,66 +44,51 @@ func UserInGroup(userID int32, group *Group) bool {
 	return false
 }
 
-func CreateGroup(db *Database, group *Group) error {
+func CreateGroup(group *Group) error {
 	var err error
 
-	group.ID, err = IncrementNextID(db.GroupsFile)
+	group.ID, err = database.IncrementNextID(GroupsDB)
 	if err != nil {
 		return fmt.Errorf("failed to increment group ID: %w", err)
 	}
 
-	return SaveGroup(db, group)
+	return SaveGroup(group)
 }
 
 func DBGroup2Group(group *Group) {
 	data := &group.Data[0]
 
-	group.Name = Offset2String(group.Name, data)
-	group.Students = Offset2Slice(group.Students, data)
+	group.Name = database.Offset2String(group.Name, data)
+	group.Students = database.Offset2Slice(group.Students, data)
 }
 
-func GetGroupByID(db *Database, id int32, group *Group) error {
-	size := int(unsafe.Sizeof(*group))
-	offset := int64(int(id)*size) + DataOffset
-
-	n, err := syscall.Pread(db.GroupsFile, unsafe.Slice((*byte)(unsafe.Pointer(group)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to read group from DB: %w", err)
-	}
-	if n < size {
-		return DBNotFound
+func GetGroupByID(id database.ID, group *Group) error {
+	if err := database.Read(GroupsDB, id, group); err != nil {
+		return err
 	}
 
 	DBGroup2Group(group)
 	return nil
 }
 
-func GetGroups(db *Database, pos *int64, groups []Group) (int, error) {
-	if *pos < DataOffset {
-		*pos = DataOffset
-	}
-	size := int(unsafe.Sizeof(groups[0]))
-
-	n, err := syscall.Pread(db.GroupsFile, unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(groups))), len(groups)*size), *pos)
+func GetGroups(pos *int64, groups []Group) (int, error) {
+	n, err := database.ReadMany(GroupsDB, pos, groups)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read group from DB: %w", err)
+		return 0, err
 	}
-	*pos += int64(n)
 
-	n /= size
 	for i := 0; i < n; i++ {
 		DBGroup2Group(&groups[i])
 	}
-
 	return n, nil
 }
 
-func DeleteGroupByID(db *Database, id int32) error {
+func DeleteGroupByID(id database.ID) error {
 	flags := GroupDeleted
 	var group Group
 
-	offset := int64(int(id)*int(unsafe.Sizeof(group))) + DataOffset + int64(unsafe.Offsetof(group.Flags))
-	_, err := syscall.Pwrite(db.GroupsFile, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
+	offset := int64(int(id)*int(unsafe.Sizeof(group))) + database.DataOffset + int64(unsafe.Offsetof(group.Flags))
+	_, err := syscall.Pwrite(GroupsDB.FD, unsafe.Slice((*byte)(unsafe.Pointer(&flags)), unsafe.Sizeof(flags)), offset)
 	if err != nil {
 		return fmt.Errorf("failed to delete group from DB: %w", err)
 	}
@@ -111,38 +96,30 @@ func DeleteGroupByID(db *Database, id int32) error {
 	return nil
 }
 
-func SaveGroup(db *Database, group *Group) error {
+func SaveGroup(group *Group) error {
 	var groupDB Group
 	var n int
-
-	size := int(unsafe.Sizeof(*group))
-	offset := int64(int(group.ID)*size) + DataOffset
-	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
 
 	groupDB.ID = group.ID
 	groupDB.Flags = group.Flags
 
 	/* TODO(anton2920): save up to a sizeof(group.Data). */
-	n += String2DBString(&groupDB.Name, group.Name, data, n)
-	n += Slice2DBSlice(&groupDB.Students, group.Students, data, n)
+	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
+	n += database.String2DBString(&groupDB.Name, group.Name, data, n)
+	n += database.Slice2DBSlice(&groupDB.Students, group.Students, data, n)
 
 	groupDB.CreatedOn = group.CreatedOn
 
-	_, err := syscall.Pwrite(db.GroupsFile, unsafe.Slice((*byte)(unsafe.Pointer(&groupDB)), size), offset)
-	if err != nil {
-		return fmt.Errorf("failed to write group to DB: %w", err)
-	}
-
-	return nil
+	return database.Write(GroupsDB, groupDB.ID, &groupDB)
 }
 
 func DisplayGroupLink(w *http.Response, group *Group) {
 	w.AppendString(`<a href="/group/`)
-	w.WriteInt(int(group.ID))
+	w.WriteID(group.ID)
 	w.AppendString(`">`)
 	w.WriteHTMLString(group.Name)
 	w.AppendString(` (ID: `)
-	w.WriteInt(int(group.ID))
+	w.WriteID(group.ID)
 	w.AppendString(`)`)
 	if group.Flags == GroupDeleted {
 		w.AppendString(` [deleted]`)
@@ -162,8 +139,8 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetGroupByID(DB2, int32(id), &group); err != nil {
-		if err == DBNotFound {
+	if err := GetGroupByID(id, &group); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("group with this ID does not exist")
 		}
 		return http.ServerError(err)
@@ -192,7 +169,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h2>Info</h2>`)
 
 	w.AppendString(`<p>ID: `)
-	w.WriteInt(int(group.ID))
+	w.WriteID(group.ID)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
@@ -203,7 +180,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<ul>`)
 	for i := 0; i < len(group.Students); i++ {
 		var user User
-		if err := GetUserByID(DB2, group.Students[i], &user); err != nil {
+		if err := GetUserByID(group.Students[i], &user); err != nil {
 			return http.ServerError(err)
 		}
 
@@ -228,7 +205,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		for i := 0; i < len(group.Students); i++ {
 			studentID := group.Students[i]
 			w.AppendString(`<input type="hidden" name="StudentID" value="`)
-			w.WriteInt(int(studentID))
+			w.WriteID(studentID)
 			w.AppendString(`">`)
 		}
 
@@ -254,7 +231,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	var pos int64
 
 	for {
-		n, err := GetSubjects(DB2, &pos, subjects)
+		n, err := GetSubjects(&pos, subjects)
 		if err != nil {
 			return http.ServerError(err)
 		}
@@ -290,7 +267,7 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 
 	w.AppendString(`<select name="StudentID" multiple>`)
 	for {
-		n, err := GetUsers(DB2, &pos, users)
+		n, err := GetUsers(&pos, users)
 		if err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -304,14 +281,14 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 			}
 
 			w.AppendString(`<option value="`)
-			w.WriteInt(int(user.ID))
+			w.WriteID(user.ID)
 			w.AppendString(`"`)
 			for j := 0; j < len(ids); j++ {
-				id, err := strconv.Atoi(ids[j])
+				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
-				if int32(id) == user.ID {
+				if id == user.ID {
 					w.AppendString(` selected`)
 				}
 			}
@@ -432,7 +409,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
-	nextUserID, err := GetNextID(DB2.UsersFile)
+	nextUserID, err := database.GetNextID(UsersDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
@@ -441,14 +418,13 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 	if len(sids) == 0 {
 		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("add at least one student"))
 	}
-
-	students := make([]int32, len(sids))
+	students := make([]database.ID, len(sids))
 	for i := 0; i < len(sids); i++ {
-		id, err := GetValidIndex(sids[i], int(nextUserID))
+		id, err := GetValidID(sids[i], nextUserID)
 		if (err != nil) || (id == AdminID) {
 			return http.ClientError(err)
 		}
-		students[i] = int32(id)
+		students[i] = id
 	}
 
 	var group Group
@@ -456,7 +432,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 	group.Students = students
 	group.CreatedOn = time.Now().Unix()
 
-	if err := CreateGroup(DB2, &group); err != nil {
+	if err := CreateGroup(&group); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -479,18 +455,18 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	groupID, err := r.Form.GetInt("ID")
+	groupID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetGroupByID(DB2, int32(groupID), &group); err != nil {
-		if err == DBNotFound {
+	if err := GetGroupByID(groupID, &group); err != nil {
+		if err == database.NotFound {
 			return WritePage(w, r, GroupEditPageHandler, http.NotFound("group with this ID is not found"))
 		}
 		return http.ServerError(err)
 	}
 
-	if err := DeleteGroupByID(DB2, int32(groupID)); err != nil {
+	if err := DeleteGroupByID(groupID); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -513,12 +489,12 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	groupID, err := r.Form.GetInt("ID")
+	groupID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetGroupByID(DB2, int32(groupID), &group); err != nil {
-		if err == DBNotFound {
+	if err := GetGroupByID(groupID, &group); err != nil {
+		if err == database.NotFound {
 			return WritePage(w, r, GroupEditPageHandler, http.NotFound("group with this ID is not found"))
 		}
 		return http.ServerError(err)
@@ -529,7 +505,7 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 		return WritePage(w, r, GroupEditPageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
 	}
 
-	nextUserID, err := GetNextID(DB2.UsersFile)
+	nextUserID, err := database.GetNextID(UsersDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
@@ -538,20 +514,19 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 	if len(sids) == 0 {
 		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("add at least one student"))
 	}
-
 	students := group.Students[:0]
 	for i := 0; i < len(sids); i++ {
-		id, err := GetValidIndex(sids[i], int(nextUserID))
+		id, err := GetValidID(sids[i], nextUserID)
 		if (err != nil) || (id == AdminID) {
 			return http.ClientError(err)
 		}
-		students = append(students, int32(id))
+		students = append(students, id)
 	}
 
 	group.Name = name
 	group.Students = students
 
-	if err := SaveGroup(DB2, &group); err != nil {
+	if err := SaveGroup(&group); err != nil {
 		return http.ServerError(err)
 	}
 

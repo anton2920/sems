@@ -12,6 +12,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/jail"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/syscall"
@@ -25,7 +26,7 @@ const (
 	SubmissionCheckDone
 )
 
-var SubmissionVerifyChannel = make(chan int32, 128)
+var SubmissionVerifyChannel = make(chan database.ID, 128)
 
 func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
@@ -319,7 +320,7 @@ func SubmissionVerifyWorker() {
 	for submissionID := range SubmissionVerifyChannel {
 		start := time.Now()
 
-		if err := GetSubmissionByID(DB2, submissionID, &submission); err != nil {
+		if err := GetSubmissionByID(submissionID, &submission); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 		if submission.Status == SubmissionCheckPending {
@@ -327,7 +328,7 @@ func SubmissionVerifyWorker() {
 			SubmissionVerify(&submission)
 			submission.Status = SubmissionCheckDone
 		}
-		if err := SaveSubmission(DB2, &submission); err != nil {
+		if err := SaveSubmission(&submission); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 

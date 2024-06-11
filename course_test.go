@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 )
@@ -189,7 +190,7 @@ func testCourseCreateEditPageHandler(t *testing.T, endpoint string) {
 		{{"ID", []string{"4"}}},
 	}
 
-	if err := DropData(DB2.CoursesFile); err != nil {
+	if err := database.Drop(CoursesDB); err != nil {
 		t.Fatalf("Failed to drop courses data: %v", err)
 	}
 	for i, token := range testTokens {

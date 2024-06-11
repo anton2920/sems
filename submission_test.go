@@ -10,7 +10,7 @@ import (
 func TestSubmissionNewPageHandler(t *testing.T) {
 	const endpoint = "/submission/new"
 
-	CreateInitialDB()
+	CreateInitialDBs()
 	testPostAuth(t, "/subject/lesson/edit", testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}}, http.StatusSeeOther)
 
 	expectedOK := [...]url.Values{

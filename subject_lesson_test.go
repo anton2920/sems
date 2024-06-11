@@ -175,11 +175,11 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 	}
 
 	var subject Subject
-	if err := GetSubjectByID(DB2, 0, &subject); err != nil {
+	if err := GetSubjectByID(0, &subject); err != nil {
 		t.Fatalf("Failed to get subject by ID 0: %v", err)
 	}
 	subject.Lessons = nil
-	if err := SaveSubject(DB2, &subject); err != nil {
+	if err := SaveSubject(&subject); err != nil {
 		t.Fatalf("Failed to save subject: %v", err)
 	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}}, http.StatusSeeOther)
@@ -188,20 +188,20 @@ func TestSubjectLessonEditPageHandler(t *testing.T) {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
 	}
 
-	if err := GetSubjectByID(DB2, 1, &subject); err != nil {
+	if err := GetSubjectByID(1, &subject); err != nil {
 		t.Fatalf("Failed to get subject by ID 1: %v", err)
 	}
 	var lesson Lesson
-	if err := GetLessonByID(DB2, subject.Lessons[0], &lesson); err != nil {
+	if err := GetLessonByID(subject.Lessons[0], &lesson); err != nil {
 		t.Fatalf("Failed to get lesson by ID: %v", err)
 	}
 	lesson.Flags = LessonDraft
-	if err := SaveLesson(DB2, &lesson); err != nil {
+	if err := SaveLesson(&lesson); err != nil {
 		t.Fatalf("Failed to save lesson: %v", err)
 	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{"Save"}}}, http.StatusBadRequest)
 	subject.Lessons = nil
-	if err := SaveSubject(DB2, &subject); err != nil {
+	if err := SaveSubject(&subject); err != nil {
 		t.Fatalf("Failed to save subject: %v", err)
 	}
 	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{"Save"}}}, http.StatusBadRequest)

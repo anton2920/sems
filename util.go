@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"unicode/utf8"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
@@ -24,19 +25,17 @@ func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 	}
 }
 
-func GetIDFromURL(u url.URL, prefix string) (int, error) {
-	path := u.Path
-
-	if !strings.StartsWith(path, prefix) {
+func GetIDFromURL(u url.URL, prefix string) (database.ID, error) {
+	if !strings.StartsWith(u.Path, prefix) {
 		return 0, http.NotFound("requested page does not exist")
 	}
 
-	id, err := strconv.Atoi(path[len(prefix):])
-	if err != nil {
+	id, err := strconv.Atoi(u.Path[len(prefix):])
+	if (err != nil) || (id < 0) || (id >= (1 << 31)) {
 		return 0, http.BadRequest("invalid ID for '%s'", prefix)
 	}
 
-	return id, nil
+	return database.ID(id), nil
 }
 
 func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssindex string, err error) {
@@ -57,16 +56,25 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 	return
 }
 
+func GetValidID(si string, nextID database.ID) (database.ID, error) {
+	id, err := strconv.Atoi(si)
+	if err != nil {
+		return -1, err
+	}
+	if (id < database.MinValidID) || (id >= int(nextID)) {
+		return -1, errors.New("ID out of range")
+	}
+	return database.ID(id), nil
+}
+
 func GetValidIndex(si string, len int) (int, error) {
 	i, err := strconv.Atoi(si)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-
 	if (i < 0) || (i >= len) {
-		return 0, errors.New("slice index out of range")
+		return -1, errors.New("index out of range")
 	}
-
 	return i, nil
 }
 
@@ -91,8 +99,4 @@ func RemoveAtIndex[T any](ts []T, i int) []T {
 		copy(ts[i:], ts[i+1:])
 	}
 	return ts[:len(ts)-1]
-}
-
-func RoundUp(x int, quantum int) int {
-	return (x + (quantum - 1)) & ^(quantum - 1)
 }

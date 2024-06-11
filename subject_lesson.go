@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 )
@@ -12,7 +13,7 @@ func SubjectLessonVerify(subject *Subject) error {
 		return http.BadRequest("create at least one lesson")
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
-		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		if lesson.Flags == LessonDraft {
@@ -75,11 +76,11 @@ func SubjectLessonEditHandleCommand(w *http.Response, r *http.Request, subject *
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
 			}
-			if err := GetLessonByID(DB2, subject.Lessons[pindex], &lesson); err != nil {
+			if err := GetLessonByID(subject.Lessons[pindex], &lesson); err != nil {
 				return http.ServerError(err)
 			}
 			lesson.Flags = LessonDraft
-			if err := SaveLesson(DB2, &lesson); err != nil {
+			if err := SaveLesson(&lesson); err != nil {
 				return http.ServerError(err)
 			}
 
@@ -104,7 +105,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	if err != nil {
 		return http.UnauthorizedError
 	}
-	if err := GetUserByID(DB2, session.ID, &user); err != nil {
+	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
 	}
 
@@ -115,17 +116,17 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	currentPage := r.Form.Get("CurrentPage")
 	nextPage := r.Form.Get("NextPage")
 
-	subjectID, err := r.Form.GetInt("ID")
+	subjectID, err := r.Form.GetID("ID")
 	if err != nil {
 		return http.ClientError(err)
 	}
-	if err := GetSubjectByID(DB2, int32(subjectID), &subject); err != nil {
-		if err == DBNotFound {
+	if err := GetSubjectByID(subjectID, &subject); err != nil {
+		if err == database.NotFound {
 			return http.NotFound("subject with this ID does not exist")
 		}
 		return http.ServerError(err)
 	}
-	defer SaveSubject(DB2, &subject)
+	defer SaveSubject(&subject)
 
 	if (session.ID != AdminID) && (session.ID != subject.TeacherID) {
 		return http.ForbiddenError
@@ -135,15 +136,15 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	case "create from":
 		var course Course
 
-		courseID, err := r.Form.GetInt("CourseID")
+		courseID, err := r.Form.GetID("CourseID")
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if !UserOwnsCourse(&user, int32(courseID)) {
+		if !UserOwnsCourse(&user, courseID) {
 			return http.ForbiddenError
 		}
-		if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
-			if err == DBNotFound {
+		if err := GetCourseByID(courseID, &course); err != nil {
+			if err == database.NotFound {
 				return http.NotFound("course with this ID does not exist")
 			}
 			return http.ServerError(err)
@@ -157,15 +158,15 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 	case "give as is":
 		var course Course
 
-		courseID, err := r.Form.GetInt("CourseID")
+		courseID, err := r.Form.GetID("CourseID")
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if !UserOwnsCourse(&user, int32(courseID)) {
+		if !UserOwnsCourse(&user, courseID) {
 			return http.ForbiddenError
 		}
-		if err := GetCourseByID(DB2, int32(courseID), &course); err != nil {
-			if err == DBNotFound {
+		if err := GetCourseByID(courseID, &course); err != nil {
+			if err == database.NotFound {
 				return http.NotFound("course with this ID does not exist")
 			}
 			return http.ServerError(err)
@@ -201,10 +202,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		LessonFillFromRequest(r.Form, &lesson)
 	case "Test":
@@ -212,10 +213,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -237,10 +238,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, subject.Lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -267,7 +268,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			return WritePageEx(w, r, LessonAddPageHandler, &lesson, err)
 		}
 		lesson.Flags = LessonActive
-		if err := SaveLesson(DB2, &lesson); err != nil {
+		if err := SaveLesson(&lesson); err != nil {
 			return http.ServerError(err)
 		}
 
@@ -277,7 +278,7 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 		lesson.ContainerID = subject.ID
 		lesson.ContainerType = ContainerTypeSubject
 
-		if err := CreateLesson(DB2, &lesson); err != nil {
+		if err := CreateLesson(&lesson); err != nil {
 			return http.ServerError(err)
 		}
 

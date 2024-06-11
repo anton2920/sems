@@ -28,8 +28,6 @@ var (
 
 var WorkingDirectory string
 
-var DB2 *Database
-
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
 	default:
@@ -236,11 +234,12 @@ func main() {
 		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	DB2, err = OpenDB("db")
-	if err != nil {
-		log.Fatalf("Failed to open DB: %v", err)
+	if err = OpenDBs("db"); err != nil {
+		log.Fatalf("Failed to open DBs: %v", err)
 	}
-	CreateInitialDB()
+	defer CloseDBs()
+
+	CreateInitialDBs()
 
 	if err := RestoreSessionsFromFile(SessionsFile); err != nil {
 		log.Warnf("Failed to restore sessions from file: %v", err)
@@ -350,9 +349,5 @@ func main() {
 
 	if err := StoreSessionsToFile(SessionsFile); err != nil {
 		log.Warnf("Failed to store sessions to file: %v", err)
-	}
-
-	if err := CloseDB(DB2); err != nil {
-		log.Warnf("Failed to close DB: %v", err)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/jail"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/net/http"
@@ -140,13 +141,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	DB2, err = OpenDB("db_test")
-	if err != nil {
+	if err := OpenDBs("db_test"); err != nil {
 		log.Fatalf("Failed to open DB: %v", err)
 	}
-	defer CloseDB(DB2)
+	defer CloseDBs()
 
-	CreateInitialDB()
+	CreateInitialDBs()
 
 	jail.JailsRootDir = "./jails_test"
 	os.MkdirAll(jail.JailsRootDir+"/containers", 0755)
@@ -155,7 +155,7 @@ func TestMain(m *testing.M) {
 	go SubmissionVerifyWorker()
 
 	now := time.Now()
-	for i := int32(0); i < int32(len(testTokens)); i++ {
+	for i := database.ID(0); i < database.ID(len(testTokens)); i++ {
 		testTokens[i], err = GenerateSessionToken()
 		if err != nil {
 			log.Fatalf("Failed to generate session token: %v", err)

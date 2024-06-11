@@ -3,6 +3,7 @@ package main
 import (
 	"unsafe"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/slices"
@@ -509,7 +510,7 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) err
 	}
 }
 
-func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []database.ID, currentPage, k, command string) error {
 	var lesson Lesson
 
 	/* TODO(anton2920): pass these as parameters. */
@@ -526,10 +527,10 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		switch command {
 		case "Delete":
@@ -555,10 +556,10 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -664,10 +665,10 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []int32, 
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(DB2, lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
-		defer SaveLesson(DB2, &lesson)
+		defer SaveLesson(&lesson)
 
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
