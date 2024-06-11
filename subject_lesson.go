@@ -149,11 +149,10 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			}
 			return http.ServerError(err)
 		}
-		if course.Flags == CourseDraft {
-			return http.BadRequest("cannot give a course that's still a draft")
+		if course.Flags != CourseActive {
+			return http.ClientError(nil)
 		}
 
-		/* TODO(anton2920): check if it's still a draft. */
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
 	case "give as is":
 		var course Course
@@ -171,8 +170,8 @@ func SubjectLessonEditPageHandler(w *http.Response, r *http.Request) error {
 			}
 			return http.ServerError(err)
 		}
-		if course.Flags == CourseDraft {
-			return http.BadRequest("cannot give a course that's still a draft")
+		if course.Flags != CourseActive {
+			return http.ClientError(nil)
 		}
 
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
