@@ -189,12 +189,16 @@ func OpenDB(dir string, name string) (*database.DB, error) {
 }
 
 func OpenDBs(dir string) error {
-	var err error
+	var shouldCreate bool
 
-	if err := syscall.Mkdir(dir, 0755); err != nil {
+	err := syscall.Mkdir(dir, 0755)
+	if err != nil {
 		if err.(syscall.Error).Errno != syscall.EEXIST {
 			return fmt.Errorf("failed to create DB directory: %w", err)
 		}
+	}
+	if err == nil {
+		shouldCreate = true
 	}
 
 	UsersDB, err = OpenDB(dir, "Users.db")
@@ -225,6 +229,10 @@ func OpenDBs(dir string) error {
 	SubmissionsDB, err = OpenDB(dir, "Submissions.db")
 	if err != nil {
 		return fmt.Errorf("failed to open subjects DB file: %w", err)
+	}
+
+	if shouldCreate {
+		CreateInitialDBs()
 	}
 
 	return nil
