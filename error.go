@@ -7,7 +7,7 @@ func DisplayErrorMessage(w *http.Response, l Language, message string) {
 		w.AppendString(`<div><p>`)
 		w.AppendString(Ls(l, "Error"))
 		w.AppendString(`: `)
-		w.WriteHTMLString(message)
+		w.WriteHTMLString(Ls(l, message))
 		w.AppendString(`.</p></div>`)
 	}
 }

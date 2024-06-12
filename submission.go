@@ -389,9 +389,13 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 	case SubmissionCheckPending:
 		w.AppendString(`<i>`)
 		w.AppendString(Ls(l, "pending"))
+		w.AppendString(` `)
+		w.AppendString(Ls(GL, "verification"))
 		w.AppendString(`</i>`)
 	case SubmissionCheckInProgress:
 		w.AppendString(`<i>`)
+		w.AppendString(Ls(GL, "verification"))
+		w.AppendString(` `)
 		w.AppendString(Ls(l, "in progress"))
 		w.AppendString(`</i>`)
 	case SubmissionCheckDone:
@@ -494,11 +498,17 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			switch submittedStep.Status {
 			case SubmissionCheckPending:
 				w.AppendString(`<p><i>`)
-				w.AppendString(Ls(GL, "Verification is pending..."))
+				w.AppendString(Ls(GL, "Pending"))
+				w.AppendString(` `)
+				w.AppendString(Ls(GL, "verification"))
+				w.AppendString(`...`)
 				w.AppendString(`</i></p>`)
 			case SubmissionCheckInProgress:
 				w.AppendString(`<p><i>`)
-				w.AppendString(Ls(GL, "Verification is in progress..."))
+				w.AppendString(Ls(GL, "Verification"))
+				w.AppendString(` `)
+				w.AppendString(Ls(GL, "in progress"))
+				w.AppendString(`...`)
 				w.AppendString(`</i></p>`)
 			case SubmissionCheckDone:
 				DisplaySubmittedStepScore(w, GL, submittedStep)
@@ -517,11 +527,17 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	switch submission.Status {
 	case SubmissionCheckPending:
 		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "Verification is pending..."))
+		w.AppendString(Ls(GL, "Pending"))
+		w.AppendString(` `)
+		w.AppendString(Ls(GL, "verification"))
+		w.AppendString(`...`)
 		w.AppendString(`</i></p>`)
 	case SubmissionCheckInProgress:
 		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "Verification is in progress..."))
+		w.AppendString(Ls(GL, "Verification"))
+		w.AppendString(` `)
+		w.AppendString(Ls(GL, "in progress"))
+		w.AppendString(`...`)
 		w.AppendString(`</i></p>`)
 	case SubmissionCheckDone:
 		w.AppendString(`<p>`)

@@ -1,7 +1,5 @@
 package main
 
-import "github.com/anton2920/gofa/log"
-
 type Language int32
 
 const (
@@ -17,6 +15,7 @@ var Language2String = [...]string{
 	FR: "Français",
 }
 
+/* TODO(anton2920): remove '([A-Z]|[a-z])[a-z]+' duplicates. */
 var Localizations = map[string]*[XX]string{
 	"Add another answer": {
 		RU: "Добавить вариант ответа",
@@ -165,6 +164,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "Приступить к выполнению",
 		FR: "",
 	},
+	"Pending": {
+		RU: "Ожидается",
+		FR: "",
+	},
 	"Programming language": {
 		RU: "Язык программирования",
 		FR: "",
@@ -269,6 +272,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "Пользователи",
 		FR: "Utilisateurs",
 	},
+	"Verification": {
+		RU: "Проверка",
+		FR: "",
+	},
 
 	"add at least one student": {
 		RU: "добавьте хотя бы одного студента",
@@ -295,6 +302,30 @@ var Localizations = map[string]*[XX]string{
 		RU: "взять за основу",
 		FR: "",
 	},
+	"example %d: %s": {
+		RU: "пример %d: %s",
+		FR: "",
+	},
+	"expected %q, got %q": {
+		RU: "ожидалось %q, получено %q",
+		FR: "",
+	},
+	"failed to compile program: exceeded compilation timeout of %d seconds": {
+		RU: "неудалось собрать программу: превышено время ожидания в %d секунд",
+		FR: "",
+	},
+	"failed to compile program: %s %w": {
+		RU: "неудалось собрать программу: %s %w",
+		FR: "",
+	},
+	"failed to run program: exceeded timeout of %d seconds": {
+		RU: "неудалось выполнить программу: превышено время ожидания в %d секунд",
+		FR: "",
+	},
+	"failed to run program: %s %w": {
+		RU: "неудалось выполнить программу: %s %w",
+		FR: "",
+	},
 	"for": {
 		RU: "для",
 		FR: "",
@@ -314,6 +345,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"draft": {
 		RU: "черновик",
+	},
+	"in progress": {
+		RU: "в процессе",
+		FR: "",
 	},
 	"index out of range": {
 		RU: "индекс вне допустимого диапазона",
@@ -340,6 +375,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"output": {
 		RU: "выходные данные",
+		FR: "",
+	},
+	"pending": {
+		RU: "ожидается проверка",
 		FR: "",
 	},
 	"question %d: answer %d: length must be between %d and %d characters long": {
@@ -385,6 +424,10 @@ var Localizations = map[string]*[XX]string{
 	"test name length must be between %d and %d characters long": {
 		RU: "имя теста должно содержать от %d до %d символов",
 	},
+	"verification": {
+		RU: "проверка",
+		FR: "",
+	},
 	"with": {
 		RU: "с",
 		FR: "",
@@ -420,11 +463,6 @@ func Ls(l Language, s string) string {
 
 	ls := Localizations[s]
 	if (ls == nil) || (ls[l] == "") {
-		switch s {
-		default:
-			log.Errorf("String %q is not localized in %q", s, l.String())
-		case "↑", "^|", "↓", "|v", "-", "Command":
-		}
 		return s
 	}
 
