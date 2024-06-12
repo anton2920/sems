@@ -809,7 +809,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="Command" value="Add another question" formnovalidate>`)
+	DisplayCommand(w, "Add another question")
 	w.AppendString(`<br><br>`)
 
 	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
@@ -942,11 +942,11 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 
 	w.AppendString(`<h3>Examples</h3>`)
 	LessonAddProgrammingDisplayChecks(w, task, CheckTypeExample)
-	w.AppendString(`<input type="submit" name="Command" value="Add example" formnovalidate>`)
+	DisplayCommand(w, "Add example")
 
 	w.AppendString(`<h3>Tests</h3>`)
 	LessonAddProgrammingDisplayChecks(w, task, CheckTypeTest)
-	w.AppendString(`<input type="submit" name="Command" value="Add test" formnovalidate>`)
+	DisplayCommand(w, "Add test")
 
 	w.AppendString(`<br><br>`)
 	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
@@ -988,7 +988,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 	DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 
-	DisplayHiddenString(w, "CurentPage", "Lesson")
+	DisplayHiddenString(w, "CurrentPage", "Lesson")
 
 	w.AppendString(`<label>Name: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)

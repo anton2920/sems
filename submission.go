@@ -501,7 +501,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		DisplaySubmissionTotalScore(w, &submission)
 		w.AppendString(`</p>`)
 		if teacher {
-			w.AppendString(`<input type="submit" name="Command" value="Re-check">`)
+			DisplayCommand(w, "Re-check")
 		}
 	}
 	w.AppendString(`</form>`)
