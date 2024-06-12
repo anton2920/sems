@@ -134,9 +134,11 @@ func SaveSubject(subject *Subject) error {
 	return database.Write(SubjectsDB, subjectDB.ID, &subjectDB)
 }
 
-func DisplaySubjectTitle(w *http.Response, subject *Subject, teacher *User) {
+func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher *User) {
 	w.WriteHTMLString(subject.Name)
-	w.AppendString(` with `)
+	w.AppendString(` `)
+	w.AppendString(Ls(l, "with"))
+	w.AppendString(` `)
 	w.WriteHTMLString(teacher.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(teacher.FirstName)
@@ -148,7 +150,7 @@ func DisplaySubjectTitle(w *http.Response, subject *Subject, teacher *User) {
 	}
 }
 
-func DisplaySubjectLink(w *http.Response, subject *Subject) {
+func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 	var teacher User
 	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
 		/* TODO(anton2920): report error. */
@@ -158,26 +160,25 @@ func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	w.AppendString(`<a href="/subject/`)
 	w.WriteID(subject.ID)
 	w.AppendString(`">`)
-	DisplaySubjectTitle(w, subject, &teacher)
+	DisplaySubjectTitle(w, l, subject, &teacher)
 	w.AppendString(`</a>`)
 }
 
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	var subject Subject
-	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
 	}
 
-	id, err := GetIDFromURL(r.URL, "/subject/")
+	id, err := GetIDFromURL(GL, r.URL, "/subject/")
 	if err != nil {
 		return http.ClientError(err)
 	}
 	if err := GetSubjectByID(id, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("subject with this ID does not exist")
+			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -202,24 +203,30 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	DisplaySubjectTitle(w, &subject, &teacher)
+	DisplaySubjectTitle(w, GL, &subject, &teacher)
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	DisplaySubjectTitle(w, &subject, &teacher)
+	DisplaySubjectTitle(w, GL, &subject, &teacher)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<p>Teacher: `)
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Teacher"))
+	w.AppendString(`: `)
 	DisplayUserLink(w, &teacher)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<p>Group: `)
-	DisplayGroupLink(w, &group)
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Group"))
+	w.AppendString(`: `)
+	DisplayGroupLink(w, GL, &group)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<p>Created on: `)
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Created on"))
+	w.AppendString(`: `)
 	DisplayFormattedTime(w, subject.CreatedOn)
 	w.AppendString(`</p>`)
 
@@ -231,51 +238,27 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHiddenID(w, "TeacherID", subject.TeacherID)
 		DisplayHiddenID(w, "GroupID", subject.GroupID)
 		DisplayHiddenString(w, "Name", subject.Name)
-		w.AppendString(`<input type="submit" value="Edit">`)
+		DisplaySubmit(w, GL, "", "Edit", true)
 		w.AppendString(`</form>`)
 
 		w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
 		DisplayHiddenID(w, "ID", subject.ID)
-		w.AppendString(`<input type="submit" value="Delete">`)
+		DisplaySubmit(w, GL, "", "Delete", true)
 		w.AppendString(`</form>`)
 
 		w.AppendString(`</div>`)
 	}
 
 	if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
-		w.AppendString(`<h2>Lessons</h2>`)
-	}
-	for i := 0; i < len(subject.Lessons); i++ {
-		if err := GetLessonByID(subject.Lessons[i], &lesson); err != nil {
-			return http.ServerError(err)
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Flags == LessonDraft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
-		w.AppendString(`</p>`)
-
-		DisplayLessonLink(w, &lesson)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+		w.AppendString(`<h2>`)
+		w.AppendString(Ls(GL, "Lessons"))
+		w.AppendString(`</h2>`)
+		DisplayLessons(w, GL, subject.Lessons)
 	}
 
 	if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
 		w.AppendString(`<form method="POST" action="/subject/lessons">`)
-		DisplayHiddenString(w, "ID", r.URL.Path[len("/subject/"):])
+		DisplayHiddenID(w, "ID", subject.ID)
 
 		if len(subject.Lessons) == 0 {
 			courses := make([]Course, 32)
@@ -297,7 +280,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 					}
 
 					if !displayed {
-						w.AppendString(`<label>Courses: `)
+						w.AppendString(`<label>`)
+						w.AppendString(Ls(GL, "Courses"))
+						w.AppendString(`: `)
 						w.AppendString(`<select name="CourseID">`)
 						displayed = true
 					}
@@ -312,14 +297,16 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`</select>`)
 				w.AppendString(`</label> `)
 
-				w.AppendString(`<input type="submit" name="Action" value="create from"> `)
+				DisplaySubmit(w, GL, "Action", "create from", true)
 				w.AppendString(`, `)
-				w.AppendString(`<input type="submit" name="Action" value="give as is"> `)
-				w.AppendString(`or `)
+				DisplaySubmit(w, GL, "Action", "give as is", true)
+				w.AppendString(` `)
+				w.AppendString(Ls(GL, "or"))
+				w.AppendString(` `)
 			}
-			w.AppendString(`<input type="submit" value="create new from scratch">`)
+			DisplaySubmit(w, GL, "Action", "create new from scratch", true)
 		} else {
-			w.AppendString(`<input type="submit" value="Edit">`)
+			DisplaySubmit(w, GL, "", "Edit", true)
 		}
 
 		w.AppendString(`</form>`)
@@ -422,34 +409,46 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create subject</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Create subject"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Subject</h1>`)
-	w.AppendString(`<h2>Create</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Subject"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Create"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/subject/create">`)
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Teacher: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Teacher"))
+	w.AppendString(`: `)
 	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Group: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Group"))
+	w.AppendString(`: `)
 	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" value="Create">`)
-
+	DisplaySubmit(w, GL, "", "Create", true)
 	w.AppendString(`</form>`)
+
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
 
@@ -470,54 +469,66 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Edit subject</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Edit subject"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Subject</h1>`)
-	w.AppendString(`<h2>Edit</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Subject"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Edit"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/subject/edit">`)
 
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Teacher: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Teacher"))
+	w.AppendString(`: `)
 	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Group: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Group"))
+	w.AppendString(`: `)
 	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" value="Save">`)
-
+	DisplaySubmit(w, GL, "", "Save", true)
 	w.AppendString(`</form>`)
+
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
 
 	return nil
 }
 
-func SubjectLessonsVerify(subject *Subject) error {
+func SubjectLessonsVerify(l Language, subject *Subject) error {
 	var lesson Lesson
 
 	if len(subject.Lessons) == 0 {
-		return http.BadRequest("create at least one lesson")
+		return http.BadRequest(Ls(l, "create at least one lesson"))
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
 		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		if lesson.Flags == LessonDraft {
-			return http.BadRequest("lesson %d is a draft", li+1)
+			return http.BadRequest(Ls(l, "lesson %d is a draft"), li+1)
 		}
 	}
 	return nil
@@ -525,12 +536,20 @@ func SubjectLessonsVerify(subject *Subject) error {
 
 func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, subject *Subject) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Edit subject lessons</title></head>`)
-	w.AppendString(`<body>`)
-	w.AppendString(`<h1>Subject</h1>`)
-	w.AppendString(`<h2>Lessons</h2>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Edit subject lessons"))
+	w.AppendString(`</title></head>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Subject"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Lessons"))
+	w.AppendString(`</h2>`)
+
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -539,13 +558,12 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, subject *S
 	DisplayHiddenID(w, "ID", subject.ID)
 	DisplayHiddenString(w, "CurrentPage", "Main")
 
-	DisplayLessonsEditableList(w, subject.Lessons)
+	DisplayLessonsEditableList(w, GL, subject.Lessons)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Add lesson">`)
+	DisplaySubmit(w, GL, "NextPage", "Add lesson", true)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Save">`)
-
+	DisplaySubmit(w, GL, "NextPage", "Save", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -554,7 +572,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, subject *S
 	return nil
 }
 
-func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, subject *Subject, currentPage, k, command string) error {
+func SubjectLessonsHandleCommand(w *http.Response, l Language, r *http.Request, subject *Subject, currentPage, k, command string) error {
 	var lesson Lesson
 
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
@@ -564,12 +582,12 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, subject *Sub
 
 	switch currentPage {
 	default:
-		return LessonAddHandleCommand(w, r, subject.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, l, r, subject.Lessons, currentPage, k, command)
 	case "Main":
 		switch command {
-		case "Delete":
+		case Ls(l, "Delete"):
 			subject.Lessons = RemoveAtIndex(subject.Lessons, pindex)
-		case "Edit":
+		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
 			}
@@ -619,7 +637,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubjectByID(subjectID, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("subject with this ID does not exist")
+			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -630,7 +648,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	switch r.Form.Get("Action") {
-	case "create from":
+	case Ls(GL, "create from"):
 		var course Course
 
 		courseID, err := r.Form.GetID("CourseID")
@@ -642,7 +660,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
 			if err == database.NotFound {
-				return http.NotFound("course with this ID does not exist")
+				return http.NotFound(Ls(GL, "course with this ID does not exist"))
 			}
 			return http.ServerError(err)
 		}
@@ -651,7 +669,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
-	case "give as is":
+	case Ls(GL, "give as is"):
 		var course Course
 
 		courseID, err := r.Form.GetID("CourseID")
@@ -663,7 +681,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
 			if err == database.NotFound {
-				return http.NotFound("course with this ID does not exist")
+				return http.NotFound(Ls(GL, "course with this ID does not exist"))
 			}
 			return http.ServerError(err)
 		}
@@ -687,7 +705,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubjectLessonsHandleCommand(w, r, &subject, currentPage, k, v)
+			return SubjectLessonsHandleCommand(w, GL, r, &subject, currentPage, k, v)
 		}
 	}
 
@@ -726,7 +744,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
 			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
 		}
-		if err := LessonTestVerify(test); err != nil {
+		if err := LessonTestVerify(GL, test); err != nil {
 			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
 		}
 	case "Programming":
@@ -759,8 +777,8 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 	switch nextPage {
 	default:
 		return SubjectLessonsMainPageHandler(w, r, &subject)
-	case "Next":
-		if err := LessonVerify(&lesson); err != nil {
+	case Ls(GL, "Next"):
+		if err := LessonVerify(GL, &lesson); err != nil {
 			return WritePageEx(w, r, LessonAddPageHandler, &lesson, err)
 		}
 		lesson.Flags = LessonActive
@@ -769,7 +787,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		return SubjectLessonsMainPageHandler(w, r, &subject)
-	case "Add lesson":
+	case Ls(GL, "Add lesson"):
 		lesson.Flags = LessonDraft
 		lesson.ContainerID = subject.ID
 		lesson.ContainerType = ContainerTypeSubject
@@ -782,7 +800,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
 
 		return LessonAddPageHandler(w, r, &lesson)
-	case "Continue":
+	case Ls(GL, "Continue"):
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
@@ -791,7 +809,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		step.Draft = false
 
 		return LessonAddPageHandler(w, r, &lesson)
-	case "Add test":
+	case Ls(GL, "Add test"):
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeTest, Draft: true}})
@@ -799,7 +817,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddTestPageHandler(w, r, test)
-	case "Add programming task":
+	case Ls(GL, "Add programming task"):
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeProgramming, Draft: true}})
@@ -807,8 +825,8 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
-	case "Save":
-		if err := SubjectLessonsVerify(&subject); err != nil {
+	case Ls(GL, "Save"):
+		if err := SubjectLessonsVerify(GL, &subject); err != nil {
 			return WritePageEx(w, r, SubjectLessonsMainPageHandler, &subject, err)
 		}
 
@@ -832,7 +850,7 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
+		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -888,7 +906,7 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubjectByID(subjectID, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("subject with this ID does not exist")
+			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -929,7 +947,7 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest("subject name length must be between %d and %d characters long", MinSubjectNameLen, MaxSubjectNameLen))
+		return WritePage(w, r, SubjectEditPageHandler, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)

@@ -311,8 +311,10 @@ func GetStepMaximumScore(step *Step) int {
 	return maximum
 }
 
-func DisplaySubmittedStepScore(w *http.Response, submittedStep *SubmittedStep) {
-	w.AppendString(`<p>Score: `)
+func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *SubmittedStep) {
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(l, "Score"))
+	w.AppendString(`: `)
 	w.WriteInt(GetSubmittedStepScore(submittedStep))
 	w.AppendString(`/`)
 	w.WriteInt(GetStepMaximumScore(&submittedStep.Step))
@@ -353,18 +355,23 @@ func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedP
 	w.AppendString(`</select>`)
 }
 
-func DisplaySubmissionTitle(w *http.Response, subject *Subject, lesson *Lesson, user *User) {
-	w.AppendString(`Submission for `)
+func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
+	w.AppendString(Ls(l, "Submission"))
+	w.AppendString(` `)
+	w.AppendString(Ls(GL, "for"))
+	w.AppendString(` `)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(`: `)
 	w.WriteHTMLString(lesson.Name)
-	w.AppendString(` by `)
+	w.AppendString(` `)
+	w.AppendString(Ls(GL, "by"))
+	w.AppendString(` `)
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
 }
 
-func DisplaySubmissionLink(w *http.Response, submission *Submission) {
+func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission) {
 	var user User
 
 	if err := GetUserByID(submission.UserID, &user); err != nil {
@@ -380,9 +387,13 @@ func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	w.AppendString(` (`)
 	switch submission.Status {
 	case SubmissionCheckPending:
-		w.AppendString(`<i>pending</i>`)
+		w.AppendString(`<i>`)
+		w.AppendString(Ls(l, "pending"))
+		w.AppendString(`</i>`)
 	case SubmissionCheckInProgress:
-		w.AppendString(`<i>in progress</i>`)
+		w.AppendString(`<i>`)
+		w.AppendString(Ls(l, "in progress"))
+		w.AppendString(`</i>`)
 	case SubmissionCheckDone:
 		DisplaySubmissionTotalScore(w, submission)
 	}
@@ -401,7 +412,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.UnauthorizedError
 	}
 
-	id, err := GetIDFromURL(r.URL, "/submission/")
+	id, err := GetIDFromURL(GL, r.URL, "/submission/")
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -434,12 +445,12 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	DisplaySubmissionTitle(w, &subject, &lesson, &user)
+	DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	DisplaySubmissionTitle(w, &subject, &lesson, &user)
+	DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/results">`)
@@ -455,35 +466,47 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 		w.AppendString(`<fieldset>`)
 
-		w.AppendString(`<legend>Step #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Step"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
 
-		w.AppendString(`<p>Name: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Name"))
+		w.AppendString(`: `)
 		w.WriteHTMLString(submittedStep.Step.Name)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<p>Type: `)
-		w.AppendString(StepStringType(&submittedStep.Step))
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Type"))
+		w.AppendString(`: `)
+		w.AppendString(StepStringType(GL, &submittedStep.Step))
 		w.AppendString(`</p>`)
 
 		if submittedStep.Flags == SubmittedStepSkipped {
-			DisplaySubmittedStepScore(w, submittedStep)
+			DisplaySubmittedStepScore(w, GL, submittedStep)
 
-			w.AppendString(`<p><i>This step has been skipped.</i></p>`)
+			w.AppendString(`<p><i>`)
+			w.AppendString(Ls(GL, "This step has been skipped"))
+			w.AppendString(`.</i></p>`)
 		} else {
 			switch submittedStep.Status {
 			case SubmissionCheckPending:
-				w.AppendString(`<p><i>Verification is pending...</i></p>`)
+				w.AppendString(`<p><i>`)
+				w.AppendString(Ls(GL, "Verification is pending..."))
+				w.AppendString(`</i></p>`)
 			case SubmissionCheckInProgress:
-				w.AppendString(`<p><i>Verification is in progress...</i></p>`)
+				w.AppendString(`<p><i>`)
+				w.AppendString(Ls(GL, "Verification is in progress..."))
+				w.AppendString(`</i></p>`)
 			case SubmissionCheckDone:
-				DisplaySubmittedStepScore(w, submittedStep)
-				DisplayErrorMessage(w, submittedStep.Error)
+				DisplaySubmittedStepScore(w, GL, submittedStep)
+				DisplayErrorMessage(w, GL, submittedStep.Error)
 
-				DisplayIndexedCommand(w, i, "Open")
+				DisplayIndexedCommand(w, GL, i, "Open")
 				if teacher {
-					DisplayIndexedCommand(w, i, "Re-check")
+					DisplayIndexedCommand(w, GL, i, "Re-check")
 				}
 			}
 		}
@@ -493,15 +516,21 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 	switch submission.Status {
 	case SubmissionCheckPending:
-		w.AppendString(`<p><i>Verification is pending...</i></p>`)
+		w.AppendString(`<p><i>`)
+		w.AppendString(Ls(GL, "Verification is pending..."))
+		w.AppendString(`</i></p>`)
 	case SubmissionCheckInProgress:
-		w.AppendString(`<p><i>Verification is in progress...</i></p>`)
+		w.AppendString(`<p><i>`)
+		w.AppendString(Ls(GL, "Verification is in progress..."))
+		w.AppendString(`</i></p>`)
 	case SubmissionCheckDone:
-		w.AppendString(`<p>Total score: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Total score"))
+		w.AppendString(`: `)
 		DisplaySubmissionTotalScore(w, &submission)
 		w.AppendString(`</p>`)
 		if teacher {
-			DisplayCommand(w, "Re-check")
+			DisplayCommand(w, GL, "Re-check")
 		}
 	}
 	w.AppendString(`</form>`)
@@ -519,25 +548,31 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submitt
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Submitted test: `)
+	w.AppendString(Ls(GL, "Submitted test"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(test.Name)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Submitted test: `)
+	w.AppendString(Ls(GL, "Submitted test"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(test.Name)
 	w.AppendString(`</h1>`)
 
 	if teacher {
-		w.AppendString(`<p><i>Note: answers marked with [x] are correct.</i></p>`)
+		w.AppendString(`<p><i>`)
+		w.AppendString(Ls(GL, "Note: answers marked with [x] are correct"))
+		w.AppendString(`.</i></p>`)
 	}
 
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 
 		w.AppendString(`<fieldset>`)
-		w.AppendString(`<legend>Question #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Question"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
 		w.AppendString(`<p>`)
@@ -594,7 +629,9 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submitt
 		}
 		w.AppendString(`</ol>`)
 
-		w.AppendString(`<p>Score: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Score"))
+		w.AppendString(`: `)
 		w.WriteInt(submittedTest.Scores[i])
 		w.AppendString(`/1</p>`)
 
@@ -608,7 +645,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submitt
 	return nil
 }
 
-func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *SubmittedProgramming, checkType CheckType) {
+func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, submittedTask *SubmittedProgramming, checkType CheckType) {
 	task, _ := Step2Programming(&submittedTask.Step)
 	scores := submittedTask.Scores[checkType]
 	messages := submittedTask.Messages[checkType]
@@ -621,7 +658,9 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *
 
 		w.AppendString(`<li>`)
 
-		w.AppendString(`<label>Input: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "Input"))
+		w.AppendString(`: `)
 
 		w.AppendString(`<textarea rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
@@ -629,7 +668,9 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *
 
 		w.AppendString(`</label> `)
 
-		w.AppendString(`<label>output: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "output"))
+		w.AppendString(`: `)
 
 		w.AppendString(`<textarea rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
@@ -637,7 +678,9 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, submittedTask *
 
 		w.AppendString(`</label> `)
 
-		w.AppendString(`<span>score: `)
+		w.AppendString(`<span>`)
+		w.AppendString(Ls(GL, "score"))
+		w.AppendString(`: `)
 		w.WriteInt(score)
 		w.AppendString(`/1</span>`)
 
@@ -658,29 +701,39 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Submitted programming task: `)
+	w.AppendString(Ls(GL, "Submitted programming task"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Submitted programming task: `)
+	w.AppendString(Ls(GL, "Submitted programming task"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-	w.AppendString(`<h2>Description</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Description"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<p>`)
 	w.WriteHTMLString(task.Description)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<h2>Examples</h2>`)
-	SubmissionNewDisplayProgrammingChecks(w, task, CheckTypeExample)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Examples"))
+	w.AppendString(`</h2>`)
+	SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
 
-	w.AppendString(`<h2>Solution</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Solution"))
+	w.AppendString(`</h2>`)
 
-	w.AppendString(`<label>Programming language: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Programming language"))
+	w.AppendString(`: `)
 	SubmissionDisplayLanguageSelect(w, submittedTask, false)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
@@ -690,8 +743,10 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	w.AppendString(`</textarea>`)
 
 	if teacher {
-		w.AppendString(`<h2>Tests</h2>`)
-		SubmissionResultsProgrammingDisplayChecks(w, submittedTask, CheckTypeTest)
+		w.AppendString(`<h2>`)
+		w.AppendString(Ls(GL, "Tests"))
+		w.AppendString(`</h2>`)
+		SubmissionResultsProgrammingDisplayChecks(w, GL, submittedTask, CheckTypeTest)
 	}
 
 	w.AppendString(`</body>`)
@@ -713,7 +768,7 @@ func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, submitt
 	}
 }
 
-func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submission *Submission, k, command string) error {
+func SubmissionResultsHandleCommand(w *http.Response, l Language, r *http.Request, submission *Submission, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -722,14 +777,14 @@ func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, submissio
 	switch command {
 	default:
 		return http.ClientError(nil)
-	case "Open":
+	case Ls(l, "Open"):
 		if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 			return http.ClientError(nil)
 		}
 		submittedStep := &submission.SubmittedSteps[pindex]
 
 		return SubmissionResultsStepPageHandler(w, r, submittedStep)
-	case "Re-check":
+	case Ls(l, "Re-check"):
 		if spindex != "" {
 			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 				return http.ClientError(nil)
@@ -775,7 +830,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubmissionByID(submissionID, &submission); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("submission with this ID does not exist")
+			return http.NotFound(Ls(GL, "submission with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -810,7 +865,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionResultsHandleCommand(w, r, &submission, k, v)
+			return SubmissionResultsHandleCommand(w, GL, r, &submission, k, v)
 		}
 	}
 
@@ -831,7 +886,7 @@ func SubmittedStepClear(submittedStep *SubmittedStep) {
 	}
 }
 
-func SubmissionNewVerify(submission *Submission) error {
+func SubmissionNewVerify(l Language, submission *Submission) error {
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		submittedStep := &submission.SubmittedSteps[i]
@@ -839,12 +894,12 @@ func SubmissionNewVerify(submission *Submission) error {
 			empty = false
 
 			if submittedStep.Flags == SubmittedStepDraft {
-				return http.BadRequest("step %d is still a draft", i+1)
+				return http.BadRequest(Ls(l, "step %d is still a draft"), i+1)
 			}
 		}
 	}
 	if empty {
-		return http.BadRequest("you have to pass at least one step")
+		return http.BadRequest(Ls(l, "you have to pass at least one step"))
 	}
 	return nil
 }
@@ -879,7 +934,7 @@ func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTes
 	return nil
 }
 
-func SubmissionNewTestVerify(submittedTest *SubmittedTest) error {
+func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
 
 	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
@@ -887,7 +942,7 @@ func SubmissionNewTestVerify(submittedTest *SubmittedTest) error {
 		question := &test.Questions[i]
 
 		if len(submittedQuestion.SelectedAnswers) == 0 {
-			return http.BadRequest("question %d: select at least one answer", i+1)
+			return http.BadRequest(Ls(l, "question %d: select at least one answer"), i+1)
 		}
 		if (len(question.CorrectAnswers) == 1) && (len(submittedQuestion.SelectedAnswers) > 1) {
 			return http.ClientError(nil)
@@ -902,17 +957,20 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Test: `)
+	w.AppendString(Ls(GL, "Test"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(test.Name)
 	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Test: `)
+	w.AppendString(Ls(GL, "Test"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(test.Name)
 	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
@@ -930,9 +988,13 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 		question := &test.Questions[i]
 
 		w.AppendString(`<fieldset>`)
-		w.AppendString(`<legend>Question #`)
+
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Question"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
+
 		w.AppendString(`<p>`)
 		w.WriteHTMLString(question.Name)
 		w.AppendString(`</p>`)
@@ -980,9 +1042,8 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Save"> `)
-	w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
-
+	DisplaySubmit(w, GL, "NextPage", "Save", true)
+	DisplaySubmit(w, GL, "NextPage", "Discard", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -991,14 +1052,16 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 	return nil
 }
 
-func SubmissionNewDisplayProgrammingChecks(w *http.Response, task *StepProgramming, checkType CheckType) {
+func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
 	w.AppendString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
 
 		w.AppendString(`<li>`)
 
-		w.AppendString(`<label>Input: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "Input"))
+		w.AppendString(`: `)
 
 		w.AppendString(`<textarea rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
@@ -1006,7 +1069,9 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, task *StepProgrammi
 
 		w.AppendString(`</label> `)
 
-		w.AppendString(`<label>output: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "output"))
+		w.AppendString(`: `)
 
 		w.AppendString(`<textarea rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
@@ -1024,25 +1089,32 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Programming task: `)
+	w.AppendString(Ls(GL, "Programming task"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Programming task: `)
+	w.AppendString(Ls(GL, "Programming task"))
+	w.AppendString(`: `)
 	w.WriteHTMLString(task.Name)
 	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-	w.AppendString(`<h2>Description</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Description"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<p>`)
 	w.WriteHTMLString(task.Description)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<h2>Examples</h2>`)
-	SubmissionNewDisplayProgrammingChecks(w, task, CheckTypeExample)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Examples"))
+	w.AppendString(`</h2>`)
+	SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
 
 	w.AppendString(`<form method="POST" action="/submission/new">`)
 
@@ -1052,9 +1124,13 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 
 	DisplayHiddenString(w, "CurrentPage", "Programming")
 
-	w.AppendString(`<h2>Solution</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Solution"))
+	w.AppendString(`</h2>`)
 
-	w.AppendString(`<label>Programming language: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Programming language"))
+	w.AppendString(`: `)
 	SubmissionDisplayLanguageSelect(w, submittedTask, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
@@ -1064,9 +1140,9 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.AppendString(`</textarea>`)
 
 	w.AppendString(`<br><br>`)
-	w.AppendString(`<input type="submit" name="NextPage" value="Save"> `)
-	w.AppendString(`<input type="submit" name="NextPage" value="Discard">`)
 
+	DisplaySubmit(w, GL, "NextPage", "Save", true)
+	DisplaySubmit(w, GL, "NextPage", "Discard", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -1119,17 +1195,23 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Evaluation for `)
+	w.AppendString(Ls(GL, "Evaluation"))
+	w.AppendString(` `)
+	w.AppendString(Ls(GL, "for"))
+	w.AppendString(` `)
 	w.WriteHTMLString(lesson.Name)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Evaluation for `)
+	w.AppendString(Ls(GL, "Evaluation"))
+	w.AppendString(` `)
+	w.AppendString(Ls(GL, "for"))
+	w.AppendString(` `)
 	w.WriteHTMLString(lesson.Name)
 	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
@@ -1143,33 +1225,36 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 		w.AppendString(`<fieldset>`)
 
-		w.AppendString(`<legend>Step #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Step"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
-		if submittedStep.Flags == SubmittedStepDraft {
-			w.AppendString(` (draft)`)
-		}
+		DisplayDraft(w, GL, submittedStep.Flags == SubmittedStepDraft)
 		w.AppendString(`</legend>`)
 
-		w.AppendString(`<p>Name: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Name"))
+		w.AppendString(`: `)
 		w.WriteHTMLString(submittedStep.Step.Name)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<p>Type: `)
-		w.AppendString(StepStringType(&submittedStep.Step))
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Type"))
+		w.AppendString(`: `)
+		w.AppendString(StepStringType(GL, &submittedStep.Step))
 		w.AppendString(`</p>`)
 
 		if submittedStep.Flags == SubmittedStepSkipped {
-			DisplayIndexedCommand(w, i, "Pass")
+			DisplayIndexedCommand(w, GL, i, "Pass")
 		} else {
-			DisplayIndexedCommand(w, i, "Edit")
+			DisplayIndexedCommand(w, GL, i, "Edit")
 		}
 
 		w.AppendString(`</fieldset>`)
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Finish">`)
-
+	DisplaySubmit(w, GL, "NextPage", "Finish", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -1179,7 +1264,7 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 }
 
-func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *Submission, currentPage, k, command string) error {
+func SubmissionNewHandleCommand(w *http.Response, l Language, r *http.Request, submission *Submission, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -1192,7 +1277,7 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *S
 		switch command {
 		default:
 			return http.ClientError(nil)
-		case "Pass", "Edit":
+		case Ls(l, "Pass"), Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 				return http.ClientError(nil)
 			}
@@ -1289,7 +1374,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionNewHandleCommand(w, r, &submission, currentPage, k, v)
+			return SubmissionNewHandleCommand(w, GL, r, &submission, currentPage, k, v)
 		}
 	}
 
@@ -1301,7 +1386,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		}
 		submittedStep := &submission.SubmittedSteps[si]
 
-		if nextPage != "Discard" {
+		if nextPage != Ls(GL, "Discard") {
 			switch currentPage {
 			case "Test":
 				submittedTest, err := Submitted2Test(submittedStep)
@@ -1312,7 +1397,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
 					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
 				}
-				if err := SubmissionNewTestVerify(submittedTest); err != nil {
+				if err := SubmissionNewTestVerify(GL, submittedTest); err != nil {
 					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
 				}
 			case "Programming":
@@ -1328,7 +1413,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 
-				if err := SubmissionVerifyProgramming(submittedTask, CheckTypeExample); err != nil {
+				if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
 					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(err.Error()))
 				}
 
@@ -1336,7 +1421,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				messages := submittedTask.Messages[CheckTypeExample]
 				for i := 0; i < len(scores); i++ {
 					if scores[i] == 0 {
-						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest("example %d: %s", i+1, messages[i]))
+						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
 					}
 				}
 			}
@@ -1351,8 +1436,8 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	switch nextPage {
 	default:
 		return SubmissionNewMainPageHandler(w, r, &submission)
-	case "Finish":
-		if err := SubmissionNewVerify(&submission); err != nil {
+	case Ls(GL, "Finish"):
+		if err := SubmissionNewVerify(GL, &submission); err != nil {
 			return WritePageEx(w, r, SubmissionNewMainPageHandler, &submission, err)
 		}
 		submission.Flags = SubmissionActive

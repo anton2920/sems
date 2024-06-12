@@ -99,21 +99,17 @@ func SaveCourse(course *Course) error {
 	return database.Write(CoursesDB, courseDB.ID, &courseDB)
 }
 
-func DisplayCourseTitle(w *http.Response, course *Course) {
+func DisplayCourseTitle(w *http.Response, l Language, course *Course) {
 	w.WriteHTMLString(course.Name)
-	if course.Flags == CourseDraft {
-		w.AppendString(` (draft)`)
-	}
-	if course.Flags == CourseDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayDraft(w, l, course.Flags == CourseDraft)
+	DisplayDeleted(w, l, course.Flags == CourseDeleted)
 }
 
-func DisplayCourseLink(w *http.Response, course *Course) {
+func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 	w.AppendString(`<a href="/course/`)
 	w.WriteID(course.ID)
 	w.AppendString(`">`)
-	DisplayCourseTitle(w, course)
+	DisplayCourseTitle(w, l, course)
 	w.AppendString(`</a>`)
 }
 
@@ -129,70 +125,45 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	id, err := GetIDFromURL(r.URL, "/course/")
+	id, err := GetIDFromURL(GL, r.URL, "/course/")
 	if err != nil {
-		return http.ClientError(err)
+		return err
 	}
 	if !UserOwnsCourse(&user, id) {
 		return http.ForbiddenError
 	}
 	if err := GetCourseByID(id, &course); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("course with this ID does not exist")
+			return http.NotFound(Ls(GL, "course with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	DisplayCourseTitle(w, &course)
+	DisplayCourseTitle(w, GL, &course)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	DisplayCourseTitle(w, &course)
+	DisplayCourseTitle(w, GL, &course)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<h2>Lessons</h2>`)
-	for i := 0; i < len(course.Lessons); i++ {
-		var lesson Lesson
-		if err := GetLessonByID(course.Lessons[i], &lesson); err != nil {
-			return http.ServerError(err)
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Lesson #`)
-		w.WriteInt(i + 1)
-		if lesson.Flags == LessonDraft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Theory: `)
-		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
-		w.AppendString(`</p>`)
-
-		DisplayLessonLink(w, &lesson)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Lessons"))
+	w.AppendString(`</h2>`)
+	DisplayLessons(w, GL, course.Lessons)
 
 	w.AppendString(`<div>`)
 
 	w.AppendString(`<form style="display:inline" method="POST" action="/course/edit">`)
 	DisplayHiddenID(w, "ID", course.ID)
-	w.AppendString(`<input type="submit" value="Edit">`)
+	DisplaySubmit(w, GL, "", "Edit", true)
 	w.AppendString(`</form> `)
 
 	w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
 	DisplayHiddenID(w, "ID", course.ID)
-	w.AppendString(`<input type="submit" value="Delete">`)
+	DisplaySubmit(w, GL, "", "Delete", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</div>`)
@@ -207,22 +178,22 @@ func CourseFillFromRequest(vs url.Values, course *Course) {
 	course.Name = vs.Get("Name")
 }
 
-func CourseVerify(course *Course) error {
+func CourseVerify(l Language, course *Course) error {
 	var lesson Lesson
 
 	if !strings.LengthInRange(course.Name, MinNameLen, MaxNameLen) {
-		return http.BadRequest("course name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
+		return http.BadRequest(Ls(l, "course name length must be between %d and %d characters long"), MinNameLen, MaxNameLen)
 	}
 
 	if len(course.Lessons) == 0 {
-		return http.BadRequest("create at least one lesson")
+		return http.BadRequest(Ls(l, "create at least one lesson"))
 	}
 	for li := 0; li < len(course.Lessons); li++ {
 		if err := GetLessonByID(course.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		if lesson.Flags == LessonDraft {
-			return http.BadRequest("lesson %d is a draft", li+1)
+			return http.BadRequest(Ls(l, "lesson %d is a draft"), li+1)
 		}
 	}
 
@@ -231,12 +202,17 @@ func CourseVerify(course *Course) error {
 
 func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course *Course) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Course</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Course"))
+	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Course</h1>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Course"))
+	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -250,12 +226,12 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	DisplayLessonsEditableList(w, course.Lessons)
+	DisplayLessonsEditableList(w, GL, course.Lessons)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Add lesson" formnovalidate>`)
+	DisplaySubmit(w, GL, "NextPage", "Add lesson", false)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Save">`)
+	DisplaySubmit(w, GL, "NextPage", "Save", true)
 
 	w.AppendString(`</form>`)
 
@@ -265,7 +241,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course
 	return nil
 }
 
-func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, course *Course, currentPage, k, command string) error {
+func CourseCreateEditHandleCommand(w *http.Response, l Language, r *http.Request, course *Course, currentPage, k, command string) error {
 	var lesson Lesson
 
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
@@ -275,12 +251,12 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, course *Co
 
 	switch currentPage {
 	default:
-		return LessonAddHandleCommand(w, r, course.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, l, r, course.Lessons, currentPage, k, command)
 	case "Course":
 		switch command {
-		case "Delete":
+		case Ls(l, "Delete"):
 			course.Lessons = RemoveAtIndex(course.Lessons, pindex)
-		case "Edit":
+		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(course.Lessons)) {
 				return http.ClientError(nil)
 			}
@@ -364,7 +340,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return CourseCreateEditHandleCommand(w, r, &course, currentPage, k, v)
+			return CourseCreateEditHandleCommand(w, GL, r, &course, currentPage, k, v)
 		}
 	}
 
@@ -405,7 +381,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
 			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
 		}
-		if err := LessonTestVerify(test); err != nil {
+		if err := LessonTestVerify(GL, test); err != nil {
 			return WritePageEx(w, r, LessonAddTestPageHandler, test, err)
 		}
 	case "Programming":
@@ -438,8 +414,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 	switch nextPage {
 	default:
 		return CourseCreateEditCoursePageHandler(w, r, &course)
-	case "Next":
-		if err := LessonVerify(&lesson); err != nil {
+	case Ls(GL, "Next"):
+		if err := LessonVerify(GL, &lesson); err != nil {
 			return WritePageEx(w, r, LessonAddPageHandler, &lesson, err)
 		}
 		lesson.Flags = LessonActive
@@ -448,7 +424,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		return CourseCreateEditCoursePageHandler(w, r, &course)
-	case "Add lesson":
+	case Ls(GL, "Add lesson"):
 		lesson.Flags = LessonDraft
 		lesson.ContainerID = course.ID
 		lesson.ContainerType = ContainerTypeCourse
@@ -461,7 +437,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
 
 		return LessonAddPageHandler(w, r, &lesson)
-	case "Continue":
+	case Ls(GL, "Continue"):
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
@@ -470,7 +446,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		step.Draft = false
 
 		return LessonAddPageHandler(w, r, &lesson)
-	case "Add test":
+	case Ls(GL, "Add test"):
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeTest, Draft: true}})
@@ -478,7 +454,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddTestPageHandler(w, r, test)
-	case "Add programming task":
+	case Ls(GL, "Add programming task"):
 		lesson.Flags = LessonDraft
 
 		lesson.Steps = append(lesson.Steps, Step{StepCommon: StepCommon{Type: StepTypeProgramming, Draft: true}})
@@ -486,8 +462,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
 		return LessonAddProgrammingPageHandler(w, r, task)
-	case "Save":
-		if err := CourseVerify(&course); err != nil {
+	case Ls(GL, "Save"):
+		if err := CourseVerify(GL, &course); err != nil {
 			return WritePageEx(w, r, CourseCreateEditCoursePageHandler, &course, err)
 		}
 		course.Flags = CourseActive

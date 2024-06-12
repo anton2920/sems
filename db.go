@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/anton2920/gofa/database"
+	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/syscall"
 )
 
@@ -232,6 +233,7 @@ func OpenDBs(dir string) error {
 	}
 
 	if shouldCreate {
+		log.Infof("Creating new DBs...")
 		CreateInitialDBs()
 	}
 

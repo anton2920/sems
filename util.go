@@ -25,14 +25,14 @@ func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 	}
 }
 
-func GetIDFromURL(u url.URL, prefix string) (database.ID, error) {
+func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
 	if !strings.StartsWith(u.Path, prefix) {
-		return 0, http.NotFound("requested page does not exist")
+		return 0, http.NotFound(Ls(l, "requested page does not exist"))
 	}
 
 	id, err := strconv.Atoi(u.Path[len(prefix):])
 	if (err != nil) || (id < 0) || (id >= (1 << 31)) {
-		return 0, http.BadRequest("invalid ID for '%s'", prefix)
+		return 0, http.BadRequest(Ls(l, "invalid ID for %q"), prefix)
 	}
 
 	return database.ID(id), nil

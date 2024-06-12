@@ -174,7 +174,7 @@ func UserOwnsCourse(user *User, courseID database.ID) bool {
 	return false
 }
 
-func DisplayUserGroups(w *http.Response, userID database.ID) {
+func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
 	groups := make([]Group, 32)
 	var displayed bool
 	var pos int64
@@ -200,7 +200,7 @@ func DisplayUserGroups(w *http.Response, userID database.ID) {
 			}
 
 			w.AppendString(`<li>`)
-			DisplayGroupLink(w, group)
+			DisplayGroupLink(w, l, group)
 			w.AppendString(`</li>`)
 		}
 	}
@@ -209,7 +209,7 @@ func DisplayUserGroups(w *http.Response, userID database.ID) {
 	}
 }
 
-func DisplayUserCourses(w *http.Response, user *User) {
+func DisplayUserCourses(w *http.Response, l Language, user *User) {
 	var course Course
 
 	w.AppendString(`<h2>Courses</h2>`)
@@ -223,7 +223,7 @@ func DisplayUserCourses(w *http.Response, user *User) {
 		}
 
 		w.AppendString(`<li>`)
-		DisplayCourseLink(w, &course)
+		DisplayCourseLink(w, l, &course)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)
@@ -232,7 +232,7 @@ func DisplayUserCourses(w *http.Response, user *User) {
 	w.AppendString(`</form>`)
 }
 
-func DisplayUserSubjects(w *http.Response, userID database.ID) {
+func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 	subjects := make([]Subject, 32)
 	var displayed bool
 	var pos int64
@@ -265,7 +265,7 @@ func DisplayUserSubjects(w *http.Response, userID database.ID) {
 				displayed = true
 			}
 			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, subject)
+			DisplaySubjectLink(w, l, subject)
 			w.AppendString(`</li>`)
 		}
 	}
@@ -302,7 +302,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		return http.UnauthorizedError
 	}
 
-	id, err := GetIDFromURL(r.URL, "/user/")
+	id, err := GetIDFromURL(GL, r.URL, "/user/")
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -355,9 +355,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	}
 	w.AppendString(`</div>`)
 
-	DisplayUserGroups(w, user.ID)
-	DisplayUserCourses(w, &user)
-	DisplayUserSubjects(w, user.ID)
+	DisplayUserGroups(w, GL, user.ID)
+	DisplayUserCourses(w, GL, &user)
+	DisplayUserSubjects(w, GL, user.ID)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
@@ -381,7 +381,7 @@ func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Create</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/create">`)
 
@@ -447,7 +447,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h1>User</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
@@ -498,7 +498,7 @@ func UserSigninPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<h1>Master's degree</h1>`)
 	w.AppendString(`<h2>Sign in</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/user/signin">`)
 

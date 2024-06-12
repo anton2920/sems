@@ -2,11 +2,13 @@ package main
 
 import "github.com/anton2920/gofa/net/http"
 
-func DisplayIndexAdminPage(w *http.Response, user *User) error {
+func DisplayIndexAdminPage(w *http.Response, l Language, user *User) error {
 	users := make([]User, 10)
-	var pos int64
+	pos := int64(0)
 
-	w.AppendString(`<h2>Users</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, "Users"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<ul>`)
 	for {
 		n, err := GetUsers(&pos, users)
@@ -29,13 +31,15 @@ func DisplayIndexAdminPage(w *http.Response, user *User) error {
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/user/create">`)
-	w.AppendString(`<input type="submit" value="Create user">`)
+	DisplaySubmit(w, l, "", "Create user", true)
 	w.AppendString(`</form>`)
 
 	groups := make([]Group, 32)
 	pos = 0
 
-	w.AppendString(`<h2>Groups</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, "Groups"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<ul>`)
 	for {
 		n, err := GetGroups(&pos, groups)
@@ -52,19 +56,21 @@ func DisplayIndexAdminPage(w *http.Response, user *User) error {
 			}
 
 			w.AppendString(`<li>`)
-			DisplayGroupLink(w, group)
+			DisplayGroupLink(w, l, group)
 			w.AppendString(`</li>`)
 		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/group/create">`)
-	w.AppendString(`<input type="submit" value="Create group">`)
+	DisplaySubmit(w, l, "", "Create group", true)
 	w.AppendString(`</form>`)
 
 	courses := make([]Course, 32)
 	pos = 0
 
-	w.AppendString(`<h2>Courses</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, "Courses"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<ul>`)
 	for {
 		n, err := GetCourses(&pos, courses)
@@ -81,19 +87,21 @@ func DisplayIndexAdminPage(w *http.Response, user *User) error {
 			}
 
 			w.AppendString(`<li>`)
-			DisplayCourseLink(w, course)
+			DisplayCourseLink(w, l, course)
 			w.AppendString(`</li>`)
 		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/course/create">`)
-	w.AppendString(`<input type="submit" value="Create course">`)
+	DisplaySubmit(w, l, "", "Create course", true)
 	w.AppendString(`</form>`)
 
 	subjects := make([]Subject, 32)
 	pos = 0
 
-	w.AppendString(`<h2>Subjects</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, "Subjects"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<ul>`)
 	for {
 		n, err := GetSubjects(&pos, subjects)
@@ -110,34 +118,45 @@ func DisplayIndexAdminPage(w *http.Response, user *User) error {
 			}
 
 			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, subject)
+			DisplaySubjectLink(w, l, subject)
 			w.AppendString(`</li>`)
 		}
 	}
 	w.AppendString(`</ul>`)
 	w.AppendString(`<form method="POST" action="/subject/create">`)
-	w.AppendString(`<input type="submit" value="Create subject">`)
+	DisplaySubmit(w, l, "", "Create subject", true)
 	w.AppendString(`</form>`)
 	return nil
 }
 
-func DisplayIndexUserPage(w *http.Response, user *User) error {
-	DisplayUserGroups(w, user.ID)
-	DisplayUserCourses(w, user)
-	DisplayUserSubjects(w, user.ID)
+func DisplayIndexUserPage(w *http.Response, l Language, user *User) error {
+	DisplayUserGroups(w, l, user.ID)
+	DisplayUserCourses(w, l, user)
+	DisplayUserSubjects(w, l, user.ID)
 	return nil
+}
+
+func DisplayIndexTitle(w *http.Response, l Language) {
+	w.AppendString(Ls(l, "Master's degree"))
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Master's degree</title></head>`)
+	w.AppendString(`<head><title>`)
+	DisplayIndexTitle(w, GL)
+	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Master's degree</h1>`)
+	w.AppendString(`<h1>`)
+	DisplayIndexTitle(w, GL)
+	w.AppendString(`</h1>`)
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		w.AppendString(`<a href="/user/signin">Sign in</a>`)
+		w.AppendString(`<a href="/user/signin">`)
+		w.AppendString(Ls(GL, "Sign in"))
+		w.AppendString(`</a>`)
 	} else {
 		var user User
 		if err := GetUserByID(session.ID, &user); err != nil {
@@ -146,16 +165,20 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 
 		w.AppendString(`<a href="/user/`)
 		w.WriteID(user.ID)
-		w.AppendString(`">Profile</a> `)
-		w.AppendString(`<a href="/api/user/signout">Sign out</a>`)
+		w.AppendString(`">`)
+		w.AppendString(Ls(GL, "Profile"))
+		w.AppendString(`</a> `)
+		w.AppendString(`<a href="/api/user/signout">`)
+		w.AppendString(Ls(GL, "Sign out"))
+		w.AppendString(`</a>`)
 		w.AppendString(`<br>`)
 
 		if session.ID == AdminID {
-			if err := DisplayIndexAdminPage(w, &user); err != nil {
+			if err := DisplayIndexAdminPage(w, GL, &user); err != nil {
 				return http.ServerError(err)
 			}
 		} else {
-			if err := DisplayIndexUserPage(w, &user); err != nil {
+			if err := DisplayIndexUserPage(w, GL, &user); err != nil {
 				return http.ServerError(err)
 			}
 		}

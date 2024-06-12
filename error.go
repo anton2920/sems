@@ -2,25 +2,34 @@ package main
 
 import "github.com/anton2920/gofa/net/http"
 
-func DisplayErrorMessage(w *http.Response, message string) {
+func DisplayErrorMessage(w *http.Response, l Language, message string) {
 	if message != "" {
-		w.AppendString(`<div><p>Error: `)
+		w.AppendString(`<div><p>`)
+		w.AppendString(Ls(l, "Error"))
+		w.AppendString(`: `)
 		w.WriteHTMLString(message)
 		w.AppendString(`.</p></div>`)
 	}
 }
 
-func ErrorPageHandler(w *http.Response, message string) {
+func ErrorPageHandler(w *http.Response, l Language, message string) {
 	w.Bodies = w.Bodies[:0]
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Error</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(l, "Error"))
+	w.AppendString(`</title></head>`)
+
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Master's degree</h1>`)
-	w.AppendString(`<h2>Error</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(l, "Master's degree"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, "Error"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, message)
+	DisplayErrorMessage(w, l, message)
 
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)

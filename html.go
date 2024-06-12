@@ -68,27 +68,43 @@ func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, m
 	w.AppendString(`</textarea>`)
 }
 
-func DisplayCommand(w *http.Response, command string) {
+func DisplayCommand(w *http.Response, l Language, command string) {
 	w.AppendString(` <input type="submit" name="Command" value="`)
-	w.AppendString(command)
+	w.AppendString(Ls(l, command))
 	w.AppendString(`" formnovalidate>`)
 }
 
-func DisplayIndexedCommand(w *http.Response, index int, command string) {
+func DisplayDeleted(w *http.Response, l Language, deleted bool) {
+	if deleted {
+		w.AppendString(` [`)
+		w.AppendString(Ls(l, "deleted"))
+		w.AppendString(`]`)
+	}
+}
+
+func DisplayDraft(w *http.Response, l Language, draft bool) {
+	if draft {
+		w.AppendString(` (`)
+		w.AppendString(Ls(l, "draft"))
+		w.AppendString(`)`)
+	}
+}
+
+func DisplayIndexedCommand(w *http.Response, l Language, index int, command string) {
 	w.AppendString(` <input type="submit" name="Command`)
 	w.WriteInt(index)
 	w.AppendString(`" value="`)
-	w.AppendString(command)
+	w.AppendString(Ls(l, command))
 	w.AppendString(`" formnovalidate>`)
 }
 
-func DisplayDoublyIndexedCommand(w *http.Response, pindex, sindex int, command string) {
+func DisplayDoublyIndexedCommand(w *http.Response, l Language, pindex, sindex int, command string) {
 	w.AppendString(` <input type="submit" name="Command`)
 	w.WriteInt(pindex)
 	w.AppendString(`.`)
 	w.WriteInt(sindex)
 	w.AppendString(`" value="`)
-	w.AppendString(command)
+	w.AppendString(Ls(l, command))
 	w.AppendString(`" formnovalidate>`)
 }
 
@@ -114,4 +130,16 @@ func DisplayHiddenString(w *http.Response, name string, value string) {
 	w.AppendString(`" value="`)
 	w.WriteHTMLString(value)
 	w.AppendString(`">`)
+}
+
+func DisplaySubmit(w *http.Response, l Language, name string, value string, verify bool) {
+	w.AppendString(` <input type="submit" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.AppendString(Ls(l, value))
+	w.AppendString(`"`)
+	if !verify {
+		w.AppendString(` formnoverify`)
+	}
+	w.AppendString(`>`)
 }

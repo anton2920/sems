@@ -113,21 +113,19 @@ func SaveGroup(group *Group) error {
 	return database.Write(GroupsDB, groupDB.ID, &groupDB)
 }
 
-func DisplayGroupTitle(w *http.Response, group *Group) {
+func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 	w.WriteHTMLString(group.Name)
 	w.AppendString(` (ID: `)
 	w.WriteID(group.ID)
 	w.AppendString(`)`)
-	if group.Flags == GroupDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayDeleted(w, l, group.Flags == GroupDeleted)
 }
 
-func DisplayGroupLink(w *http.Response, group *Group) {
+func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 	w.AppendString(`<a href="/group/`)
 	w.WriteID(group.ID)
 	w.AppendString(`">`)
-	DisplayGroupTitle(w, group)
+	DisplayGroupTitle(w, l, group)
 	w.AppendString(`</a>`)
 }
 
@@ -139,7 +137,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		return http.UnauthorizedError
 	}
 
-	id, err := GetIDFromURL(r.URL, "/group/")
+	id, err := GetIDFromURL(GL, r.URL, "/group/")
 	if err != nil {
 		return http.ClientError(err)
 	}
@@ -156,21 +154,27 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	DisplayGroupTitle(w, &group)
+	DisplayGroupTitle(w, GL, &group)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	DisplayGroupTitle(w, &group)
+	DisplayGroupTitle(w, GL, &group)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<h2>Info</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Info"))
+	w.AppendString(`</h2>`)
 
-	w.AppendString(`<p>Created on: `)
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Created on"))
+	w.AppendString(`: `)
 	DisplayFormattedTime(w, group.CreatedOn)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<h2>Students</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Students"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<ul>`)
 	for i := 0; i < len(group.Students); i++ {
 		var user User
@@ -193,12 +197,12 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		for i := 0; i < len(group.Students); i++ {
 			DisplayHiddenID(w, "StudentID", group.Students[i])
 		}
-		w.AppendString(`<input type="submit" value="Edit">`)
+		DisplaySubmit(w, GL, "", "Edit", true)
 		w.AppendString(`</form>`)
 
 		w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
 		DisplayHiddenID(w, "ID", group.ID)
-		w.AppendString(`<input type="submit" value="Delete">`)
+		DisplaySubmit(w, GL, "", "Delete", true)
 		w.AppendString(`</form>`)
 
 		w.AppendString(`</div>`)
@@ -223,12 +227,14 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 			}
 
 			if !displayed {
-				w.AppendString(`<h2>Subjects</h2>`)
+				w.AppendString(`<h2>`)
+				w.AppendString(Ls(GL, "Subjects"))
+				w.AppendString(`</h2>`)
 				w.AppendString(`<ul>`)
 				displayed = true
 			}
 			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, subject)
+			DisplaySubjectLink(w, GL, subject)
 			w.AppendString(`</li>`)
 		}
 	}
@@ -294,27 +300,37 @@ func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create group</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Create group"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Group</h1>`)
-	w.AppendString(`<h2>Create</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Group"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Create"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/group/create">`)
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Students:<br>`)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Students"))
+	w.AppendString(`:<br>`)
 	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" value="Create">`)
+	DisplaySubmit(w, GL, "", "Create", true)
 
 	w.AppendString(`</form>`)
 	w.AppendString(`</body>`)
@@ -337,28 +353,40 @@ func GroupEditPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Edit group</title></head>`)
-	w.AppendString(`<body>`)
-	w.AppendString(`<h1>Group</h1>`)
-	w.AppendString(`<h2>Edit</h2>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Edit group"))
+	w.AppendString(`</title></head>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Group"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Edit"))
+	w.AppendString(`</h2>`)
+
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="/api/group/edit">`)
 
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Students:<br>`)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Students"))
+	w.AppendString(`:<br>`)
 	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" value="Save">`)
+	DisplaySubmit(w, GL, "", "Save", true)
 
 	w.AppendString(`</form>`)
 	w.AppendString(`</body>`)
@@ -382,7 +410,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
+		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -392,7 +420,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 
 	sids := r.Form.GetMany("StudentID")
 	if len(sids) == 0 {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("add at least one student"))
+		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "add at least one student")))
 	}
 	students := make([]database.ID, len(sids))
 	for i := 0; i < len(sids); i++ {
@@ -437,7 +465,7 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetGroupByID(groupID, &group); err != nil {
 		if err == database.NotFound {
-			return WritePage(w, r, GroupEditPageHandler, http.NotFound("group with this ID is not found"))
+			return WritePage(w, r, GroupEditPageHandler, http.NotFound(Ls(GL, "group with this ID does not exist")))
 		}
 		return http.ServerError(err)
 	}
@@ -471,14 +499,14 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetGroupByID(groupID, &group); err != nil {
 		if err == database.NotFound {
-			return WritePage(w, r, GroupEditPageHandler, http.NotFound("group with this ID is not found"))
+			return WritePage(w, r, GroupEditPageHandler, http.NotFound(Ls(GL, "group with this ID does not exist")))
 		}
 		return http.ServerError(err)
 	}
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupEditPageHandler, http.BadRequest("group name length must be between %d and %d characters long", MinGroupNameLen, MaxGroupNameLen))
+		return WritePage(w, r, GroupEditPageHandler, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -488,7 +516,7 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 
 	sids := r.Form.GetMany("StudentID")
 	if len(sids) == 0 {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest("add at least one student"))
+		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "add at least one student")))
 	}
 	students := group.Students[:0]
 	for i := 0; i < len(sids); i++ {

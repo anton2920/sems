@@ -221,6 +221,8 @@ func GetLessons(pos *int64, lessons []Lesson) (int, error) {
 }
 
 func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
+	ds.Draft = ss.Draft
+
 	n += database.String2DBString(&ds.Name, ss.Name, data, n)
 
 	switch ss.Type {
@@ -296,27 +298,66 @@ func SaveLesson(lesson *Lesson) error {
 	return database.Write(LessonsDB, lessonDB.ID, &lessonDB)
 }
 
-func StepStringType(s *Step) string {
+func StepStringType(l Language, s *Step) string {
 	switch s.Type {
 	default:
 		panic("invalid step type")
 	case StepTypeTest:
-		return "Test"
+		return Ls(l, "Test")
 	case StepTypeProgramming:
-		return "Programming task"
+		return Ls(l, "Programming task")
 	}
 }
 
-func DisplayLessonTitle(w *http.Response, container string, lesson *Lesson) {
+func DisplayLessonTitle(w *http.Response, l Language, container string, lesson *Lesson) {
 	w.WriteHTMLString(container)
 	w.AppendString(`: `)
 	w.WriteHTMLString(lesson.Name)
+	DisplayDraft(w, l, lesson.Flags == LessonDraft)
 }
 
-func DisplayLessonLink(w *http.Response, lesson *Lesson) {
+func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 	w.AppendString(`<a href="/lesson/`)
 	w.WriteID(lesson.ID)
-	w.AppendString(`">Open</a>`)
+	w.AppendString(`">`)
+	w.AppendString(Ls(l, "Open"))
+	w.AppendString(`</a>`)
+}
+
+func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
+	var lesson Lesson
+
+	for i := 0; i < len(lessons); i++ {
+		if err := GetLessonByID(lessons[i], &lesson); err != nil {
+			/* TODO(anton2920): report error. */
+		}
+
+		w.AppendString(`<fieldset>`)
+
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(l, "Lesson"))
+		w.AppendString(` #`)
+		w.WriteInt(i + 1)
+		DisplayDraft(w, l, lesson.Flags == LessonDraft)
+		w.AppendString(`</legend>`)
+
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(l, "Name"))
+		w.AppendString(`: `)
+		w.WriteHTMLString(lesson.Name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(l, "Theory"))
+		w.AppendString(`: `)
+		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
+		w.AppendString(`</p>`)
+
+		DisplayLessonLink(w, l, &lesson)
+
+		w.AppendString(`</fieldset>`)
+		w.AppendString(`<br>`)
+	}
 }
 
 func LessonPageHandler(w *http.Response, r *http.Request) error {
@@ -331,13 +372,13 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		return http.UnauthorizedError
 	}
 
-	id, err := GetIDFromURL(r.URL, "/lesson/")
+	id, err := GetIDFromURL(GL, r.URL, "/lesson/")
 	if err != nil {
 		return http.ClientError(err)
 	}
 	if err := GetLessonByID(id, &lesson); err != nil {
 		if err == database.NotFound {
-			return http.NotFound("lesson with this ID does not exist")
+			return http.NotFound(Ls(GL, "lesson with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -378,21 +419,25 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	DisplayLessonTitle(w, container, &lesson)
+	DisplayLessonTitle(w, GL, container, &lesson)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	DisplayLessonTitle(w, container, &lesson)
+	DisplayLessonTitle(w, GL, container, &lesson)
 	w.AppendString(`</h1>`)
 
-	w.AppendString(`<h2>Theory</h2>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Theory"))
+	w.AppendString(`</h2>`)
 	w.AppendString(`<p>`)
 	w.WriteHTMLString(lesson.Theory)
 	w.AppendString(`</p>`)
 
 	if len(lesson.Steps) > 0 {
-		w.AppendString(`<h2>Evaluation</h2>`)
+		w.AppendString(`<h2>`)
+		w.AppendString(Ls(GL, "Evaluation"))
+		w.AppendString(`</h2>`)
 
 		w.AppendString(`<div style="max-width: max-content">`)
 		for i := 0; i < len(lesson.Steps); i++ {
@@ -404,16 +449,23 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 			w.AppendString(`<fieldset>`)
 
-			w.AppendString(`<legend>Step #`)
+			w.AppendString(`<legend>`)
+			w.AppendString(Ls(GL, "Step"))
+			w.AppendString(` #`)
 			w.WriteInt(i + 1)
+			DisplayDraft(w, GL, step.Draft)
 			w.AppendString(`</legend>`)
 
-			w.AppendString(`<p>Name: `)
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Name"))
+			w.AppendString(`: `)
 			w.WriteHTMLString(step.Name)
 			w.AppendString(`</p>`)
 
-			w.AppendString(`<p>Type: `)
-			w.AppendString(StepStringType(step))
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Type"))
+			w.AppendString(`: `)
+			w.AppendString(StepStringType(GL, step))
 			w.AppendString(`</p>`)
 
 			w.AppendString(`</fieldset>`)
@@ -431,13 +483,15 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 				if submission.Flags == SubmissionActive {
 					if !displayed {
-						w.AppendString(`<h2>Submissions</h2>`)
+						w.AppendString(`<h2>`)
+						w.AppendString(Ls(GL, "Submissions"))
+						w.AppendString(`</h2>`)
 						w.AppendString(`<ul>`)
 						displayed = true
 					}
 
 					w.AppendString(`<li>`)
-					DisplaySubmissionLink(w, &submission)
+					DisplaySubmissionLink(w, GL, &submission)
 					w.AppendString(`</li>`)
 				}
 			}
@@ -455,13 +509,18 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 			if submission.UserID == session.ID {
 				if submission.Flags == SubmissionActive {
+					si = -1
+
 					if !displayed {
-						w.AppendString(`<h2>Submissions</h2>`)
+						w.AppendString(`<h2>`)
+						w.AppendString(Ls(GL, "Submissions"))
+						w.AppendString(`</h2>`)
 						w.AppendString(`<ul>`)
 						displayed = true
 					}
+
 					w.AppendString(`<li>`)
-					DisplaySubmissionLink(w, &submission)
+					DisplaySubmissionLink(w, GL, &submission)
 					w.AppendString(`</li>`)
 				} else if submission.Flags == SubmissionDraft {
 					si = i
@@ -478,10 +537,10 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<form method="POST" action="/submission/new">`)
 			DisplayHiddenID(w, "ID", lesson.ID)
 			if si == -1 {
-				w.AppendString(`<input type="submit" value="Pass">`)
+				DisplaySubmit(w, GL, "", "Pass", true)
 			} else {
 				DisplayHiddenInt(w, "SubmissionIndex", si)
-				w.AppendString(`<input type="submit" value="Edit">`)
+				DisplaySubmit(w, GL, "", "Edit", true)
 			}
 			w.AppendString(`</form>`)
 		}
@@ -564,7 +623,7 @@ func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database
 	}
 }
 
-func DisplayLessonsEditableList(w *http.Response, lessons []database.ID) {
+func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database.ID) {
 	var lesson Lesson
 
 	for i := 0; i < len(lessons); i++ {
@@ -574,29 +633,33 @@ func DisplayLessonsEditableList(w *http.Response, lessons []database.ID) {
 
 		w.AppendString(`<fieldset>`)
 
-		w.AppendString(`<legend>Lesson #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Lesson"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
-		if lesson.Flags == LessonDraft {
-			w.AppendString(` (draft)`)
-		}
+		DisplayDraft(w, l, lesson.Flags == LessonDraft)
 		w.AppendString(`</legend>`)
 
-		w.AppendString(`<p>Name: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Name"))
+		w.AppendString(`: `)
 		w.WriteHTMLString(lesson.Name)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<p>Theory: `)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Theory"))
+		w.AppendString(`: `)
 		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
 		w.AppendString(`</p>`)
 
-		DisplayIndexedCommand(w, i, "Edit")
-		DisplayIndexedCommand(w, i, "Delete")
+		DisplayIndexedCommand(w, l, i, "Edit")
+		DisplayIndexedCommand(w, l, i, "Delete")
 		if len(lessons) > 1 {
 			if i > 0 {
-				DisplayIndexedCommand(w, i, "↑")
+				DisplayIndexedCommand(w, l, i, "↑")
 			}
 			if i < len(lessons)-1 {
-				DisplayIndexedCommand(w, i, "↓")
+				DisplayIndexedCommand(w, l, i, "↓")
 			}
 		}
 
@@ -610,13 +673,13 @@ func LessonFillFromRequest(vs url.Values, lesson *Lesson) {
 	lesson.Theory = vs.Get("Theory")
 }
 
-func LessonVerify(lesson *Lesson) error {
+func LessonVerify(l Language, lesson *Lesson) error {
 	if !strings.LengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
-		return http.BadRequest("lesson name length must be between %d and %d characters long", MinNameLen, MaxNameLen)
+		return http.BadRequest(Ls(l, "lesson name length must be between %d and %d characters long"), MinNameLen, MaxNameLen)
 	}
 
 	if !strings.LengthInRange(lesson.Theory, MinTheoryLen, MaxTheoryLen) {
-		return http.BadRequest("lesson theory length must be between %d and %d characters long", MinTheoryLen, MaxTheoryLen)
+		return http.BadRequest(Ls(l, "lesson theory length must be between %d and %d characters long"), MinTheoryLen, MaxTheoryLen)
 	}
 
 	for si := 0; si < len(lesson.Steps); si++ {
@@ -625,11 +688,11 @@ func LessonVerify(lesson *Lesson) error {
 		switch step.Type {
 		case StepTypeTest:
 			if step.Draft {
-				return http.BadRequest("test %d is a draft", si+1)
+				return http.BadRequest(Ls(l, "test %d is a draft"), si+1)
 			}
 		case StepTypeProgramming:
 			if step.Draft {
-				return http.BadRequest("programming task %d is a draft", si+1)
+				return http.BadRequest(Ls(l, "programming task %d is a draft"), si+1)
 			}
 		}
 	}
@@ -684,26 +747,26 @@ func LessonTestFillFromRequest(vs url.Values, test *StepTest) error {
 	return nil
 }
 
-func LessonTestVerify(test *StepTest) error {
+func LessonTestVerify(l Language, test *StepTest) error {
 	if !strings.LengthInRange(test.Name, MinStepNameLen, MaxStepNameLen) {
-		return http.BadRequest("test name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
+		return http.BadRequest(Ls(l, "test name length must be between %d and %d characters long"), MinStepNameLen, MaxStepNameLen)
 	}
 
 	for i := 0; i < len(test.Questions); i++ {
 		question := &test.Questions[i]
 
 		if !strings.LengthInRange(question.Name, MinQuestionLen, MaxQuestionLen) {
-			return http.BadRequest("question %d: title length must be between %d and %d characters long", i+1, MinQuestionLen, MaxQuestionLen)
+			return http.BadRequest(Ls(l, "question %d: title length must be between %d and %d characters long"), i+1, MinQuestionLen, MaxQuestionLen)
 		}
 
 		for j := 0; j < len(question.Answers); j++ {
 			if !strings.LengthInRange(question.Answers[j], MinAnswerLen, MaxAnswerLen) {
-				return http.BadRequest("question %d: answer %d: length must be between %d and %d characters long", i+1, j+1, MinAnswerLen, MaxAnswerLen)
+				return http.BadRequest(Ls(l, "question %d: answer %d: length must be between %d and %d characters long"), i+1, j+1, MinAnswerLen, MaxAnswerLen)
 			}
 		}
 
 		if len(question.CorrectAnswers) == 0 {
-			return http.BadRequest("question %d: select at least one correct answer", i+1)
+			return http.BadRequest(Ls(l, "question %d: select at least one correct answer"), i+1)
 		}
 	}
 
@@ -712,13 +775,19 @@ func LessonTestVerify(test *StepTest) error {
 
 func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Test</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Test"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Lesson</h1>`)
-	w.AppendString(`<h2>Test</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Lesson"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Test"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -730,7 +799,9 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 
 	DisplayHiddenString(w, "CurrentPage", "Test")
 
-	w.AppendString(`<label>Title: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Title"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
@@ -743,16 +814,22 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 
 		w.AppendString(`<fieldset>`)
 
-		w.AppendString(`<legend>Question #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Question"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
 		w.AppendString(`</legend>`)
 
-		w.AppendString(`<label>Title: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(GL, "Title"))
+		w.AppendString(`: `)
 		DisplayConstraintInput(w, "text", MinQuestionLen, MaxQuestionLen, "Question", question.Name, true)
 		w.AppendString(`</label>`)
 		w.AppendString(`<br>`)
 
-		w.AppendString(`<p>Answers (mark the correct ones):</p>`)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Answers (mark the correct ones)"))
+		w.AppendString(`:</p>`)
 		w.AppendString(`<ol>`)
 
 		if len(question.Answers) == 0 {
@@ -784,12 +861,12 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 			DisplayConstraintIndexedInput(w, "text", MinAnswerLen, MaxAnswerLen, "Answer", i, answer, true)
 
 			if len(question.Answers) > 1 {
-				DisplayDoublyIndexedCommand(w, i, j, "-")
+				DisplayDoublyIndexedCommand(w, GL, i, j, "-")
 				if j > 0 {
-					DisplayDoublyIndexedCommand(w, i, j, "↑")
+					DisplayDoublyIndexedCommand(w, GL, i, j, "↑")
 				}
 				if j < len(question.Answers)-1 {
-					DisplayDoublyIndexedCommand(w, i, j, "↓")
+					DisplayDoublyIndexedCommand(w, GL, i, j, "↓")
 				}
 			}
 
@@ -797,15 +874,15 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 		}
 		w.AppendString(`</ol>`)
 
-		DisplayIndexedCommand(w, i, "Add another answer")
+		DisplayIndexedCommand(w, GL, i, "Add another answer")
 		if len(test.Questions) > 1 {
 			w.AppendString(`<br><br>`)
-			DisplayIndexedCommand(w, i, "Delete")
+			DisplayIndexedCommand(w, GL, i, "Delete")
 			if i > 0 {
-				DisplayIndexedCommand(w, i, "↑")
+				DisplayIndexedCommand(w, GL, i, "↑")
 			}
 			if i < len(test.Questions)-1 {
-				DisplayIndexedCommand(w, i, "↓")
+				DisplayIndexedCommand(w, GL, i, "↓")
 			}
 		}
 
@@ -813,10 +890,10 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest)
 		w.AppendString(`<br>`)
 	}
 
-	DisplayCommand(w, "Add another question")
+	DisplayCommand(w, GL, "Add another question")
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
+	DisplaySubmit(w, GL, "NextPage", "Continue", true)
 
 	w.AppendString(`</form>`)
 
@@ -882,7 +959,7 @@ func LessonProgrammingVerify(task *StepProgramming) error {
 	return nil
 }
 
-func LessonAddProgrammingDisplayChecks(w *http.Response, task *StepProgramming, checkType CheckType) {
+func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
 	checks := task.Checks[checkType]
 
 	w.AppendString(`<ol>`)
@@ -891,21 +968,25 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, task *StepProgramming, 
 
 		w.AppendString(`<li>`)
 
-		w.AppendString(`<label>Input: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "Input"))
+		w.AppendString(`: `)
 		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyInput], check.Input, true)
 		w.AppendString(`</label> `)
 
-		w.AppendString(`<label>output: `)
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(l, "output"))
+		w.AppendString(`: `)
 		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyOutput], check.Output, true)
 		w.AppendString(`</label>`)
 
-		DisplayDoublyIndexedCommand(w, i, int(checkType), "-")
+		DisplayDoublyIndexedCommand(w, l, i, int(checkType), "-")
 		if len(checks) > 1 {
 			if i > 0 {
-				DisplayDoublyIndexedCommand(w, i, int(checkType), "↑")
+				DisplayDoublyIndexedCommand(w, l, i, int(checkType), "↑")
 			}
 			if i < len(checks)-1 {
-				DisplayDoublyIndexedCommand(w, i, int(checkType), "↓")
+				DisplayDoublyIndexedCommand(w, l, i, int(checkType), "↓")
 			}
 		}
 
@@ -916,13 +997,19 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, task *StepProgramming, 
 
 func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *StepProgramming) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Programming task</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Programming task"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Lesson</h1>`)
-	w.AppendString(`<h2>Programming task</h2>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Lesson"))
+	w.AppendString(`</h1>`)
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(GL, "Programming task"))
+	w.AppendString(`</h2>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -934,27 +1021,35 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 
 	DisplayHiddenString(w, "CurrentPage", "Programming")
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Description:<br>`)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Description"))
+	w.AppendString(`:<br>`)
 	DisplayConstraintTextarea(w, "80", "24", MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<h3>Examples</h3>`)
-	LessonAddProgrammingDisplayChecks(w, task, CheckTypeExample)
-	DisplayCommand(w, "Add example")
+	w.AppendString(`<h3>`)
+	w.AppendString(Ls(GL, "Examples"))
+	w.AppendString(`</h3>`)
+	LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeExample)
+	DisplayCommand(w, GL, "Add example")
 
-	w.AppendString(`<h3>Tests</h3>`)
-	LessonAddProgrammingDisplayChecks(w, task, CheckTypeTest)
-	DisplayCommand(w, "Add test")
+	w.AppendString(`<h3>`)
+	w.AppendString(Ls(GL, "Tests"))
+	w.AppendString(`</h3>`)
+	LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
+	DisplayCommand(w, GL, "Add test")
 
 	w.AppendString(`<br><br>`)
-	w.AppendString(`<input type="submit" name="NextPage" value="Continue">`)
 
+	DisplaySubmit(w, GL, "NextPage", "Continue", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -978,12 +1073,16 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) err
 
 func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create lesson</title></head>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(Ls(GL, "Create lesson"))
+	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
-	w.AppendString(`<h1>Lesson</h1>`)
+	w.AppendString(`<h1>`)
+	w.AppendString(Ls(GL, "Lesson"))
+	w.AppendString(`</h1>`)
 
-	DisplayErrorMessage(w, r.Form.Get("Error"))
+	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
 	w.AppendString(`<form method="POST" action="`)
 	w.WriteString(r.URL.Path)
@@ -994,47 +1093,52 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 
 	DisplayHiddenString(w, "CurrentPage", "Lesson")
 
-	w.AppendString(`<label>Name: `)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<label>Theory:<br>`)
+	w.AppendString(`<label>`)
+	w.AppendString(Ls(GL, "Theory"))
+	w.AppendString(`:<br>`)
 	DisplayConstraintTextarea(w, "80", "24", MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
 	for i := 0; i < len(lesson.Steps); i++ {
 		step := &lesson.Steps[i]
-		name := step.Name
-		draft := step.Draft
-		stepType := StepStringType(step)
 
 		w.AppendString(`<fieldset>`)
 
-		w.AppendString(`<legend>Step #`)
+		w.AppendString(`<legend>`)
+		w.AppendString(Ls(GL, "Step"))
+		w.AppendString(` #`)
 		w.WriteInt(i + 1)
-		if draft {
-			w.AppendString(` (draft)`)
-		}
+		DisplayDraft(w, GL, step.Draft)
 		w.AppendString(`</legend>`)
 
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(name)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Name"))
+		w.AppendString(`: `)
+		w.WriteHTMLString(step.Name)
 		w.AppendString(`</p>`)
 
-		w.AppendString(`<p>Type: `)
-		w.AppendString(stepType)
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Type"))
+		w.AppendString(`: `)
+		w.AppendString(StepStringType(GL, step))
 		w.AppendString(`</p>`)
 
-		DisplayIndexedCommand(w, i, "Edit")
-		DisplayIndexedCommand(w, i, "Delete")
+		DisplayIndexedCommand(w, GL, i, "Edit")
+		DisplayIndexedCommand(w, GL, i, "Delete")
 		if len(lesson.Steps) > 1 {
 			if i > 0 {
-				DisplayIndexedCommand(w, i, "↑")
+				DisplayIndexedCommand(w, GL, i, "↑")
 			}
 			if i < len(lesson.Steps)-1 {
-				DisplayIndexedCommand(w, i, "↓")
+				DisplayIndexedCommand(w, GL, i, "↓")
 			}
 		}
 
@@ -1042,12 +1146,11 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 		w.AppendString(`<br>`)
 	}
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Add test" formnovalidate> `)
-	w.AppendString(`<input type="submit" name="NextPage" value="Add programming task" formnovalidate>`)
+	DisplaySubmit(w, GL, "NextPage", "Add test", false)
+	DisplaySubmit(w, GL, "NextPage", "Add programming task", false)
 	w.AppendString(`<br><br>`)
 
-	w.AppendString(`<input type="submit" name="NextPage" value="Next">`)
-
+	DisplaySubmit(w, GL, "NextPage", "Next", true)
 	w.AppendString(`</form>`)
 
 	w.AppendString(`</body>`)
@@ -1056,7 +1159,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 	return nil
 }
 
-func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []database.ID, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, l Language, r *http.Request, lessons []database.ID, currentPage, k, command string) error {
 	var lesson Lesson
 
 	/* TODO(anton2920): pass these as parameters. */
@@ -1079,9 +1182,9 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []databas
 		defer SaveLesson(&lesson)
 
 		switch command {
-		case "Delete":
+		case Ls(l, "Delete"):
 			lesson.Steps = RemoveAtIndex(lesson.Steps, pindex)
-		case "Edit":
+		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
 				return http.ClientError(nil)
 			}
@@ -1121,7 +1224,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []databas
 		}
 
 		switch command {
-		case "Add another answer":
+		case Ls(l, "Add another answer"):
 			if (pindex < 0) || (pindex >= len(test.Questions)) {
 				return http.ClientError(nil)
 			}
@@ -1146,9 +1249,9 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []databas
 					question.CorrectAnswers[i]--
 				}
 			}
-		case "Add another question":
+		case Ls(l, "Add another question"):
 			test.Questions = append(test.Questions, Question{})
-		case "Delete":
+		case Ls(l, "Delete"):
 			test.Questions = RemoveAtIndex(test.Questions, pindex)
 		case "↑", "^|":
 			if ssindex == "" {
@@ -1230,9 +1333,9 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, lessons []databas
 		}
 
 		switch command {
-		case "Add example":
+		case Ls(l, "Add example"):
 			task.Checks[CheckTypeExample] = append(task.Checks[CheckTypeExample], Check{})
-		case "Add test":
+		case Ls(l, "Add test"):
 			task.Checks[CheckTypeTest] = append(task.Checks[CheckTypeTest], Check{})
 		case "-":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {

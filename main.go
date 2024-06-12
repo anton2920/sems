@@ -89,7 +89,7 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		}
 	}
 
-	return http.NotFound("requested page does not exist")
+	return http.NotFound(Ls(GL, "requested page does not exist"))
 }
 
 func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
@@ -132,7 +132,7 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		}
 	}
 
-	return http.NotFound("requested API endpoint does not exist")
+	return http.NotFound(Ls(GL, "requested API endpoint does not exist"))
 }
 
 func RouterFunc(w *http.Response, r *http.Request) (err error) {
@@ -150,9 +150,9 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 		return HandleAPIRequest(w, r, path[len(APIPrefix):])
 
 	case path == "/error":
-		return http.ServerError(errors.New("test error"))
+		return http.ServerError(errors.New(Ls(GL, "test error")))
 	case path == "/panic":
-		panic("test panic")
+		panic(Ls(GL, "test panic"))
 	}
 }
 
@@ -192,7 +192,7 @@ func Router(ws []http.Response, rs []http.Request) {
 			if Debug {
 				message = err.Error()
 			}
-			ErrorPageHandler(w, message)
+			ErrorPageHandler(w, GL, message)
 		}
 
 		addr := r.RemoteAddr

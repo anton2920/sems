@@ -143,7 +143,7 @@ func SubmissionVerifyProgrammingCleanup(j jail.Jail, lang *ProgrammingLanguage) 
 }
 
 /* TODO(anton2920): rewrite without using standard library. */
-func SubmissionVerifyProgrammingCompile(j jail.Jail, lang *ProgrammingLanguage) error {
+func SubmissionVerifyProgrammingCompile(l Language, j jail.Jail, lang *ProgrammingLanguage) error {
 	var buffer bytes.Buffer
 
 	const timeout = 5
@@ -161,15 +161,15 @@ func SubmissionVerifyProgrammingCompile(j jail.Jail, lang *ProgrammingLanguage) 
 
 	if err := cmd.Run(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("failed to compile program: exceeded compilation timeout of %d seconds", timeout)
+			return fmt.Errorf(Ls(l, "failed to compile program: exceeded compilation timeout of %d seconds"), timeout)
 		}
-		return fmt.Errorf("failed to compile program: %s %w", buffer.String(), err)
+		return fmt.Errorf(Ls(l, "failed to compile program: %s %w"), buffer.String(), err)
 	}
 
 	return nil
 }
 
-func SubmissionVerifyProgrammingRun(j jail.Jail, lang *ProgrammingLanguage, input string, output *bytes.Buffer) error {
+func SubmissionVerifyProgrammingRun(l Language, j jail.Jail, lang *ProgrammingLanguage, input string, output *bytes.Buffer) error {
 	var exe string
 	var args []string
 	if lang.Executable != "" {
@@ -194,24 +194,24 @@ func SubmissionVerifyProgrammingRun(j jail.Jail, lang *ProgrammingLanguage, inpu
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stdin pipe: %w", err)
+		return fmt.Errorf(Ls(l, "failed to create stdin pipe: %w"), err)
 	}
 	if _, err := io.WriteString(stdin, input); err != nil {
-		return fmt.Errorf("failed to write input string: %w", err)
+		return fmt.Errorf(Ls(l, "failed to write input string: %w"), err)
 	}
 	stdin.Close()
 
 	if err := cmd.Run(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("failed to run program: exceeded timeout of %d seconds", timeout)
+			return fmt.Errorf(Ls(l, "failed to run program: exceeded timeout of %d seconds"), timeout)
 		}
-		return fmt.Errorf("failed to run program: %s %w", output.String(), err)
+		return fmt.Errorf(Ls(l, "failed to run program: %s %w"), output.String(), err)
 	}
 
 	return nil
 }
 
-func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
+func SubmissionVerifyProgrammingCheck(l Language, j jail.Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
 	var output bytes.Buffer
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -224,7 +224,7 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 
 		check := &task.Checks[checkType][i]
 		input := strings.Replace(strings.TrimSpace(check.Input), "\r\n", "\n", -1)
-		if err := SubmissionVerifyProgrammingRun(j, lang, input, &output); err != nil {
+		if err := SubmissionVerifyProgrammingRun(l, j, lang, input, &output); err != nil {
 			messages[i] = err.Error()
 			if checkType == CheckTypeExample {
 				break
@@ -235,7 +235,7 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 		expectedOutput := strings.Replace(strings.TrimSpace(check.Output), "\r\n", "\n", -1)
 		actualOutput := strings.Replace(strings.TrimSpace(output.String()), "\r\n", "\n", -1)
 		if actualOutput != expectedOutput {
-			messages[i] = fmt.Sprintf("expected %q, got %q", expectedOutput, actualOutput)
+			messages[i] = fmt.Sprintf(Ls(l, "expected %q, got %q"), expectedOutput, actualOutput)
 			if checkType == CheckTypeExample {
 				break
 			}
@@ -249,7 +249,7 @@ func SubmissionVerifyProgrammingCheck(j jail.Jail, submittedTask *SubmittedProgr
 	submittedTask.Messages[checkType] = messages
 }
 
-func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType CheckType) error {
+func SubmissionVerifyProgramming(l Language, submittedTask *SubmittedProgramming, checkType CheckType) error {
 	lang := &ProgrammingLanguages[submittedTask.LanguageID]
 
 	j, err := jail.New("/usr/local/jails/templates/workster", WorkingDirectory)
@@ -272,7 +272,7 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 	}(j, lang)
 
 	if lang.Compiler != "" {
-		if err := SubmissionVerifyProgrammingCompile(j, lang); err != nil {
+		if err := SubmissionVerifyProgrammingCompile(l, j, lang); err != nil {
 			return err
 		}
 	}
@@ -281,7 +281,7 @@ func SubmissionVerifyProgramming(submittedTask *SubmittedProgramming, checkType 
 		return err
 	}
 
-	SubmissionVerifyProgrammingCheck(j, submittedTask, checkType)
+	SubmissionVerifyProgrammingCheck(l, j, submittedTask, checkType)
 	return nil
 }
 
@@ -299,7 +299,7 @@ func SubmissionVerifyStep(submittedStep *SubmittedStep) {
 			submittedTask, _ := Submitted2Programming(submittedStep)
 			if submittedTask.Status == SubmissionCheckPending {
 				submittedTask.Status = SubmissionCheckInProgress
-				if err := SubmissionVerifyProgramming(submittedTask, CheckTypeTest); err != nil {
+				if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeTest); err != nil {
 					submittedTask.Error = err.Error()
 				}
 				submittedTask.Status = SubmissionCheckDone
