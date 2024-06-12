@@ -342,15 +342,19 @@ var Localizations = map[string]*[XX]string{
 		RU: "выходные данные",
 		FR: "",
 	},
+	"question %d: answer %d: length must be between %d and %d characters long": {
+		RU: "вопрос %d: ответ %d: длина должна быть от %d до %d символов",
+	},
 	"question %d: select at least one correct answer": {
+		RU: "вопрос %d: выберите хотя бы один правильный ответ",
+		FR: "",
+	},
+	"question %d: select at least one answer": {
 		RU: "вопрос %d: выберите хотя бы один ответ",
 		FR: "",
 	},
 	"question %d: title length must be between %d and %d characters long": {
 		RU: "вопрос %d: название должно содержать от %d до %d символов",
-	},
-	"question %d: answer %d: length must be between %d and %d characters long": {
-		RU: "вопрос %d: ответ %d: длина должна быть от %d до %d символов",
 	},
 	"requested API endpoint does not exist": {
 		RU: "запрашиваемой команды не существует",
@@ -358,6 +362,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"requested page does not exist": {
 		RU: "запрашиваемой страницы не существует",
+		FR: "",
+	},
+	"step %d is still a draft": {
+		RU: "задание %d всё ещё черновик",
 		FR: "",
 	},
 	"subject name length must be between %d and %d characters long": {
@@ -415,7 +423,7 @@ func Ls(l Language, s string) string {
 		switch s {
 		default:
 			log.Errorf("String %q is not localized in %q", s, l.String())
-		case "↑", "↓", "-":
+		case "↑", "^|", "↓", "|v", "-", "Command":
 		}
 		return s
 	}
