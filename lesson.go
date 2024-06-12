@@ -391,33 +391,35 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	w.WriteHTMLString(lesson.Theory)
 	w.AppendString(`</p>`)
 
-	w.AppendString(`<h2>Evaluation</h2>`)
+	if len(lesson.Steps) > 0 {
+		w.AppendString(`<h2>Evaluation</h2>`)
 
-	w.AppendString(`<div style="max-width: max-content">`)
-	for i := 0; i < len(lesson.Steps); i++ {
-		step := &lesson.Steps[i]
+		w.AppendString(`<div style="max-width: max-content">`)
+		for i := 0; i < len(lesson.Steps); i++ {
+			step := &lesson.Steps[i]
 
-		if i > 0 {
-			w.AppendString(`<br>`)
+			if i > 0 {
+				w.AppendString(`<br>`)
+			}
+
+			w.AppendString(`<fieldset>`)
+
+			w.AppendString(`<legend>Step #`)
+			w.WriteInt(i + 1)
+			w.AppendString(`</legend>`)
+
+			w.AppendString(`<p>Name: `)
+			w.WriteHTMLString(step.Name)
+			w.AppendString(`</p>`)
+
+			w.AppendString(`<p>Type: `)
+			w.AppendString(StepStringType(step))
+			w.AppendString(`</p>`)
+
+			w.AppendString(`</fieldset>`)
 		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(step.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(StepStringType(step))
-		w.AppendString(`</p>`)
-
-		w.AppendString(`</fieldset>`)
+		w.AppendString(`</div>`)
 	}
-	w.AppendString(`</div>`)
 
 	switch who {
 	case SubjectUserAdmin, SubjectUserTeacher:
@@ -472,15 +474,17 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<br>`)
 		}
 
-		w.AppendString(`<form method="POST" action="/submission/new">`)
-		DisplayHiddenID(w, "ID", lesson.ID)
-		if si == -1 {
-			w.AppendString(`<input type="submit" value="Pass">`)
-		} else {
-			DisplayHiddenInt(w, "SubmissionIndex", si)
-			w.AppendString(`<input type="submit" value="Edit">`)
+		if len(lesson.Steps) > 0 {
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+			DisplayHiddenID(w, "ID", lesson.ID)
+			if si == -1 {
+				w.AppendString(`<input type="submit" value="Pass">`)
+			} else {
+				DisplayHiddenInt(w, "SubmissionIndex", si)
+				w.AppendString(`<input type="submit" value="Edit">`)
+			}
+			w.AppendString(`</form>`)
 		}
-		w.AppendString(`</form>`)
 	}
 
 	w.AppendString(`</body>`)

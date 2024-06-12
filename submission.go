@@ -897,98 +897,6 @@ func SubmissionNewTestVerify(submittedTest *SubmittedTest) error {
 	return nil
 }
 
-func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
-	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	submittedTask.LanguageID = id
-
-	submittedTask.Solution = vs.Get("Solution")
-	return nil
-}
-
-func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
-	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
-		return http.BadRequest("selected language is not available")
-	}
-
-	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
-		return http.BadRequest("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
-	}
-
-	return nil
-}
-
-func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
-	var lesson Lesson
-
-	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
-		return http.ServerError(err)
-	}
-
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(`Evaluation for `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</h1>`)
-
-	DisplayErrorMessage(w, r.Form.Get("Error"))
-
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
-
-	DisplayHiddenID(w, "ID", submission.ID)
-	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-
-	DisplayHiddenString(w, "CurrentPage", "Main")
-
-	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		submittedStep := &submission.SubmittedSteps[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>Step #`)
-		w.WriteInt(i + 1)
-		if submittedStep.Flags == SubmittedStepDraft {
-			w.AppendString(` (draft)`)
-		}
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>Name: `)
-		w.WriteHTMLString(submittedStep.Step.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>Type: `)
-		w.AppendString(StepStringType(&submittedStep.Step))
-		w.AppendString(`</p>`)
-
-		if submittedStep.Flags == SubmittedStepSkipped {
-			DisplayIndexedCommand(w, i, "Pass")
-		} else {
-			DisplayIndexedCommand(w, i, "Edit")
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-
-	w.AppendString(`<input type="submit" name="NextPage" value="Finish">`)
-
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
-
-}
-
 func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
 
@@ -1177,6 +1085,98 @@ func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, submittedSt
 		submittedProgramming, _ := Submitted2Programming(submittedStep)
 		return SubmissionNewProgrammingPageHandler(w, r, submittedProgramming)
 	}
+}
+
+func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
+	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
+	if err != nil {
+		return http.ClientError(err)
+	}
+	submittedTask.LanguageID = id
+
+	submittedTask.Solution = vs.Get("Solution")
+	return nil
+}
+
+func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
+	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
+		return http.BadRequest("selected language is not available")
+	}
+
+	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
+		return http.BadRequest("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
+	}
+
+	return nil
+}
+
+func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
+	var lesson Lesson
+
+	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
+		return http.ServerError(err)
+	}
+
+	w.AppendString(`<!DOCTYPE html>`)
+	w.AppendString(`<head><title>`)
+	w.AppendString(`Evaluation for `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</title></head>`)
+	w.AppendString(`<body>`)
+
+	w.AppendString(`<h1>`)
+	w.AppendString(`Evaluation for `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(`</h1>`)
+
+	DisplayErrorMessage(w, r.Form.Get("Error"))
+
+	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
+
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+
+	DisplayHiddenString(w, "CurrentPage", "Main")
+
+	for i := 0; i < len(submission.SubmittedSteps); i++ {
+		submittedStep := &submission.SubmittedSteps[i]
+
+		w.AppendString(`<fieldset>`)
+
+		w.AppendString(`<legend>Step #`)
+		w.WriteInt(i + 1)
+		if submittedStep.Flags == SubmittedStepDraft {
+			w.AppendString(` (draft)`)
+		}
+		w.AppendString(`</legend>`)
+
+		w.AppendString(`<p>Name: `)
+		w.WriteHTMLString(submittedStep.Step.Name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>Type: `)
+		w.AppendString(StepStringType(&submittedStep.Step))
+		w.AppendString(`</p>`)
+
+		if submittedStep.Flags == SubmittedStepSkipped {
+			DisplayIndexedCommand(w, i, "Pass")
+		} else {
+			DisplayIndexedCommand(w, i, "Edit")
+		}
+
+		w.AppendString(`</fieldset>`)
+		w.AppendString(`<br>`)
+	}
+
+	w.AppendString(`<input type="submit" name="NextPage" value="Finish">`)
+
+	w.AppendString(`</form>`)
+
+	w.AppendString(`</body>`)
+	w.AppendString(`</html>`)
+
+	return nil
+
 }
 
 func SubmissionNewHandleCommand(w *http.Response, r *http.Request, submission *Submission, currentPage, k, command string) error {

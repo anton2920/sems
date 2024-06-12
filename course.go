@@ -242,7 +242,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course
 	w.WriteString(r.URL.Path)
 	w.AppendString(`">`)
 
-	DisplayHiddenID(w, "ID", course.ID)
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 	DisplayHiddenString(w, "CurrentPage", "Course")
 
 	w.AppendString(`<label>Name: `)
