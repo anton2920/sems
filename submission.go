@@ -331,6 +331,39 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 	w.WriteInt(maximum)
 }
 
+func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
+	w.AppendString(`<select name="LanguageID"`)
+	if !enabled {
+		w.AppendString(` disabled`)
+	}
+	w.AppendString(`>`)
+	for i := database.ID(0); i < database.ID(len(ProgrammingLanguages)); i++ {
+		lang := &ProgrammingLanguages[i]
+
+		w.AppendString(`<option value="`)
+		w.WriteID(i)
+		w.AppendString(`"`)
+		if i == submittedTask.LanguageID {
+			w.AppendString(` selected`)
+		}
+		w.AppendString(`>`)
+		w.AppendString(lang.Name)
+		w.AppendString(`</option>`)
+	}
+	w.AppendString(`</select>`)
+}
+
+func DisplaySubmissionTitle(w *http.Response, subject *Subject, lesson *Lesson, user *User) {
+	w.AppendString(`Submission for `)
+	w.WriteHTMLString(subject.Name)
+	w.AppendString(`: `)
+	w.WriteHTMLString(lesson.Name)
+	w.AppendString(` by `)
+	w.WriteHTMLString(user.LastName)
+	w.AppendString(` `)
+	w.WriteHTMLString(user.FirstName)
+}
+
 func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	var user User
 
@@ -355,28 +388,6 @@ func DisplaySubmissionLink(w *http.Response, submission *Submission) {
 	}
 	w.AppendString(`)`)
 	w.AppendString(`</a>`)
-}
-
-func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
-	w.AppendString(`<select name="LanguageID"`)
-	if !enabled {
-		w.AppendString(` disabled`)
-	}
-	w.AppendString(`>`)
-	for i := database.ID(0); i < database.ID(len(ProgrammingLanguages)); i++ {
-		lang := &ProgrammingLanguages[i]
-
-		w.AppendString(`<option value="`)
-		w.WriteID(i)
-		w.AppendString(`"`)
-		if i == submittedTask.LanguageID {
-			w.AppendString(` selected`)
-		}
-		w.AppendString(`>`)
-		w.AppendString(lang.Name)
-		w.AppendString(`</option>`)
-	}
-	w.AppendString(`</select>`)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
@@ -423,33 +434,17 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.AppendString(`Submission for `)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(` by `)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(user.FirstName)
+	DisplaySubmissionTitle(w, &subject, &lesson, &user)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.AppendString(`Submission for `)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(` by `)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(user.FirstName)
+	DisplaySubmissionTitle(w, &subject, &lesson, &user)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/results">`)
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteID(submission.ID)
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", submission.ID)
 
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		submittedStep := &submission.SubmittedSteps[i]
@@ -948,15 +943,10 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Main">`)
+	DisplayHiddenID(w, "ID", submission.ID)
+	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
-	w.AppendString(`">`)
+	DisplayHiddenString(w, "CurrentPage", "Main")
 
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		submittedStep := &submission.SubmittedSteps[i]
@@ -1018,19 +1008,11 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTe
 
 	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
 
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Test">`)
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="StepIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("StepIndex"))
-	w.AppendString(`">`)
+	DisplayHiddenString(w, "CurrentPage", "Test")
 
 	if len(submittedTest.SubmittedQuestions) == 0 {
 		submittedTest.SubmittedQuestions = make([]SubmittedQuestion, len(test.Questions))
@@ -1156,19 +1138,11 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 
 	w.AppendString(`<form method="POST" action="/submission/new">`)
 
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Programming">`)
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="SubmissionIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("SubmissionIndex"))
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="StepIndex" value="`)
-	w.WriteHTMLString(r.Form.Get("StepIndex"))
-	w.AppendString(`">`)
+	DisplayHiddenString(w, "CurrentPage", "Programming")
 
 	w.AppendString(`<h2>Solution</h2>`)
 

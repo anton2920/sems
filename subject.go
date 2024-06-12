@@ -134,16 +134,7 @@ func SaveSubject(subject *Subject) error {
 	return database.Write(SubjectsDB, subjectDB.ID, &subjectDB)
 }
 
-func DisplaySubjectLink(w *http.Response, subject *Subject) {
-	var teacher User
-	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
-		/* TODO(anton2920): report error. */
-		return
-	}
-
-	w.AppendString(`<a href="/subject/`)
-	w.WriteID(subject.ID)
-	w.AppendString(`">`)
+func DisplaySubjectTitle(w *http.Response, subject *Subject, teacher *User) {
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` with `)
 	w.WriteHTMLString(teacher.LastName)
@@ -155,6 +146,19 @@ func DisplaySubjectLink(w *http.Response, subject *Subject) {
 	if subject.Flags == SubjectDeleted {
 		w.AppendString(` [deleted]`)
 	}
+}
+
+func DisplaySubjectLink(w *http.Response, subject *Subject) {
+	var teacher User
+	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
+		/* TODO(anton2920): report error. */
+		return
+	}
+
+	w.AppendString(`<a href="/subject/`)
+	w.WriteID(subject.ID)
+	w.AppendString(`">`)
+	DisplaySubjectTitle(w, subject, &teacher)
 	w.AppendString(`</a>`)
 }
 
@@ -198,26 +202,14 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(` with `)
-	w.WriteHTMLString(teacher.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(teacher.FirstName)
+	DisplaySubjectTitle(w, &subject, &teacher)
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.WriteHTMLString(subject.Name)
-	w.AppendString(` with `)
-	w.WriteHTMLString(teacher.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(teacher.FirstName)
+	DisplaySubjectTitle(w, &subject, &teacher)
 	w.AppendString(`</h1>`)
-
-	w.AppendString(`<p>ID: `)
-	w.WriteID(subject.ID)
-	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Teacher: `)
 	DisplayUserLink(w, &teacher)
@@ -235,35 +227,16 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<div>`)
 
 		w.AppendString(`<form style="display:inline" method="POST" action="/subject/edit">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/subject/"):])
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="Name" value="`)
-		w.WriteHTMLString(subject.Name)
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="TeacherID" value="`)
-		w.WriteID(subject.TeacherID)
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="GroupID" value="`)
-		w.WriteID(subject.GroupID)
-		w.AppendString(`">`)
-
+		DisplayHiddenID(w, "ID", subject.ID)
+		DisplayHiddenID(w, "TeacherID", subject.TeacherID)
+		DisplayHiddenID(w, "GroupID", subject.GroupID)
+		DisplayHiddenString(w, "Name", subject.Name)
 		w.AppendString(`<input type="submit" value="Edit">`)
-
 		w.AppendString(`</form>`)
 
 		w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/subject/"):])
-		w.AppendString(`">`)
-
+		DisplayHiddenID(w, "ID", subject.ID)
 		w.AppendString(`<input type="submit" value="Delete">`)
-
 		w.AppendString(`</form>`)
 
 		w.AppendString(`</div>`)
@@ -302,9 +275,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 	if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
 		w.AppendString(`<form method="POST" action="/subject/lessons">`)
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/subject/"):])
-		w.AppendString(`">`)
+		DisplayHiddenString(w, "ID", r.URL.Path[len("/subject/"):])
 
 		if len(subject.Lessons) == 0 {
 			courses := make([]Course, 32)
@@ -509,9 +480,7 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<form method="POST" action="/api/subject/edit">`)
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 
 	w.AppendString(`<label>Name: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
@@ -567,11 +536,8 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, subject *S
 	w.WriteString(r.URL.Path)
 	w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Main">`)
-
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", subject.ID)
+	DisplayHiddenString(w, "CurrentPage", "Main")
 
 	DisplayLessonsEditableList(w, subject.Lessons)
 

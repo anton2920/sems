@@ -99,10 +99,7 @@ func SaveCourse(course *Course) error {
 	return database.Write(CoursesDB, courseDB.ID, &courseDB)
 }
 
-func DisplayCourseLink(w *http.Response, course *Course) {
-	w.AppendString(`<a href="/course/`)
-	w.WriteID(course.ID)
-	w.AppendString(`">`)
+func DisplayCourseTitle(w *http.Response, course *Course) {
 	w.WriteHTMLString(course.Name)
 	if course.Flags == CourseDraft {
 		w.AppendString(` (draft)`)
@@ -110,6 +107,13 @@ func DisplayCourseLink(w *http.Response, course *Course) {
 	if course.Flags == CourseDeleted {
 		w.AppendString(` [deleted]`)
 	}
+}
+
+func DisplayCourseLink(w *http.Response, course *Course) {
+	w.AppendString(`<a href="/course/`)
+	w.WriteID(course.ID)
+	w.AppendString(`">`)
+	DisplayCourseTitle(w, course)
 	w.AppendString(`</a>`)
 }
 
@@ -141,24 +145,12 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(course.Name)
-	if course.Flags == CourseDraft {
-		w.AppendString(` (draft)`)
-	}
-	if course.Flags == CourseDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayCourseTitle(w, &course)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.WriteHTMLString(course.Name)
-	if course.Flags == CourseDraft {
-		w.AppendString(` (draft)`)
-	}
-	if course.Flags == CourseDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayCourseTitle(w, &course)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Lessons</h2>`)
@@ -194,16 +186,12 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<div>`)
 
 	w.AppendString(`<form style="display:inline" method="POST" action="/course/edit">`)
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.URL.Path[len("/course/"):])
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", course.ID)
 	w.AppendString(`<input type="submit" value="Edit">`)
 	w.AppendString(`</form> `)
 
 	w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.URL.Path[len("/course/"):])
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", course.ID)
 	w.AppendString(`<input type="submit" value="Delete">`)
 	w.AppendString(`</form>`)
 
@@ -254,11 +242,8 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course
 	w.WriteString(r.URL.Path)
 	w.AppendString(`">`)
 
-	w.AppendString(`<input type="hidden" name="CurrentPage" value="Course">`)
-
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", course.ID)
+	DisplayHiddenString(w, "CurrentPage", "Course")
 
 	w.AppendString(`<label>Name: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)

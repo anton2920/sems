@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 )
 
@@ -67,6 +68,12 @@ func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, m
 	w.AppendString(`</textarea>`)
 }
 
+func DisplayCommand(w *http.Response, command string) {
+	w.AppendString(` <input type="submit" name="Command" value="`)
+	w.AppendString(command)
+	w.AppendString(`" formnovalidate>`)
+}
+
 func DisplayIndexedCommand(w *http.Response, index int, command string) {
 	w.AppendString(` <input type="submit" name="Command`)
 	w.WriteInt(index)
@@ -83,4 +90,28 @@ func DisplayDoublyIndexedCommand(w *http.Response, pindex, sindex int, command s
 	w.AppendString(`" value="`)
 	w.AppendString(command)
 	w.AppendString(`" formnovalidate>`)
+}
+
+func DisplayHiddenID(w *http.Response, name string, id database.ID) {
+	w.AppendString(`<input type="hidden" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.WriteID(id)
+	w.AppendString(`">`)
+}
+
+func DisplayHiddenInt(w *http.Response, name string, i int) {
+	w.AppendString(`<input type="hidden" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.WriteInt(i)
+	w.AppendString(`">`)
+}
+
+func DisplayHiddenString(w *http.Response, name string, value string) {
+	w.AppendString(`<input type="hidden" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.WriteHTMLString(value)
+	w.AppendString(`">`)
 }

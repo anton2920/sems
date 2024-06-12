@@ -274,10 +274,7 @@ func DisplayUserSubjects(w *http.Response, userID database.ID) {
 	}
 }
 
-func DisplayUserLink(w *http.Response, user *User) {
-	w.AppendString(`<a href="/user/`)
-	w.WriteID(user.ID)
-	w.AppendString(`">`)
+func DisplayUserTitle(w *http.Response, user *User) {
 	w.WriteHTMLString(user.LastName)
 	w.AppendString(` `)
 	w.WriteHTMLString(user.FirstName)
@@ -287,6 +284,13 @@ func DisplayUserLink(w *http.Response, user *User) {
 	if user.Flags == UserDeleted {
 		w.AppendString(` [deleted]`)
 	}
+}
+
+func DisplayUserLink(w *http.Response, user *User) {
+	w.AppendString(`<a href="/user/`)
+	w.WriteID(user.ID)
+	w.AppendString(`">`)
+	DisplayUserTitle(w, user)
 	w.AppendString(`</a>`)
 }
 
@@ -314,30 +318,16 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(user.FirstName)
-	if user.Flags == UserDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayUserTitle(w, &user)
 	w.AppendString(`</title></head>`)
 
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
-	w.WriteHTMLString(user.FirstName)
-	if user.Flags == UserDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayUserTitle(w, &user)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Info</h2>`)
-
-	w.AppendString(`<p>ID: `)
-	w.WriteID(user.ID)
-	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Email: `)
 	w.WriteHTMLString(user.Email)
@@ -350,36 +340,17 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<div>`)
 
 	w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
-
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteString(r.URL.Path[len("/user/"):])
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="FirstName" value="`)
-	w.WriteHTMLString(user.FirstName)
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="LastName" value="`)
-	w.WriteHTMLString(user.LastName)
-	w.AppendString(`">`)
-
-	w.AppendString(`<input type="hidden" name="Email" value="`)
-	w.WriteHTMLString(user.Email)
-	w.AppendString(`">`)
-
+	DisplayHiddenID(w, "ID", user.ID)
+	DisplayHiddenString(w, "FirstName", user.FirstName)
+	DisplayHiddenString(w, "LastName", user.LastName)
+	DisplayHiddenString(w, "Email", user.Email)
 	w.AppendString(`<input type="submit" value="Edit">`)
-
 	w.AppendString(`</form>`)
 
 	if (session.ID == AdminID) && (id != AdminID) {
 		w.AppendString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/user/"):])
-		w.AppendString(`">`)
-
+		DisplayHiddenID(w, "ID", user.ID)
 		w.AppendString(`<input type="submit" value="Delete">`)
-
 		w.AppendString(`</form>`)
 	}
 	w.AppendString(`</div>`)
@@ -480,9 +451,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<form method="POST" action="/api/user/edit">`)
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteID(userID)
-	w.AppendString(`">`)
+	DisplayHiddenID(w, "ID", userID)
 
 	w.AppendString(`<label>First name:<br>`)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)

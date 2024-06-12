@@ -113,10 +113,7 @@ func SaveGroup(group *Group) error {
 	return database.Write(GroupsDB, groupDB.ID, &groupDB)
 }
 
-func DisplayGroupLink(w *http.Response, group *Group) {
-	w.AppendString(`<a href="/group/`)
-	w.WriteID(group.ID)
-	w.AppendString(`">`)
+func DisplayGroupTitle(w *http.Response, group *Group) {
 	w.WriteHTMLString(group.Name)
 	w.AppendString(` (ID: `)
 	w.WriteID(group.ID)
@@ -124,6 +121,13 @@ func DisplayGroupLink(w *http.Response, group *Group) {
 	if group.Flags == GroupDeleted {
 		w.AppendString(` [deleted]`)
 	}
+}
+
+func DisplayGroupLink(w *http.Response, group *Group) {
+	w.AppendString(`<a href="/group/`)
+	w.WriteID(group.ID)
+	w.AppendString(`">`)
+	DisplayGroupTitle(w, group)
 	w.AppendString(`</a>`)
 }
 
@@ -152,25 +156,15 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
-	w.WriteHTMLString(group.Name)
-	if group.Flags == GroupDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayGroupTitle(w, &group)
 	w.AppendString(`</title></head>`)
 	w.AppendString(`<body>`)
 
 	w.AppendString(`<h1>`)
-	w.WriteHTMLString(group.Name)
-	if group.Flags == GroupDeleted {
-		w.AppendString(` [deleted]`)
-	}
+	DisplayGroupTitle(w, &group)
 	w.AppendString(`</h1>`)
 
 	w.AppendString(`<h2>Info</h2>`)
-
-	w.AppendString(`<p>ID: `)
-	w.WriteID(group.ID)
-	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>Created on: `)
 	DisplayFormattedTime(w, group.CreatedOn)
@@ -192,35 +186,19 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 	if session.ID == AdminID {
 		w.AppendString(`<div>`)
+
 		w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/group/"):])
-		w.AppendString(`">`)
-
-		w.AppendString(`<input type="hidden" name="Name" value="`)
-		w.WriteHTMLString(group.Name)
-		w.AppendString(`">`)
-
+		DisplayHiddenID(w, "ID", group.ID)
+		DisplayHiddenString(w, "Name", group.Name)
 		for i := 0; i < len(group.Students); i++ {
-			studentID := group.Students[i]
-			w.AppendString(`<input type="hidden" name="StudentID" value="`)
-			w.WriteID(studentID)
-			w.AppendString(`">`)
+			DisplayHiddenID(w, "StudentID", group.Students[i])
 		}
-
 		w.AppendString(`<input type="submit" value="Edit">`)
-
 		w.AppendString(`</form>`)
 
 		w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
-
-		w.AppendString(`<input type="hidden" name="ID" value="`)
-		w.WriteString(r.URL.Path[len("/group/"):])
-		w.AppendString(`">`)
-
+		DisplayHiddenID(w, "ID", group.ID)
 		w.AppendString(`<input type="submit" value="Delete">`)
-
 		w.AppendString(`</form>`)
 
 		w.AppendString(`</div>`)
@@ -359,7 +337,7 @@ func GroupEditPageHandler(w *http.Response, r *http.Request) error {
 	}
 
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>Create group</title></head>`)
+	w.AppendString(`<head><title>Edit group</title></head>`)
 	w.AppendString(`<body>`)
 	w.AppendString(`<h1>Group</h1>`)
 	w.AppendString(`<h2>Edit</h2>`)
@@ -368,9 +346,7 @@ func GroupEditPageHandler(w *http.Response, r *http.Request) error {
 
 	w.AppendString(`<form method="POST" action="/api/group/edit">`)
 
-	w.AppendString(`<input type="hidden" name="ID" value="`)
-	w.WriteHTMLString(r.Form.Get("ID"))
-	w.AppendString(`">`)
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 
 	w.AppendString(`<label>Name: `)
 	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
