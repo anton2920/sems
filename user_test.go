@@ -33,13 +33,13 @@ func TestUserNameValid(t *testing.T) {
 	}
 
 	for _, test := range expectedOK {
-		if err := UserNameValid(test); err != nil {
+		if err := UserNameValid(GL, test); err != nil {
 			t.Errorf("Expected name %q to be valid, but got error %v", test, err)
 		}
 	}
 
 	for _, test := range expectedError {
-		if err := UserNameValid(test); err == nil {
+		if err := UserNameValid(GL, test); err == nil {
 			t.Errorf("Expected name %q to be invalid, but got no error", test)
 		}
 	}

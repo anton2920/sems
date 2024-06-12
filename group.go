@@ -183,7 +183,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		w.AppendString(`<li>`)
-		DisplayUserLink(w, &user)
+		DisplayUserLink(w, GL, &user)
 		w.AppendString(`</li>`)
 	}
 	w.AppendString(`</ul>`)

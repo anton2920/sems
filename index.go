@@ -25,7 +25,7 @@ func DisplayIndexAdminPage(w *http.Response, l Language, user *User) error {
 			}
 
 			w.AppendString(`<li>`)
-			DisplayUserLink(w, user)
+			DisplayUserLink(w, l, user)
 			w.AppendString(`</li>`)
 		}
 	}

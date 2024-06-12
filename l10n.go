@@ -105,6 +105,14 @@ var Localizations = map[string]*[XX]string{
 		RU: "Редактирование уроков предмета",
 		FR: "",
 	},
+	"Edit user": {
+		RU: "Редактирование пользователя",
+		FR: "",
+	},
+	"Email": {
+		RU: "Электронная почта",
+		FR: "",
+	},
 	"Error": {
 		RU: "Ошибка",
 	},
@@ -118,6 +126,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"Finish": {
 		RU: "Отправить",
+		FR: "",
+	},
+	"First name": {
+		RU: "Имя",
 		FR: "",
 	},
 	"Group": {
@@ -135,6 +147,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"Input": {
 		RU: "Входные данные",
+		FR: "",
+	},
+	"Last name": {
+		RU: "Фамилия",
 		FR: "",
 	},
 	"Lesson": {
@@ -164,6 +180,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "Приступить к выполнению",
 		FR: "",
 	},
+	"Password": {
+		RU: "Пароль",
+		FR: "",
+	},
 	"Pending": {
 		RU: "Ожидается",
 		FR: "",
@@ -186,6 +206,10 @@ var Localizations = map[string]*[XX]string{
 	},
 	"Re-check": {
 		RU: "Перепроверить",
+		FR: "",
+	},
+	"Repeat password": {
+		RU: "Повторите пароль",
 		FR: "",
 	},
 	"Save": {
@@ -268,6 +292,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "Тип",
 		FR: "",
 	},
+	"User": {
+		RU: "Пользователь",
+		FR: "",
+	},
 	"Users": {
 		RU: "Пользователи",
 		FR: "Utilisateurs",
@@ -326,6 +354,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "неудалось выполнить программу: %s %w",
 		FR: "",
 	},
+	"first character of the name must be a letter": {
+		RU: "первый символ имени/фамилии должен быть буквой",
+		FR: "",
+	},
 	"for": {
 		RU: "для",
 		FR: "",
@@ -356,6 +388,9 @@ var Localizations = map[string]*[XX]string{
 	"invalid ID for %q": {
 		RU: "некорректный ID для %q",
 	},
+	"length of the name must be between %d and %d characters": {
+		RU: "имя и фамилия должны содержать от %d до %d символов",
+	},
 	"lesson %d is a draft": {
 		RU: "урок %d всё ещё черновик",
 		FR: "",
@@ -377,9 +412,21 @@ var Localizations = map[string]*[XX]string{
 		RU: "выходные данные",
 		FR: "",
 	},
+	"passwords do not match each other": {
+		RU: "пароли не совпадают",
+	},
+	"password length must be between %d and %d characters long": {
+		RU: "пароль должен содержать от %d до %d символов",
+	},
 	"pending": {
 		RU: "ожидается проверка",
 		FR: "",
+	},
+	"provided email is not valid": {
+		RU: "недопустимый адрес электронной почты",
+	},
+	"provided password is incorrect": {
+		RU: "неверный пароль",
 	},
 	"question %d: answer %d: length must be between %d and %d characters long": {
 		RU: "вопрос %d: ответ %d: длина должна быть от %d до %d символов",
@@ -403,6 +450,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "запрашиваемой страницы не существует",
 		FR: "",
 	},
+	"second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes": {
+		RU: "второй и последующий символы имени/фамилии должны быть буквы, пробелы, точки, дефисы и апострофы",
+	},
 	"step %d is still a draft": {
 		RU: "задание %d всё ещё черновик",
 		FR: "",
@@ -423,6 +473,15 @@ var Localizations = map[string]*[XX]string{
 	},
 	"test name length must be between %d and %d characters long": {
 		RU: "имя теста должно содержать от %d до %d символов",
+	},
+	"user with this ID does not exist": {
+		RU: "пользователя с таким ID не существует",
+	},
+	"user with this email already exists": {
+		RU: "пользователь с такой электронной почтой уже существует",
+	},
+	"user with this email does not exist": {
+		RU: "пользователя с такой электронной почтой не существует",
 	},
 	"verification": {
 		RU: "проверка",
@@ -463,6 +522,13 @@ func Ls(l Language, s string) string {
 
 	ls := Localizations[s]
 	if (ls == nil) || (ls[l] == "") {
+		/*
+			switch s {
+			default:
+				log.Errorf("Not localized %q", s)
+			case "↑", "↓", "^|", "|v", "-", "Command":
+			}
+		*/
 		return s
 	}
 

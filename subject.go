@@ -215,7 +215,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<p>`)
 	w.AppendString(Ls(GL, "Teacher"))
 	w.AppendString(`: `)
-	DisplayUserLink(w, &teacher)
+	DisplayUserLink(w, GL, &teacher)
 	w.AppendString(`</p>`)
 
 	w.AppendString(`<p>`)
