@@ -11,7 +11,7 @@ func TestSubmissionNewPageHandler(t *testing.T) {
 	const endpoint = "/submission/new"
 
 	CreateInitialDBs()
-	testPostAuth(t, "/subject/lesson/edit", testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}}, http.StatusSeeOther)
+	testPostAuth(t, "/subject/lessons", testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{"give as is"}}}, http.StatusSeeOther)
 
 	expectedOK := [...]url.Values{
 		/* Test page. */
