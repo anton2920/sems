@@ -271,8 +271,8 @@ func main() {
 	var quit bool
 	for !quit {
 		for q.HasEvents() {
-			e, err := q.GetEvent()
-			if err != nil {
+			var e event.Event
+			if err := q.GetEvent(&e); err != nil {
 				log.Errorf("Failed to get event: %v", err)
 				continue
 			}
@@ -294,7 +294,7 @@ func main() {
 
 					_ = http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
 				default: /* ready to serve new HTTP request. */
-					ctx, ok := http.ContextFromEvent(e)
+					ctx, ok := http.GetContextFromEvent(&e)
 					if !ok {
 						continue
 					}
@@ -320,7 +320,7 @@ func main() {
 					}
 				}
 			case event.Write:
-				ctx, ok := http.ContextFromEvent(e)
+				ctx, ok := http.GetContextFromEvent(&e)
 				if !ok {
 					continue
 				}
