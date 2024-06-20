@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"time"
 
@@ -207,6 +208,44 @@ func Router(ws []http.Response, rs []http.Request) {
 	}
 }
 
+func ServerWorker(q *event.Queue) {
+	ws := make([]http.Response, 32)
+	rs := make([]http.Request, 32)
+
+	for {
+		var e event.Event
+		if err := q.GetEvent(&e); err != nil {
+			log.Errorf("Failed to get event from client queue: %v", err)
+			continue
+		}
+
+		ctx, ok := http.GetContextFromEvent(&e)
+		if !ok {
+			continue
+		}
+
+		if e.EndOfFile {
+			http.Close(ctx)
+			continue
+		}
+
+		n, err := http.ReadRequests(ctx, rs)
+		if err != nil {
+			log.Errorf("Failed to read HTTP requests: %v", err)
+			http.Close(ctx)
+			continue
+		}
+
+		Router(ws[:n], rs[:n])
+
+		if _, err := http.WriteResponses(ctx, ws[:n]); err != nil {
+			log.Errorf("Failed to write HTTP responses: %v", err)
+			http.Close(ctx)
+			continue
+		}
+	}
+}
+
 func main() {
 	var err error
 
@@ -256,93 +295,54 @@ func main() {
 
 	q, err := event.NewQueue()
 	if err != nil {
-		log.Fatalf("Failed to create event queue: %v", err)
+		log.Fatalf("Failed to create listener event queue: %v", err)
 	}
 	defer q.Close()
+
+	nworkers := runtime.GOMAXPROCS(0) / 2
+	qs := make([]*event.Queue, nworkers)
+	for i := 0; i < nworkers; i++ {
+		qs[i], err = event.NewQueue()
+		if err != nil {
+			log.Fatalf("Failed to create new client queue: %v", err)
+		}
+		go ServerWorker(qs[i])
+	}
 
 	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
 
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	ws := make([]http.Response, 32)
-	rs := make([]http.Request, 32)
-
+	var counter int
 	var quit bool
 	for !quit {
-		for q.HasEvents() {
-			var e event.Event
-			if err := q.GetEvent(&e); err != nil {
-				log.Errorf("Failed to get event: %v", err)
+		var e event.Event
+		if err := q.GetEvent(&e); err != nil {
+			log.Errorf("Failed to get event: %v", err)
+			continue
+		}
+
+		switch e.Type {
+		default:
+			log.Panicf("Unhandled event: %#v", e)
+		case event.Read:
+			ctx, err := http.Accept(l, PageSize)
+			if err != nil {
+				log.Errorf("Failed to accept new HTTP connection: %v", err)
 				continue
 			}
 
-			switch e.Type {
-			default:
-				log.Panicf("Unhandled event: %#v", e)
-			case event.Read:
-				switch e.Identifier {
-				case l: /* ready to accept new connection. */
-					ctx, err := http.Accept(l, PageSize)
-					if err != nil {
-						log.Errorf("Failed to accept new HTTP connection: %v", err)
-						continue
-					}
+			/* TODO(anton2920): remove this. */
+			ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
 
-					/* TODO(anton2920): remove this. */
-					ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
-
-					_ = http.AddClientToQueue(q, ctx, event.RequestRead|event.RequestWrite, event.TriggerEdge)
-				default: /* ready to serve new HTTP request. */
-					ctx, ok := http.GetContextFromEvent(&e)
-					if !ok {
-						continue
-					}
-
-					if e.EndOfFile {
-						http.Close(ctx)
-						continue
-					}
-
-					n, err := http.ReadRequests(ctx, rs)
-					if err != nil {
-						log.Errorf("Failed to read HTTP requests: %v", err)
-						http.Close(ctx)
-						continue
-					}
-
-					Router(ws[:n], rs[:n])
-
-					if _, err := http.WriteResponses(ctx, ws[:n]); err != nil {
-						log.Errorf("Failed to write HTTP responses: %v", err)
-						http.Close(ctx)
-						continue
-					}
-				}
-			case event.Write:
-				ctx, ok := http.GetContextFromEvent(&e)
-				if !ok {
-					continue
-				}
-
-				if e.EndOfFile {
-					http.Close(ctx)
-					continue
-				}
-
-				if _, err := http.WriteResponses(ctx, nil); err != nil {
-					http.Close(ctx)
-					continue
-				}
-			case event.Signal:
-				log.Infof("Received signal %d, exitting...", e.Identifier)
-				quit = true
-				break
-			}
+			_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
+			counter++
+		case event.Signal:
+			log.Infof("Received signal %d, exitting...", e.Identifier)
+			quit = true
+			break
 		}
-
-		const FPS = 60
-		q.Pause(FPS)
 	}
 
 	if err := StoreSessionsToFile(SessionsFile); err != nil {
