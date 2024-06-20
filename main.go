@@ -332,10 +332,6 @@ func main() {
 				log.Errorf("Failed to accept new HTTP connection: %v", err)
 				continue
 			}
-
-			/* TODO(anton2920): remove this. */
-			ctx.DateRFC822 = []byte("Thu, 09 May 2024 16:30:39 +0300")
-
 			_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
 			counter++
 		case event.Signal:
