@@ -17,6 +17,9 @@ var Language2String = [...]string{
 
 /* TODO(anton2920): remove '([A-Z]|[a-z])[a-z]+' duplicates. */
 var Localizations = map[string]*[XX]string{
+	"Administration": {
+		RU: "Управление",
+	},
 	"Add another answer": {
 		RU: "Добавить вариант ответа",
 		FR: "",

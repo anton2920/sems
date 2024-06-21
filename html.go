@@ -4,11 +4,76 @@ import (
 	"time"
 
 	"github.com/anton2920/gofa/database"
+	"github.com/anton2920/gofa/net/html"
 	"github.com/anton2920/gofa/net/http"
 )
 
-func DisplayCSSLink(w *http.Response) {
+func DisplayHTMLHeader(w *http.Response) {
+	w.AppendString(html.Header)
+	w.AppendString(`<html lang="en" data-bs-theme="light">`)
+}
+
+func DisplayCSS(w *http.Response) {
 	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
+	w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
+}
+
+func DisplayJS(w *http.Response) {
+	w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
+}
+
+func DisplayHeader(w *http.Response, l Language) {
+	w.AppendString(`<header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow fixed-top">`)
+
+	w.AppendString(`<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-center" href="/">`)
+	w.AppendString(Ls(l, "Master's degree"))
+	w.AppendString(`</a>`)
+
+	w.AppendString(`</header>`)
+}
+
+func DisplaySidebarStart(w *http.Response) {
+	w.AppendString(`<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-body-tertiary vh-100 sidebar collapse navbar-custom">`)
+	w.AppendString(`<div class="position-sticky pt-3 sidebar-sticky">`)
+}
+
+func DisplaySidebarListStart(w *http.Response) {
+	w.AppendString(`<ul class="nav flex-column">`)
+}
+
+func DisplaySidebarListEnd(w *http.Response) {
+	w.AppendString(`</ul>`)
+}
+
+func DisplaySidebarLink(w *http.Response, l Language, href string, text string) {
+	w.AppendString(`<a class="nav-link" href="`)
+	w.AppendString(href)
+	w.AppendString(`">`)
+	w.AppendString(Ls(l, text))
+	w.AppendString(`</a>`)
+}
+
+func DisplaySidebarUser(w *http.Response, l Language, user *User) {
+	w.AppendString(`<div><div class="text-center"><p class="nav-link link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">`)
+	w.AppendString(`<a class="nav-link" href="/user/`)
+	w.WriteID(user.ID)
+	w.AppendString(`">`)
+	DisplayUserTitle(w, l, user)
+	w.AppendString(`</a>`)
+	w.AppendString(`</p></div></div>`)
+}
+
+func DisplaySidebarEnd(w *http.Response) {
+	w.AppendString(`</div></nav>`)
+}
+
+func DisplayThemeToggle(w *http.Response) {
+	w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
+	w.AppendString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
+	w.AppendString(`<label style="cursor: pointer" for="btn-toggle">`)
+	w.AppendString(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half" viewBox="0 0 16 16"> <path d="M8 15A7 7 0 1 0 8 1v14zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16z"/></svg>`)
+	w.AppendString(`</label>`)
+	w.AppendString(`</div>`)
 }
 
 func DisplayFormattedTime(w *http.Response, t int64) {

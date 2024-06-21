@@ -2,138 +2,91 @@ package main
 
 import "github.com/anton2920/gofa/net/http"
 
-func DisplayIndexAdminPage(w *http.Response, l Language, user *User) error {
-	users := make([]User, 10)
-	pos := int64(0)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(l, "Users"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<ul>`)
-	for {
-		n, err := GetUsers(&pos, users)
-		if err != nil {
-			/* TODO(anton2920): report error. */
-		}
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			user := &users[i]
-			if user.Flags == UserDeleted {
-				continue
-			}
-
-			w.AppendString(`<li>`)
-			DisplayUserLink(w, l, user)
-			w.AppendString(`</li>`)
-		}
-	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/user/create">`)
-	DisplaySubmit(w, l, "", "Create user", true)
-	w.AppendString(`</form>`)
-
-	groups := make([]Group, 32)
-	pos = 0
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(l, "Groups"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<ul>`)
-	for {
-		n, err := GetGroups(&pos, groups)
-		if err != nil {
-			/* TODO(anton2920): report error. */
-		}
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			group := &groups[i]
-			if group.Flags == GroupDeleted {
-				continue
-			}
-
-			w.AppendString(`<li>`)
-			DisplayGroupLink(w, l, group)
-			w.AppendString(`</li>`)
-		}
-	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/group/create">`)
-	DisplaySubmit(w, l, "", "Create group", true)
-	w.AppendString(`</form>`)
-
-	courses := make([]Course, 32)
-	pos = 0
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(l, "Courses"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<ul>`)
-	for {
-		n, err := GetCourses(&pos, courses)
-		if err != nil {
-			/* TODO(anton2920): report error. */
-		}
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			course := &courses[i]
-			if course.Flags == CourseDeleted {
-				continue
-			}
-
-			w.AppendString(`<li>`)
-			DisplayCourseLink(w, l, course)
-			w.AppendString(`</li>`)
-		}
-	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/course/create">`)
-	DisplaySubmit(w, l, "", "Create course", true)
-	w.AppendString(`</form>`)
-
-	subjects := make([]Subject, 32)
-	pos = 0
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(l, "Subjects"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<ul>`)
-	for {
-		n, err := GetSubjects(&pos, subjects)
-		if err != nil {
-			/* TODO(anton2920): report error. */
-		}
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			subject := &subjects[i]
-			if subject.Flags == SubjectDeleted {
-				continue
-			}
-
-			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, l, subject)
-			w.AppendString(`</li>`)
-		}
-	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/subject/create">`)
-	DisplaySubmit(w, l, "", "Create subject", true)
-	w.AppendString(`</form>`)
-	return nil
+func DisplayIndexStart(w *http.Response) {
+	w.AppendString(`<div class="container-fluid">`)
+	w.AppendString(`<div class="row">`)
 }
 
-func DisplayIndexUserPage(w *http.Response, l Language, user *User) error {
+func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
+	w.AppendString(`<div aria-live="polite" class="position-relative">`)
+	w.AppendString(`<div class="top-0 end-0 p-3">`)
+	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">`)
+	w.AppendString(`<div class="container py-4">`)
+
+	w.AppendString(`<h2 class="text-center w-100 mb-3">`)
+	w.AppendString(Ls(l, title))
+	w.AppendString(`</h2>`)
+	w.AppendString(`<br>`)
+
+	w.AppendString(`<div class="row align-items-md-stretch mb-4">`)
+}
+
+func DisplayIndexButton(w *http.Response, l Language, href string, h2 string, p string) {
+	w.AppendString(`<div class="col-md-6 mb-2">`)
+	w.AppendString(`<div class="h-100 p-5 bg-body-tertiary border rounded-3">`)
+
+	w.AppendString(`<h2>`)
+	w.AppendString(Ls(l, h2))
+	w.AppendString(`</h2>`)
+
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(l, p))
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<a class="btn btn-outline-primary" type="button" href="`)
+	w.AppendString(href)
+	w.AppendString(`">`)
+	w.AppendString(Ls(l, "Open"))
+	w.AppendString(`</a>`)
+
+	w.AppendString(`</div>`)
+	w.AppendString(`</div>`)
+}
+
+func DisplayIndexButtonsEnd(w *http.Response) {
+	w.AppendString(`</div></div></main></div></div>`)
+}
+
+func DisplayIndexEnd(w *http.Response) {
+	w.AppendString(`</div></div>`)
+}
+
+func DisplayIndexAdminPage(w *http.Response, l Language, user *User) {
+	DisplayIndexStart(w)
+
+	DisplaySidebarStart(w)
+	{
+		DisplaySidebarUser(w, l, user)
+		w.AppendString(`<hr>`)
+		DisplaySidebarListStart(w)
+		{
+			DisplaySidebarLink(w, l, "/users", "Users")
+			DisplaySidebarLink(w, l, "/groups", "Groups")
+			DisplaySidebarLink(w, l, "/courses", "Courses")
+			DisplaySidebarLink(w, l, "/subjects", "Subjects")
+			w.AppendString(`<hr>`)
+			DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
+		}
+		DisplaySidebarListEnd(w)
+	}
+	DisplaySidebarEnd(w)
+
+	DisplayIndexButtonsStart(w, l, "Administration")
+	{
+		DisplayIndexButton(w, l, "/users", "Users", "Create, edit and delete users")
+		DisplayIndexButton(w, l, "/groups", "Groups", "Create, edit and delete groups")
+		DisplayIndexButton(w, l, "/courses", "Courses", "Create, edit and delete courses")
+		DisplayIndexButton(w, l, "/subjects", "Subjects", "Create, edit and delete subjects")
+	}
+	DisplayIndexButtonsEnd(w)
+
+	DisplayIndexEnd(w)
+}
+
+func DisplayIndexUserPage(w *http.Response, l Language, user *User) {
 	DisplayUserGroups(w, l, user.ID)
 	DisplayUserCourses(w, l, user)
 	DisplayUserSubjects(w, l, user.ID)
-	return nil
 }
 
 func DisplayIndexTitle(w *http.Response, l Language) {
@@ -141,52 +94,38 @@ func DisplayIndexTitle(w *http.Response, l Language) {
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
-	w.AppendString(`<!DOCTYPE html>`)
+	var user User
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		w.Redirect("/user/signin", http.StatusSeeOther)
+		return nil
+	}
+
+	DisplayHTMLHeader(w)
 	w.AppendString(`<head>`)
 	w.AppendString(`<title>`)
 	DisplayIndexTitle(w, GL)
 	w.AppendString(`</title>`)
-	DisplayCSSLink(w)
+	DisplayCSS(w)
+	DisplayJS(w)
 	w.AppendString(`</head>`)
 
-	w.AppendString(`<body>`)
+	w.AppendString(`<body class="bg-body-secondary">`)
 
-	w.AppendString(`<h1>`)
-	DisplayIndexTitle(w, GL)
-	w.AppendString(`</h1>`)
+	DisplayHeader(w, GL)
 
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		w.AppendString(`<a href="/user/signin">`)
-		w.AppendString(Ls(GL, "Sign in"))
-		w.AppendString(`</a>`)
-	} else {
-		var user User
-		if err := GetUserByID(session.ID, &user); err != nil {
-			return http.ServerError(err)
-		}
-
-		w.AppendString(`<a href="/user/`)
-		w.WriteID(user.ID)
-		w.AppendString(`">`)
-		w.AppendString(Ls(GL, "Profile"))
-		w.AppendString(`</a> `)
-		w.AppendString(`<a href="/api/user/signout">`)
-		w.AppendString(Ls(GL, "Sign out"))
-		w.AppendString(`</a>`)
-		w.AppendString(`<br>`)
-
-		if session.ID == AdminID {
-			if err := DisplayIndexAdminPage(w, GL, &user); err != nil {
-				return http.ServerError(err)
-			}
-		} else {
-			if err := DisplayIndexUserPage(w, GL, &user); err != nil {
-				return http.ServerError(err)
-			}
-		}
+	if err := GetUserByID(session.ID, &user); err != nil {
+		return http.ServerError(err)
 	}
 
+	if session.ID == AdminID {
+		DisplayIndexAdminPage(w, GL, &user)
+	} else {
+		DisplayIndexUserPage(w, GL, &user)
+	}
+
+	DisplayThemeToggle(w)
 	w.AppendString(`</body>`)
 	w.AppendString(`</html>`)
 

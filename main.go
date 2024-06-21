@@ -145,7 +145,12 @@ func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 	case "/bootstrap.min.css":
 		w.SetHeaderUnsafe("Content-Type", "text/css")
 		w.SetHeaderUnsafe("Cache-Control", "max-age=604800")
-		w.Append(BootstrapContents)
+		w.Append(BootstrapCSS)
+		return nil
+	case "/bootstrap.min.js":
+		w.SetHeaderUnsafe("Content-Type", "application/js")
+		w.SetHeaderUnsafe("Cache-Control", "max-age=604800")
+		w.Append(BootstrapJS)
 		return nil
 	}
 
