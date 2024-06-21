@@ -19,6 +19,7 @@ func DisplayHeadStart(w *http.Response) {
 	w.AppendString(`<meta name="viewport" content="width=device-width, initial-scale=1"/>`)
 
 	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
+	w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
 	// w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
 }
 

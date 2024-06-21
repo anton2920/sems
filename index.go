@@ -56,7 +56,6 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<title>`)
 		w.AppendString(Ls(GL, "Master's degree"))
 		w.AppendString(`</title>`)
-		w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
 	}
 	DisplayHeadEnd(w)
 

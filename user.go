@@ -267,7 +267,7 @@ func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 
 			if !displayed {
 				w.AppendString(`<h3>`)
-				w.AppendString(Ls(GL, "Subjects"))
+				w.AppendString(Ls(l, "Subjects"))
 				w.AppendString(`</h3>`)
 				w.AppendString(`<ul>`)
 				displayed = true
@@ -280,7 +280,6 @@ func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 	}
 	if displayed {
 		w.AppendString(`</ul>`)
-		w.AppendString(`<br>`)
 	}
 }
 
@@ -331,7 +330,6 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<title>`)
 		DisplayUserTitle(w, GL, &user)
 		w.AppendString(`</title>`)
-		w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -364,7 +362,6 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`</p>`)
 
 		w.AppendString(`<div>`)
-
 		w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
 		DisplayHiddenID(w, "ID", user.ID)
 		DisplayHiddenString(w, "FirstName", user.FirstName)

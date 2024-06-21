@@ -113,6 +113,62 @@ func SaveGroup(group *Group) error {
 	return database.Write(GroupsDB, groupDB.ID, &groupDB)
 }
 
+func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
+	w.AppendString(`<h3>`)
+	w.AppendString(Ls(GL, "Students"))
+	w.AppendString(`</h3>`)
+	w.AppendString(`<ul>`)
+	for i := 0; i < len(group.Students); i++ {
+		var user User
+		if err := GetUserByID(group.Students[i], &user); err != nil {
+			/* TODO(anton2920): report error. */
+		}
+
+		w.AppendString(`<li>`)
+		DisplayUserLink(w, GL, &user)
+		w.AppendString(`</li>`)
+	}
+	w.AppendString(`</ul>`)
+	w.AppendString(`<br>`)
+}
+
+func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
+	subjects := make([]Subject, 32)
+	var displayed bool
+	var pos int64
+
+	for {
+		n, err := GetSubjects(&pos, subjects)
+		if err != nil {
+			/* TODO(anton2920): report error. */
+		}
+		if n == 0 {
+			break
+		}
+		for i := 0; i < n; i++ {
+			subject := &subjects[i]
+			if (subject.Flags == SubjectDeleted) || (group.ID != subject.GroupID) {
+				continue
+			}
+
+			if !displayed {
+				w.AppendString(`<h3>`)
+				w.AppendString(Ls(l, "Subjects"))
+				w.AppendString(`</h3>`)
+				w.AppendString(`<ul>`)
+				displayed = true
+			}
+
+			w.AppendString(`<li>`)
+			DisplaySubjectLink(w, l, subject)
+			w.AppendString(`</li>`)
+		}
+	}
+	if displayed {
+		w.AppendString(`</ul>`)
+	}
+}
+
 func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 	w.WriteHTMLString(group.Name)
 	w.AppendString(` (ID: `)
@@ -147,101 +203,70 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		}
 		return http.ServerError(err)
 	}
-
 	if !UserInGroup(session.ID, &group) {
 		return http.ForbiddenError
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	DisplayGroupTitle(w, GL, &group)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	DisplayGroupTitle(w, GL, &group)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Info"))
-	w.AppendString(`</h2>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Created on"))
-	w.AppendString(`: `)
-	DisplayFormattedTime(w, group.CreatedOn)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Students"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<ul>`)
-	for i := 0; i < len(group.Students); i++ {
-		var user User
-		if err := GetUserByID(group.Students[i], &user); err != nil {
-			return http.ServerError(err)
-		}
-
-		w.AppendString(`<li>`)
-		DisplayUserLink(w, GL, &user)
-		w.AppendString(`</li>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplayGroupTitle(w, GL, &group)
+		w.AppendString(`</title>`)
 	}
-	w.AppendString(`</ul>`)
+	DisplayHeadEnd(w)
 
-	if session.ID == AdminID {
-		w.AppendString(`<div>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-		w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
-		DisplayHiddenID(w, "ID", group.ID)
-		DisplayHiddenString(w, "Name", group.Name)
-		for i := 0; i < len(group.Students); i++ {
-			DisplayHiddenID(w, "StudentID", group.Students[i])
+		w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
+		w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-8">`)
+
+		w.AppendString(`<h2>`)
+		DisplayGroupTitle(w, GL, &group)
+		w.AppendString(`</h2>`)
+
+		w.AppendString(`<h3>`)
+		w.AppendString(Ls(GL, "Info"))
+		w.AppendString(`</h3>`)
+
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(GL, "Created on"))
+		w.AppendString(`: `)
+		DisplayFormattedTime(w, group.CreatedOn)
+		w.AppendString(`</p>`)
+
+		if session.ID == AdminID {
+			w.AppendString(`<div>`)
+			w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
+			DisplayHiddenID(w, "ID", group.ID)
+			DisplayHiddenString(w, "Name", group.Name)
+			for i := 0; i < len(group.Students); i++ {
+				DisplayHiddenID(w, "StudentID", group.Students[i])
+			}
+			DisplayButton(w, GL, "", "Edit")
+			w.AppendString(`</form>`)
+
+			w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
+			DisplayHiddenID(w, "ID", group.ID)
+			DisplayButton(w, GL, "", "Delete")
+			w.AppendString(`</form>`)
+			w.AppendString(`</div>`)
+			w.AppendString(`<br>`)
 		}
-		DisplaySubmit(w, GL, "", "Edit", true)
-		w.AppendString(`</form>`)
 
-		w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
-		DisplayHiddenID(w, "ID", group.ID)
-		DisplaySubmit(w, GL, "", "Delete", true)
-		w.AppendString(`</form>`)
+		DisplayGroupStudents(w, GL, &group)
+		DisplayGroupSubjects(w, GL, &group)
 
 		w.AppendString(`</div>`)
+		w.AppendString(`</main>`)
 	}
+	DisplayBodyEnd(w)
 
-	subjects := make([]Subject, 32)
-	var displayed bool
-	var pos int64
-
-	for {
-		n, err := GetSubjects(&pos, subjects)
-		if err != nil {
-			return http.ServerError(err)
-		}
-		if n == 0 {
-			break
-		}
-		for i := 0; i < n; i++ {
-			subject := &subjects[i]
-			if (subject.Flags == SubjectDeleted) || (group.ID != subject.GroupID) {
-				continue
-			}
-
-			if !displayed {
-				w.AppendString(`<h2>`)
-				w.AppendString(Ls(GL, "Subjects"))
-				w.AppendString(`</h2>`)
-				w.AppendString(`<ul>`)
-				displayed = true
-			}
-			w.AppendString(`<li>`)
-			DisplaySubjectLink(w, GL, subject)
-			w.AppendString(`</li>`)
-		}
-	}
-	if displayed {
-		w.AppendString(`</ul>`)
-	}
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
