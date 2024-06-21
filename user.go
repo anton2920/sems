@@ -534,45 +534,55 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserSigninPageHandler(w *http.Response, r *http.Request) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Sign in"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Master's degree"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Sign in"))
-	w.AppendString(`</h2>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Sign in"))
+		w.AppendString(`</title>`)
+		w.AppendString(`<style> html, body { height: 100%; } body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; }  .form-signin { max-width: 330px; padding: 15px; } </style>`)
+	}
+	DisplayHeadEnd(w)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+	DisplayBodyStart(w)
+	{
+		w.AppendString(`<main class="form-signin w-100 m-auto rounded-4 shadow bg-body-tertiary">`)
 
-	w.AppendString(`<form method="POST" action="/api/user/signin">`)
+		w.AppendString(`<h2 class="text-center fw-normal">`)
+		w.AppendString(`<b>`)
+		w.AppendString(Ls(GL, "Sign in"))
+		w.AppendString(`</b>`)
+		w.AppendString(`</h2>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Email"))
-	w.AppendString(`:<br>`)
-	w.AppendString(`<input type="email" name="Email" value="`)
-	w.WriteHTMLString(r.Form.Get("Email"))
-	w.AppendString(`" required>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+		DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Password"))
-	w.AppendString(`:<br>`)
-	w.AppendString(`<input type="password" name="Password" required>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+		w.AppendString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
 
-	DisplaySubmit(w, GL, "", "Sign in", true)
-	w.AppendString(`</form>`)
+		w.AppendString(`<div class="mt-3">`)
+		w.AppendString(`<label class="form-label">`)
+		w.AppendString(Ls(GL, "Email"))
+		w.AppendString(`:<br>`)
+		w.AppendString(`</label>`)
+		DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
+		w.AppendString(`</div>`)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+		w.AppendString(`<div class="mt-3 mb-3">`)
+		w.AppendString(`<label class="form-label">`)
+		w.AppendString(Ls(GL, "Password"))
+		w.AppendString(`:<br>`)
+		w.AppendString(`</label>`)
+		DisplayInput(w, "password", "Password", r.Form.Get("Password"), true)
+		w.AppendString(`</div>`)
 
+		DisplaySubmit(w, GL, "", "Sign in", true)
+		w.AppendString(`</form>`)
+
+		w.AppendString(`</main>`)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 	return nil
 }
 

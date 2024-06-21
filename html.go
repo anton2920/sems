@@ -8,18 +8,26 @@ import (
 	"github.com/anton2920/gofa/net/http"
 )
 
-func DisplayHTMLHeader(w *http.Response) {
+func DisplayHTMLStart(w *http.Response) {
 	w.AppendString(html.Header)
 	w.AppendString(`<html lang="en" data-bs-theme="light">`)
 }
 
-func DisplayCSS(w *http.Response) {
+func DisplayHeadStart(w *http.Response) {
+	w.AppendString(`<head>`)
+	w.AppendString(`<meta charset="utf-8"/>`)
+	w.AppendString(`<meta name="viewport" content="width=device-width, initial-scale=1"/>`)
+
 	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
-	w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
+	// w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
 }
 
-func DisplayJS(w *http.Response) {
-	w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
+func DisplayHeadEnd(w *http.Response) {
+	w.AppendString(`</head>`)
+}
+
+func DisplayBodyStart(w *http.Response) {
+	w.AppendString(`<body class="bg-body-secondary">`)
 }
 
 func DisplayHeader(w *http.Response, l Language) {
@@ -67,17 +75,39 @@ func DisplaySidebarEnd(w *http.Response) {
 	w.AppendString(`</div></nav>`)
 }
 
-func DisplayThemeToggle(w *http.Response) {
-	w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
-	w.AppendString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
-	w.AppendString(`<label style="cursor: pointer" for="btn-toggle">`)
-	w.AppendString(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half" viewBox="0 0 16 16"> <path d="M8 15A7 7 0 1 0 8 1v14zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16z"/></svg>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`</div>`)
+func DisplayBodyEnd(w *http.Response) {
+	/*
+		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
+		w.AppendString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
+		w.AppendString(`<label style="cursor: pointer" for="btn-toggle">`)
+		w.AppendString(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half" viewBox="0 0 16 16"> <path d="M8 15A7 7 0 1 0 8 1v14zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16z"/></svg>`)
+		w.AppendString(`</label>`)
+		w.AppendString(`</div>`)
+	*/
+
+	w.AppendString(`</body>`)
+}
+
+func DisplayHTMLEnd(w *http.Response) {
+	w.AppendString(`</html>`)
 }
 
 func DisplayFormattedTime(w *http.Response, t int64) {
 	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
+}
+
+func DisplayInput(w *http.Response, t string, name, value string, required bool) {
+	w.AppendString(` <input class="form-control" type="`)
+	w.AppendString(t)
+	w.AppendString(`" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.WriteHTMLString(value)
+	w.AppendString(`"`)
+	if required {
+		w.AppendString(` required`)
+	}
+	w.AppendString(`>`)
 }
 
 func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int, name, value string, required bool) {
@@ -202,7 +232,7 @@ func DisplayHiddenString(w *http.Response, name string, value string) {
 }
 
 func DisplaySubmit(w *http.Response, l Language, name string, value string, verify bool) {
-	w.AppendString(` <input type="submit" name="`)
+	w.AppendString(` <input class="w-100 mb-2 btn btn-lg rounded-3 btn-primary" type="submit" name="`)
 	w.AppendString(name)
 	w.AppendString(`" value="`)
 	w.AppendString(Ls(l, value))

@@ -102,32 +102,33 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		return nil
 	}
 
-	DisplayHTMLHeader(w)
-	w.AppendString(`<head>`)
-	w.AppendString(`<title>`)
-	DisplayIndexTitle(w, GL)
-	w.AppendString(`</title>`)
-	DisplayCSS(w)
-	DisplayJS(w)
-	w.AppendString(`</head>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<body class="bg-body-secondary">`)
-
-	DisplayHeader(w, GL)
-
-	if err := GetUserByID(session.ID, &user); err != nil {
-		return http.ServerError(err)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplayIndexTitle(w, GL)
+		w.AppendString(`</title>`)
+		w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
 	}
+	DisplayHeadEnd(w)
 
-	if session.ID == AdminID {
-		DisplayIndexAdminPage(w, GL, &user)
-	} else {
-		DisplayIndexUserPage(w, GL, &user)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+
+		if err := GetUserByID(session.ID, &user); err != nil {
+			return http.ServerError(err)
+		}
+
+		if session.ID == AdminID {
+			DisplayIndexAdminPage(w, GL, &user)
+		} else {
+			DisplayIndexUserPage(w, GL, &user)
+		}
 	}
+	DisplayBodyEnd(w)
 
-	DisplayThemeToggle(w)
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
