@@ -19,6 +19,7 @@ import (
 
 const (
 	APIPrefix = "/api"
+	FSPrefix  = "/fs"
 
 	PageSize = 4096
 )
@@ -139,6 +140,18 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 	return http.NotFound(Ls(GL, "requested API endpoint does not exist"))
 }
 
+func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
+	switch path {
+	case "/bootstrap.min.css":
+		w.SetHeaderUnsafe("Content-Type", "text/css")
+		w.SetHeaderUnsafe("Cache-Control", "max-age=604800")
+		w.Append(BootstrapContents)
+		return nil
+	}
+
+	return http.NotFound(Ls(GL, "requested file does not exist"))
+}
+
 func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
@@ -152,6 +165,8 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 		return HandlePageRequest(w, r, path)
 	case strings.StartsWith(path, APIPrefix):
 		return HandleAPIRequest(w, r, path[len(APIPrefix):])
+	case strings.StartsWith(path, FSPrefix):
+		return HandleFSRequest(w, r, path[len(FSPrefix):])
 
 	case path == "/error":
 		return http.ServerError(errors.New(Ls(GL, "test error")))
@@ -284,6 +299,10 @@ func main() {
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	if err := LoadAssets(); err != nil {
+		log.Fatalf("Failed to load assets: %v", err)
 	}
 
 	if err = OpenDBs("db"); err != nil {

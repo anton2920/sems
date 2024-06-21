@@ -7,6 +7,10 @@ import (
 	"github.com/anton2920/gofa/net/http"
 )
 
+func DisplayCSSLink(w *http.Response) {
+	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
+}
+
 func DisplayFormattedTime(w *http.Response, t int64) {
 	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }

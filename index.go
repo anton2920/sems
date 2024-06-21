@@ -142,9 +142,12 @@ func DisplayIndexTitle(w *http.Response, l Language) {
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
 	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
+	w.AppendString(`<head>`)
+	w.AppendString(`<title>`)
 	DisplayIndexTitle(w, GL)
-	w.AppendString(`</title></head>`)
+	w.AppendString(`</title>`)
+	DisplayCSSLink(w)
+	w.AppendString(`</head>`)
 
 	w.AppendString(`<body>`)
 

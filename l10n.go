@@ -446,6 +446,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "запрашиваемой команды не существует",
 		FR: "",
 	},
+	"requested file does not exist": {
+		RU: "запрашиваемоего файла не существует",
+		FR: "",
+	},
 	"requested page does not exist": {
 		RU: "запрашиваемой страницы не существует",
 		FR: "",
