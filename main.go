@@ -161,7 +161,7 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 }
 
 func Router(ws []http.Response, rs []http.Request) {
-	for i := 0; i < min(len(ws), len(rs)); i++ {
+	for i := 0; i < len(rs); i++ {
 		w := &ws[i]
 		r := &rs[i]
 
@@ -212,8 +212,9 @@ func Router(ws []http.Response, rs []http.Request) {
 }
 
 func ServerWorker(q *event.Queue) {
-	ws := make([]http.Response, 32)
-	rs := make([]http.Request, 32)
+	const batchSize = 32
+	ws := make([]http.Response, batchSize)
+	rs := make([]http.Request, batchSize)
 
 	for {
 		var e event.Event
