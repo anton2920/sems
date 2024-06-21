@@ -560,18 +560,12 @@ func UserSigninPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
 
 		w.AppendString(`<div class="mt-3">`)
-		w.AppendString(`<label class="form-label">`)
-		w.AppendString(Ls(GL, "Email"))
-		w.AppendString(`:<br>`)
-		w.AppendString(`</label>`)
+		DisplayInputLabel(w, GL, "Email")
 		DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
 		w.AppendString(`</div>`)
 
 		w.AppendString(`<div class="mt-3 mb-3">`)
-		w.AppendString(`<label class="form-label">`)
-		w.AppendString(Ls(GL, "Password"))
-		w.AppendString(`:<br>`)
-		w.AppendString(`</label>`)
+		DisplayInputLabel(w, GL, "Password")
 		DisplayInput(w, "password", "Password", r.Form.Get("Password"), true)
 		w.AppendString(`</div>`)
 

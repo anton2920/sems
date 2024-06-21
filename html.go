@@ -96,6 +96,13 @@ func DisplayFormattedTime(w *http.Response, t int64) {
 	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }
 
+func DisplayInputLabel(w *http.Response, l Language, text string) {
+	w.AppendString(`<label class="form-label">`)
+	w.AppendString(Ls(l, text))
+	w.AppendString(`:<br>`)
+	w.AppendString(`</label>`)
+}
+
 func DisplayInput(w *http.Response, t string, name, value string, required bool) {
 	w.AppendString(` <input class="form-control" type="`)
 	w.AppendString(t)
