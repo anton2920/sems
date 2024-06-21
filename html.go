@@ -75,6 +75,33 @@ func DisplaySidebarEnd(w *http.Response) {
 	w.AppendString(`</div></nav>`)
 }
 
+func DisplaySidebar(w *http.Response, l Language, userID database.ID) {
+	var user User
+
+	if err := GetUserByID(userID, &user); err != nil {
+		/* TODO(anton2920): report error. */
+	}
+
+	DisplaySidebarStart(w)
+	{
+		DisplaySidebarUser(w, l, &user)
+		w.AppendString(`<hr>`)
+		DisplaySidebarListStart(w)
+		{
+			if userID == AdminID {
+				DisplaySidebarLink(w, l, "/users", "Users")
+			}
+			DisplaySidebarLink(w, l, "/groups", "Groups")
+			DisplaySidebarLink(w, l, "/courses", "Courses")
+			DisplaySidebarLink(w, l, "/subjects", "Subjects")
+			w.AppendString(`<hr>`)
+			DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
+		}
+		DisplaySidebarListEnd(w)
+	}
+	DisplaySidebarEnd(w)
+}
+
 func DisplayBodyEnd(w *http.Response) {
 	/*
 		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
@@ -238,6 +265,14 @@ func DisplayHiddenString(w *http.Response, name string, value string) {
 	w.AppendString(`">`)
 }
 
+func DisplayButton(w *http.Response, l Language, name string, value string) {
+	w.AppendString(` <input class="btn btn-outline-dark" type="submit" name="`)
+	w.AppendString(name)
+	w.AppendString(`" value="`)
+	w.AppendString(Ls(l, value))
+	w.AppendString(`" formnovalidate>`)
+}
+
 func DisplaySubmit(w *http.Response, l Language, name string, value string, verify bool) {
 	w.AppendString(` <input class="w-100 mb-2 btn btn-lg rounded-3 btn-primary" type="submit" name="`)
 	w.AppendString(name)
@@ -245,7 +280,7 @@ func DisplaySubmit(w *http.Response, l Language, name string, value string, veri
 	w.AppendString(Ls(l, value))
 	w.AppendString(`"`)
 	if !verify {
-		w.AppendString(` formnoverify`)
+		w.AppendString(` formnovalidate`)
 	}
 	w.AppendString(`>`)
 }

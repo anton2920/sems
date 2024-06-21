@@ -2,11 +2,6 @@ package main
 
 import "github.com/anton2920/gofa/net/http"
 
-func DisplayIndexStart(w *http.Response) {
-	w.AppendString(`<div class="container-fluid">`)
-	w.AppendString(`<div class="row">`)
-}
-
 func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
 	w.AppendString(`<div aria-live="polite" class="position-relative">`)
 	w.AppendString(`<div class="top-0 end-0 p-3">`)
@@ -47,55 +42,7 @@ func DisplayIndexButtonsEnd(w *http.Response) {
 	w.AppendString(`</div></div></main></div></div>`)
 }
 
-func DisplayIndexEnd(w *http.Response) {
-	w.AppendString(`</div></div>`)
-}
-
-func DisplayIndexAdminPage(w *http.Response, l Language, user *User) {
-	DisplayIndexStart(w)
-
-	DisplaySidebarStart(w)
-	{
-		DisplaySidebarUser(w, l, user)
-		w.AppendString(`<hr>`)
-		DisplaySidebarListStart(w)
-		{
-			DisplaySidebarLink(w, l, "/users", "Users")
-			DisplaySidebarLink(w, l, "/groups", "Groups")
-			DisplaySidebarLink(w, l, "/courses", "Courses")
-			DisplaySidebarLink(w, l, "/subjects", "Subjects")
-			w.AppendString(`<hr>`)
-			DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
-		}
-		DisplaySidebarListEnd(w)
-	}
-	DisplaySidebarEnd(w)
-
-	DisplayIndexButtonsStart(w, l, "Administration")
-	{
-		DisplayIndexButton(w, l, "/users", "Users", "Create, edit and delete users")
-		DisplayIndexButton(w, l, "/groups", "Groups", "Create, edit and delete groups")
-		DisplayIndexButton(w, l, "/courses", "Courses", "Create, edit and delete courses")
-		DisplayIndexButton(w, l, "/subjects", "Subjects", "Create, edit and delete subjects")
-	}
-	DisplayIndexButtonsEnd(w)
-
-	DisplayIndexEnd(w)
-}
-
-func DisplayIndexUserPage(w *http.Response, l Language, user *User) {
-	DisplayUserGroups(w, l, user.ID)
-	DisplayUserCourses(w, l, user)
-	DisplayUserSubjects(w, l, user.ID)
-}
-
-func DisplayIndexTitle(w *http.Response, l Language) {
-	w.AppendString(Ls(l, "Master's degree"))
-}
-
 func IndexPageHandler(w *http.Response, r *http.Request) error {
-	var user User
-
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		w.Redirect("/user/signin", http.StatusSeeOther)
@@ -107,7 +54,7 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		DisplayIndexTitle(w, GL)
+		w.AppendString(Ls(GL, "Master's degree"))
 		w.AppendString(`</title>`)
 		w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
 	}
@@ -116,16 +63,24 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-		if err := GetUserByID(session.ID, &user); err != nil {
-			return http.ServerError(err)
-		}
+		w.AppendString(`<div class="container-fluid">`)
+		w.AppendString(`<div class="row">`)
 
-		if session.ID == AdminID {
-			DisplayIndexAdminPage(w, GL, &user)
-		} else {
-			DisplayIndexUserPage(w, GL, &user)
+		DisplayIndexButtonsStart(w, GL, "Administration")
+		{
+			if session.ID == AdminID {
+				DisplayIndexButton(w, GL, "/users", "Users", "Create, edit and delete users")
+			}
+			DisplayIndexButton(w, GL, "/groups", "Groups", "Create, edit and delete groups")
+			DisplayIndexButton(w, GL, "/courses", "Courses", "Create, edit and delete courses")
+			DisplayIndexButton(w, GL, "/subjects", "Subjects", "Create, edit and delete subjects")
 		}
+		DisplayIndexButtonsEnd(w)
+
+		w.AppendString(`</div>`)
+		w.AppendString(`</div>`)
 	}
 	DisplayBodyEnd(w)
 
