@@ -783,9 +783,9 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 	SessionsLock.Unlock()
 
 	if Debug {
-		w.SetCookieUnsafe("Token", token, expiry.Unix())
+		w.SetCookieUnsafe("Token", token, int(expiry.Unix()))
 	} else {
-		w.SetCookie("Token", token, expiry.Unix())
+		w.SetCookie("Token", token, int(expiry.Unix()))
 	}
 	w.Redirect("/", http.StatusSeeOther)
 	return nil

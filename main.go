@@ -5,7 +5,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"time"
+	"runtime/trace"
 
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
@@ -14,6 +14,7 @@ import (
 	"github.com/anton2920/gofa/net/tcp"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/time"
 )
 
 const (
@@ -28,6 +29,8 @@ var (
 )
 
 var WorkingDirectory string
+
+var DateBuffer = make([]byte, time.RFC822Len)
 
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
@@ -168,7 +171,7 @@ func Router(ws []http.Response, rs []http.Request) {
 		}
 
 		level := log.LevelDebug
-		start := time.Now()
+		start := time.UnixNs()
 
 		err := RouterFunc(w, r)
 		if err != nil {
@@ -204,7 +207,7 @@ func Router(ws []http.Response, rs []http.Request) {
 				break
 			}
 		}
-		log.Logf(level, "[%21s] %7s %s -> %v (%v), %v", addr, r.Method, r.URL.Path, w.StatusCode, err, time.Since(start))
+		log.Logf(level, "[%21s] %7s %s -> %v (%v), %4dµs", addr, r.Method, r.URL.Path, w.StatusCode, err, (time.UnixNs()-start)/1000)
 	}
 }
 
@@ -223,7 +226,6 @@ func ServerWorker(q *event.Queue) {
 		if !ok {
 			continue
 		}
-
 		if e.EndOfFile {
 			http.Close(ctx)
 			continue
@@ -238,7 +240,8 @@ func ServerWorker(q *event.Queue) {
 
 		Router(ws[:n], rs[:n])
 
-		if _, err := http.WriteResponses(ctx, ws[:n]); err != nil {
+		_, err = http.WriteResponses(ctx, ws[:n], DateBuffer)
+		if err != nil {
 			log.Errorf("Failed to write HTTP responses: %v", err)
 			http.Close(ctx)
 			continue
@@ -265,6 +268,15 @@ func main() {
 
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
+	case "Tracing":
+		f, err := os.Create(fmt.Sprintf("masters-%d.trace", os.Getpid()))
+		if err != nil {
+			log.Fatalf("Failed to create a tracing file: %v", err)
+		}
+		defer f.Close()
+
+		trace.Start(f)
+		defer trace.Stop()
 	}
 	log.Infof("Starting SEMS in %s mode...", BuildMode)
 
@@ -299,6 +311,12 @@ func main() {
 	}
 	defer q.Close()
 
+	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
+	_ = q.AddTimer(1, 1, event.Seconds, nil)
+
+	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
+	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
+
 	nworkers := runtime.GOMAXPROCS(0) / 2
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
@@ -309,12 +327,9 @@ func main() {
 		go ServerWorker(qs[i])
 	}
 
-	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
-
-	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
-	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
-
+	now := time.Unix()
 	var counter int
+
 	var quit bool
 	for !quit {
 		var e event.Event
@@ -334,6 +349,9 @@ func main() {
 			}
 			_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
 			counter++
+		case event.Timer:
+			now += e.Available
+			time.PutTmRFC822(DateBuffer, time.ToTm(now))
 		case event.Signal:
 			log.Infof("Received signal %d, exitting...", e.Identifier)
 			quit = true

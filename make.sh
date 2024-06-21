@@ -97,6 +97,9 @@ case $1 in
 		run $0 $VERBOSITYFLAGS vet
 		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l -d=checkptr=0'
 		;;
+	tracing)
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags='-X main.BuildMode=Tracing'
+		;;
 	vet)
 		run go vet $VERBOSITYFLAGS -asmdecl -assign -atomic -bools -buildtag -cgocall -copylocks -directive -errorsas -framepointer -httpresponse -ifaceassert -loopclosure -lostcancel -nilfunc -printf -shift -sigchanyzer -slog -stdmethods -stringintconv -structtag -testinggoroutine -tests -timeformat -unmarshal -unreachable -unusedresult
 		;;
