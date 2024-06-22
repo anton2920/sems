@@ -333,7 +333,7 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 	w.WriteInt(maximum)
 }
 
-func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
+func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
 	w.AppendString(`<select name="LanguageID"`)
 	if !enabled {
 		w.AppendString(` disabled`)
@@ -355,15 +355,73 @@ func SubmissionDisplayLanguageSelect(w *http.Response, submittedTask *SubmittedP
 	w.AppendString(`</select>`)
 }
 
+func DisplaySubmittedStep(w *http.Response, l Language, submittedStep *SubmittedStep, si int, teacher bool) {
+	w.AppendString(`<div class="border rounded p-4">`)
+
+	w.AppendString(`<p><b>`)
+	w.AppendString(Ls(GL, "Step"))
+	w.AppendString(` #`)
+	w.WriteInt(si + 1)
+	w.AppendString(`</b></p>`)
+
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
+	w.WriteHTMLString(submittedStep.Step.Name)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Type"))
+	w.AppendString(`: `)
+	w.AppendString(StepStringType(GL, &submittedStep.Step))
+	w.AppendString(`</p>`)
+
+	if submittedStep.Flags == SubmittedStepSkipped {
+		DisplaySubmittedStepScore(w, GL, submittedStep)
+
+		w.AppendString(`<p><i>`)
+		w.AppendString(Ls(GL, "This step has been skipped"))
+		w.AppendString(`.</i></p>`)
+	} else {
+		switch submittedStep.Status {
+		case SubmissionCheckPending:
+			w.AppendString(`<p><i>`)
+			w.AppendString(Ls(GL, "Pending"))
+			w.AppendString(` `)
+			w.AppendString(Ls(GL, "verification"))
+			w.AppendString(`...`)
+			w.AppendString(`</i></p>`)
+		case SubmissionCheckInProgress:
+			w.AppendString(`<p><i>`)
+			w.AppendString(Ls(GL, "Verification"))
+			w.AppendString(` `)
+			w.AppendString(Ls(GL, "in progress"))
+			w.AppendString(`...`)
+			w.AppendString(`</i></p>`)
+		case SubmissionCheckDone:
+			DisplaySubmittedStepScore(w, GL, submittedStep)
+			DisplayErrorMessage(w, GL, submittedStep.Error)
+
+			DisplayIndexedCommand(w, GL, si, "Open")
+			if teacher {
+				DisplayIndexedCommand(w, GL, si, "Re-check")
+			}
+		}
+	}
+
+	w.AppendString(`</div>`)
+	w.AppendString(`<br>`)
+}
+
 func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
 	w.AppendString(Ls(l, "Submission"))
 	w.AppendString(` `)
 	w.AppendString(Ls(GL, "for"))
-	w.AppendString(` `)
+	w.AppendString(` «`)
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(`: `)
 	w.WriteHTMLString(lesson.Name)
-	w.AppendString(` `)
+	w.AppendString(`» `)
 	w.AppendString(Ls(GL, "by"))
 	w.AppendString(` `)
 	w.WriteHTMLString(user.LastName)
@@ -447,55 +505,36 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
-	w.AppendString(`</h1>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
+		w.AppendString(`</title>`)
+	}
 
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/results">`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	DisplayHiddenID(w, "ID", submission.ID)
-
-	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		submittedStep := &submission.SubmittedSteps[i]
-
-		if i > 0 {
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
+			w.AppendString(`</h2>`)
 			w.AppendString(`<br>`)
-		}
 
-		w.AppendString(`<fieldset>`)
+			w.AppendString(`<form method="POST" action="/submission/results">`)
 
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Step"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
+			DisplayHiddenID(w, "ID", submission.ID)
 
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Name"))
-		w.AppendString(`: `)
-		w.WriteHTMLString(submittedStep.Step.Name)
-		w.AppendString(`</p>`)
+			for i := 0; i < len(submission.SubmittedSteps); i++ {
+				DisplaySubmittedStep(w, GL, &submission.SubmittedSteps[i], i, teacher)
+			}
 
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Type"))
-		w.AppendString(`: `)
-		w.AppendString(StepStringType(GL, &submittedStep.Step))
-		w.AppendString(`</p>`)
-
-		if submittedStep.Flags == SubmittedStepSkipped {
-			DisplaySubmittedStepScore(w, GL, submittedStep)
-
-			w.AppendString(`<p><i>`)
-			w.AppendString(Ls(GL, "This step has been skipped"))
-			w.AppendString(`.</i></p>`)
-		} else {
-			switch submittedStep.Status {
+			switch submission.Status {
 			case SubmissionCheckPending:
 				w.AppendString(`<p><i>`)
 				w.AppendString(Ls(GL, "Pending"))
@@ -511,49 +550,23 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`...`)
 				w.AppendString(`</i></p>`)
 			case SubmissionCheckDone:
-				DisplaySubmittedStepScore(w, GL, submittedStep)
-				DisplayErrorMessage(w, GL, submittedStep.Error)
-
-				DisplayIndexedCommand(w, GL, i, "Open")
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Total score"))
+				w.AppendString(`: `)
+				DisplaySubmissionTotalScore(w, &submission)
+				w.AppendString(`</p>`)
 				if teacher {
-					DisplayIndexedCommand(w, GL, i, "Re-check")
+					DisplayCommand(w, GL, "Re-check")
 				}
 			}
+
+			w.AppendString(`</form>`)
 		}
-
-		w.AppendString(`</fieldset>`)
+		DisplayPageEnd(w)
 	}
+	DisplayBodyEnd(w)
 
-	switch submission.Status {
-	case SubmissionCheckPending:
-		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "Pending"))
-		w.AppendString(` `)
-		w.AppendString(Ls(GL, "verification"))
-		w.AppendString(`...`)
-		w.AppendString(`</i></p>`)
-	case SubmissionCheckInProgress:
-		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "Verification"))
-		w.AppendString(` `)
-		w.AppendString(Ls(GL, "in progress"))
-		w.AppendString(`...`)
-		w.AppendString(`</i></p>`)
-	case SubmissionCheckDone:
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Total score"))
-		w.AppendString(`: `)
-		DisplaySubmissionTotalScore(w, &submission)
-		w.AppendString(`</p>`)
-		if teacher {
-			DisplayCommand(w, GL, "Re-check")
-		}
-	}
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 
 }
@@ -750,7 +763,7 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	w.AppendString(`<label>`)
 	w.AppendString(Ls(GL, "Programming language"))
 	w.AppendString(`: `)
-	SubmissionDisplayLanguageSelect(w, submittedTask, false)
+	DisplaySubmissionLanguageSelect(w, submittedTask, false)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 
@@ -1147,7 +1160,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	w.AppendString(`<label>`)
 	w.AppendString(Ls(GL, "Programming language"))
 	w.AppendString(`: `)
-	SubmissionDisplayLanguageSelect(w, submittedTask, true)
+	DisplaySubmissionLanguageSelect(w, submittedTask, true)
 	w.AppendString(`</label>`)
 	w.AppendString(`<br><br>`)
 

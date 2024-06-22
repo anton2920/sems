@@ -133,6 +133,22 @@ func DisplayFormattedTime(w *http.Response, t int64) {
 	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }
 
+func DisplayDeleted(w *http.Response, l Language, deleted bool) {
+	if deleted {
+		w.AppendString(` [`)
+		w.AppendString(Ls(l, "deleted"))
+		w.AppendString(`]`)
+	}
+}
+
+func DisplayDraft(w *http.Response, l Language, draft bool) {
+	if draft {
+		w.AppendString(` (`)
+		w.AppendString(Ls(l, "draft"))
+		w.AppendString(`)`)
+	}
+}
+
 func DisplayInputLabel(w *http.Response, l Language, text string) {
 	w.AppendString(`<label class="form-label">`)
 	w.AppendString(Ls(l, text))
@@ -211,46 +227,6 @@ func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, m
 	w.AppendString(`</textarea>`)
 }
 
-func DisplayCommand(w *http.Response, l Language, command string) {
-	w.AppendString(` <input type="submit" name="Command" value="`)
-	w.AppendString(Ls(l, command))
-	w.AppendString(`" formnovalidate>`)
-}
-
-func DisplayDeleted(w *http.Response, l Language, deleted bool) {
-	if deleted {
-		w.AppendString(` [`)
-		w.AppendString(Ls(l, "deleted"))
-		w.AppendString(`]`)
-	}
-}
-
-func DisplayDraft(w *http.Response, l Language, draft bool) {
-	if draft {
-		w.AppendString(` (`)
-		w.AppendString(Ls(l, "draft"))
-		w.AppendString(`)`)
-	}
-}
-
-func DisplayIndexedCommand(w *http.Response, l Language, index int, command string) {
-	w.AppendString(` <input type="submit" name="Command`)
-	w.WriteInt(index)
-	w.AppendString(`" value="`)
-	w.AppendString(Ls(l, command))
-	w.AppendString(`" formnovalidate>`)
-}
-
-func DisplayDoublyIndexedCommand(w *http.Response, l Language, pindex, sindex int, command string) {
-	w.AppendString(` <input type="submit" name="Command`)
-	w.WriteInt(pindex)
-	w.AppendString(`.`)
-	w.WriteInt(sindex)
-	w.AppendString(`" value="`)
-	w.AppendString(Ls(l, command))
-	w.AppendString(`" formnovalidate>`)
-}
-
 func DisplayHiddenID(w *http.Response, name string, id database.ID) {
 	w.AppendString(`<input type="hidden" name="`)
 	w.AppendString(name)
@@ -273,6 +249,30 @@ func DisplayHiddenString(w *http.Response, name string, value string) {
 	w.AppendString(`" value="`)
 	w.WriteHTMLString(value)
 	w.AppendString(`">`)
+}
+
+func DisplayCommand(w *http.Response, l Language, command string) {
+	w.AppendString(` <input class="btn btn-outline-dark" type="submit" name="Command" value="`)
+	w.AppendString(Ls(l, command))
+	w.AppendString(`" formnovalidate>`)
+}
+
+func DisplayIndexedCommand(w *http.Response, l Language, index int, command string) {
+	w.AppendString(` <input class="btn btn-outline-dark" type="submit" name="Command`)
+	w.WriteInt(index)
+	w.AppendString(`" value="`)
+	w.AppendString(Ls(l, command))
+	w.AppendString(`" formnovalidate>`)
+}
+
+func DisplayDoublyIndexedCommand(w *http.Response, l Language, pindex, sindex int, command string) {
+	w.AppendString(` <input class="btn btn-outline-dark" type="submit" name="Command`)
+	w.WriteInt(pindex)
+	w.AppendString(`.`)
+	w.WriteInt(sindex)
+	w.AppendString(`" value="`)
+	w.AppendString(Ls(l, command))
+	w.AppendString(`" formnovalidate>`)
 }
 
 func DisplayButton(w *http.Response, l Language, name string, value string) {
