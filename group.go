@@ -310,7 +310,19 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 	w.AppendString(`</select>`)
 }
 
-func GroupCreateEditPageHandler(w *http.Response, l Language, r *http.Request, userID database.ID, endpoint string, title string, action string) error {
+func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint string, title string, action string) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -323,25 +335,16 @@ func GroupCreateEditPageHandler(w *http.Response, l Language, r *http.Request, u
 
 	DisplayBodyStart(w)
 	{
-		DisplayHeader(w, l)
-		DisplaySidebar(w, l, userID)
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-		DisplayFormStart(w, endpoint)
+		DisplayFormStart(w, r, GL, title, endpoint)
 		{
-			w.AppendString(`<h3 class="text-center">`)
-			w.AppendString(Ls(GL, title))
-			w.AppendString(`</h3>`)
-			w.AppendString(`<br>`)
-
-			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-
-			DisplayInputLabel(w, l, "Name")
+			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, l, "Students")
+			DisplayInputLabel(w, GL, "Students")
 			DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 			w.AppendString(`<br>`)
 
@@ -356,35 +359,11 @@ func GroupCreateEditPageHandler(w *http.Response, l Language, r *http.Request, u
 }
 
 func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	return GroupCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/group/create", "Create group", "Create")
+	return GroupCreateEditPageHandler(w, r, APIPrefix+"/group/create", "Create group", "Create")
 }
 
 func GroupEditPageHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	return GroupCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/group/edit", "Edit group", "Save")
+	return GroupCreateEditPageHandler(w, r, APIPrefix+"/group/edit", "Edit group", "Save")
 }
 
 func GroupCreateHandler(w *http.Response, r *http.Request) error {

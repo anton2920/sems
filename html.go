@@ -112,11 +112,20 @@ func DisplayPageEnd(w *http.Response) {
 	w.AppendString(`</div></main>`)
 }
 
-func DisplayFormStart(w *http.Response, endpoint string) {
+func DisplayFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string) {
 	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
 	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-4" method="POST" action="`)
 	w.AppendString(endpoint)
 	w.AppendString(`">`)
+
+	w.AppendString(`<h3 class="text-center">`)
+	w.AppendString(Ls(l, title))
+	w.AppendString(`</h3>`)
+	w.AppendString(`<br>`)
+
+	DisplayErrorMessage(w, l, r.Form.Get("Error"))
+
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
 func DisplayFormEnd(w *http.Response) {

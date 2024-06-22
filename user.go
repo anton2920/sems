@@ -391,54 +391,45 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	return nil
 }
 
-func UserCreateEditPageHandler(w *http.Response, l Language, r *http.Request, userID database.ID, endpoint string, title string, action string) error {
+func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, endpoint string, title string, action string) error {
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		w.AppendString(Ls(l, title))
+		w.AppendString(Ls(GL, title))
 		w.AppendString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
 	DisplayBodyStart(w)
 	{
-		DisplayHeader(w, l)
-		DisplaySidebar(w, l, userID)
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-		DisplayFormStart(w, endpoint)
+		DisplayFormStart(w, r, GL, title, endpoint)
 		{
-			w.AppendString(`<h3 class="text-center">`)
-			w.AppendString(Ls(l, title))
-			w.AppendString(`</h3>`)
-			w.AppendString(`<br>`)
-
-			DisplayErrorMessage(w, l, r.Form.Get("Error"))
-
-			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-
-			DisplayInputLabel(w, l, "First name")
+			DisplayInputLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, l, "Last name")
+			DisplayInputLabel(w, GL, "Last name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, l, "Email")
+			DisplayInputLabel(w, GL, "Email")
 			DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, l, "Password")
+			DisplayInputLabel(w, GL, "Password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, l, "Repeat password")
+			DisplayInputLabel(w, GL, "Repeat password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
 			w.AppendString(`<br>`)
 
-			DisplaySubmit(w, l, "", action, true)
+			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormEnd(w)
 	}
@@ -457,7 +448,11 @@ func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
-	return UserCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/user/create", "Create user", "Create")
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	return UserCreateEditPageHandler(w, r, session, APIPrefix+"/user/create", "Create user", "Create")
 }
 
 func UserEditPageHandler(w *http.Response, r *http.Request) error {
@@ -478,7 +473,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
-	return UserCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/user/edit", "Edit user", "Save")
+	return UserCreateEditPageHandler(w, r, session, APIPrefix+"/user/edit", "Edit user", "Save")
 }
 
 func UserSigninPageHandler(w *http.Response, r *http.Request) error {

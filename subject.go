@@ -338,7 +338,7 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 	users := make([]User, 32)
 	var pos int64
 
-	w.AppendString(`<select name="TeacherID">`)
+	w.AppendString(`<select class="form-select" name="TeacherID">`)
 	for {
 		n, err := GetUsers(&pos, users)
 		if err != nil {
@@ -379,7 +379,7 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 	groups := make([]Group, 32)
 	var pos int64
 
-	w.AppendString(`<select name="GroupID">`)
+	w.AppendString(`<select class="form-select" name="GroupID">`)
 	for {
 		n, err := GetGroups(&pos, groups)
 		if err != nil {
@@ -414,7 +414,7 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 	w.AppendString(`</select>`)
 }
 
-func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
+func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint string, title string, action string) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -427,113 +427,51 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Create subject"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Subject"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Create"))
-	w.AppendString(`</h2>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, title))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	w.AppendString(`<form method="POST" action="/api/subject/create">`)
+		DisplayFormStart(w, r, GL, title, endpoint)
+		{
+			DisplayInputLabel(w, GL, "Name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+			DisplayInputLabel(w, GL, "Teacher")
+			DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Teacher"))
-	w.AppendString(`: `)
-	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+			DisplayInputLabel(w, GL, "Group")
+			DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Group"))
-	w.AppendString(`: `)
-	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+			DisplaySubmit(w, GL, "", action, true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
 
-	DisplaySubmit(w, GL, "", "Create", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
+func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
+	return SubjectCreateEditPageHandler(w, r, APIPrefix+"/subject/create", "Create subject", "Create")
+}
+
 func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Edit subject"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Subject"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Edit"))
-	w.AppendString(`</h2>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="/api/subject/edit">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Teacher"))
-	w.AppendString(`: `)
-	DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Group"))
-	w.AppendString(`: `)
-	DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "", "Save", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
+	return SubjectCreateEditPageHandler(w, r, APIPrefix+"/subject/edit", "Edit subject", "Save")
 }
 
 func SubjectLessonsVerify(l Language, subject *Subject) error {
