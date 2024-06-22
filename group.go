@@ -222,47 +222,45 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
-		w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-8">`)
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplayGroupTitle(w, GL, &group)
+			w.AppendString(`</h2>`)
 
-		w.AppendString(`<h2>`)
-		DisplayGroupTitle(w, GL, &group)
-		w.AppendString(`</h2>`)
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Info"))
+			w.AppendString(`</h3>`)
 
-		w.AppendString(`<h3>`)
-		w.AppendString(Ls(GL, "Info"))
-		w.AppendString(`</h3>`)
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Created on"))
+			w.AppendString(`: `)
+			DisplayFormattedTime(w, group.CreatedOn)
+			w.AppendString(`</p>`)
 
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Created on"))
-		w.AppendString(`: `)
-		DisplayFormattedTime(w, group.CreatedOn)
-		w.AppendString(`</p>`)
+			if session.ID == AdminID {
+				w.AppendString(`<div>`)
+				w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
+				DisplayHiddenID(w, "ID", group.ID)
+				DisplayHiddenString(w, "Name", group.Name)
+				for i := 0; i < len(group.Students); i++ {
+					DisplayHiddenID(w, "StudentID", group.Students[i])
+				}
+				DisplayButton(w, GL, "", "Edit")
+				w.AppendString(`</form>`)
 
-		if session.ID == AdminID {
-			w.AppendString(`<div>`)
-			w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
-			DisplayHiddenID(w, "ID", group.ID)
-			DisplayHiddenString(w, "Name", group.Name)
-			for i := 0; i < len(group.Students); i++ {
-				DisplayHiddenID(w, "StudentID", group.Students[i])
+				w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
+				DisplayHiddenID(w, "ID", group.ID)
+				DisplayButton(w, GL, "", "Delete")
+				w.AppendString(`</form>`)
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
 			}
-			DisplayButton(w, GL, "", "Edit")
-			w.AppendString(`</form>`)
 
-			w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
-			DisplayHiddenID(w, "ID", group.ID)
-			DisplayButton(w, GL, "", "Delete")
-			w.AppendString(`</form>`)
-			w.AppendString(`</div>`)
-			w.AppendString(`<br>`)
+			DisplayGroupStudents(w, GL, &group)
+			DisplayGroupSubjects(w, GL, &group)
 		}
-
-		DisplayGroupStudents(w, GL, &group)
-		DisplayGroupSubjects(w, GL, &group)
-
-		w.AppendString(`</div>`)
-		w.AppendString(`</main>`)
+		DisplayPageEnd(w)
 	}
 	DisplayBodyEnd(w)
 

@@ -103,6 +103,15 @@ func DisplaySidebar(w *http.Response, l Language, userID database.ID) {
 	DisplaySidebarEnd(w)
 }
 
+func DisplayPageStart(w *http.Response) {
+	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
+	w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-8">`)
+}
+
+func DisplayPageEnd(w *http.Response) {
+	w.AppendString(`</div></main>`)
+}
+
 func DisplayBodyEnd(w *http.Response) {
 	/*
 		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)

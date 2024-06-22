@@ -338,53 +338,51 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
-		w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-8">`)
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplayUserTitle(w, GL, &user)
+			w.AppendString(`</h2>`)
 
-		w.AppendString(`<h2>`)
-		DisplayUserTitle(w, GL, &user)
-		w.AppendString(`</h2>`)
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Info"))
+			w.AppendString(`</h3>`)
 
-		w.AppendString(`<h3>`)
-		w.AppendString(Ls(GL, "Info"))
-		w.AppendString(`</h3>`)
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Email"))
+			w.AppendString(`: `)
+			w.WriteHTMLString(user.Email)
+			w.AppendString(`</p>`)
 
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Email"))
-		w.AppendString(`: `)
-		w.WriteHTMLString(user.Email)
-		w.AppendString(`</p>`)
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Created on"))
+			w.AppendString(`: `)
+			DisplayFormattedTime(w, user.CreatedOn)
+			w.AppendString(`</p>`)
 
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Created on"))
-		w.AppendString(`: `)
-		DisplayFormattedTime(w, user.CreatedOn)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<div>`)
-		w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
-		DisplayHiddenID(w, "ID", user.ID)
-		DisplayHiddenString(w, "FirstName", user.FirstName)
-		DisplayHiddenString(w, "LastName", user.LastName)
-		DisplayHiddenString(w, "Email", user.Email)
-		DisplayButton(w, GL, "", "Edit")
-		w.AppendString(`</form>`)
-
-		if (session.ID == AdminID) && (id != AdminID) {
-			w.AppendString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
+			w.AppendString(`<div>`)
+			w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
 			DisplayHiddenID(w, "ID", user.ID)
-			DisplayButton(w, GL, "", "Delete")
+			DisplayHiddenString(w, "FirstName", user.FirstName)
+			DisplayHiddenString(w, "LastName", user.LastName)
+			DisplayHiddenString(w, "Email", user.Email)
+			DisplayButton(w, GL, "", "Edit")
 			w.AppendString(`</form>`)
+
+			if (session.ID == AdminID) && (id != AdminID) {
+				w.AppendString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
+				DisplayHiddenID(w, "ID", user.ID)
+				DisplayButton(w, GL, "", "Delete")
+				w.AppendString(`</form>`)
+			}
+			w.AppendString(`</div>`)
+			w.AppendString(`<br>`)
+
+			DisplayUserGroups(w, GL, user.ID)
+			DisplayUserCourses(w, GL, &user)
+			DisplayUserSubjects(w, GL, user.ID)
 		}
-		w.AppendString(`</div>`)
-		w.AppendString(`<br>`)
-
-		DisplayUserGroups(w, GL, user.ID)
-		DisplayUserCourses(w, GL, &user)
-		DisplayUserSubjects(w, GL, user.ID)
-
-		w.AppendString(`</div>`)
-		w.AppendString(`</main>`)
+		DisplayPageEnd(w)
 	}
 	DisplayBodyEnd(w)
 

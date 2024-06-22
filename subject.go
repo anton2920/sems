@@ -134,6 +134,63 @@ func SaveSubject(subject *Subject) error {
 	return database.Write(SubjectsDB, subjectDB.ID, &subjectDB)
 }
 
+func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
+
+	w.AppendString(`<form method="POST" action="/subject/lessons">`)
+	DisplayHiddenID(w, "ID", subject.ID)
+
+	if len(subject.Lessons) == 0 {
+		courses := make([]Course, 32)
+		var displayed bool
+		var pos int64
+
+		for {
+			n, err := GetCourses(&pos, courses)
+			if err != nil {
+				/* TODO(anton2920): report error. */
+			}
+			if n == 0 {
+				break
+			}
+			for i := 0; i < n; i++ {
+				course := &courses[i]
+				if (course.Flags != CourseActive) || (!UserOwnsCourse(teacher, course.ID)) {
+					continue
+				}
+
+				if !displayed {
+					w.AppendString(`<label>`)
+					w.AppendString(Ls(GL, "Courses"))
+					w.AppendString(`: `)
+					w.AppendString(`<select name="CourseID">`)
+					displayed = true
+				}
+				w.AppendString(`<option value="`)
+				w.WriteInt(i)
+				w.AppendString(`">`)
+				w.WriteHTMLString(course.Name)
+				w.AppendString(`</option>`)
+			}
+		}
+		if displayed {
+			w.AppendString(`</select>`)
+			w.AppendString(`</label> `)
+
+			DisplayButton(w, GL, "Action", "create from")
+			w.AppendString(`, `)
+			DisplayButton(w, GL, "Action", "give as is")
+			w.AppendString(` `)
+			w.AppendString(Ls(GL, "or"))
+			w.AppendString(` `)
+		}
+		DisplayButton(w, GL, "Action", "create new from scratch")
+	} else {
+		DisplayButton(w, GL, "", "Edit")
+	}
+
+	w.AppendString(`</form>`)
+}
+
 func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher *User) {
 	w.WriteHTMLString(subject.Name)
 	w.AppendString(` `)
@@ -201,117 +258,79 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	DisplaySubjectTitle(w, GL, &subject, &teacher)
-	w.AppendString(`</title></head>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	DisplaySubjectTitle(w, GL, &subject, &teacher)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Teacher"))
-	w.AppendString(`: `)
-	DisplayUserLink(w, GL, &teacher)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Group"))
-	w.AppendString(`: `)
-	DisplayGroupLink(w, GL, &group)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Created on"))
-	w.AppendString(`: `)
-	DisplayFormattedTime(w, subject.CreatedOn)
-	w.AppendString(`</p>`)
-
-	if session.ID == AdminID {
-		w.AppendString(`<div>`)
-
-		w.AppendString(`<form style="display:inline" method="POST" action="/subject/edit">`)
-		DisplayHiddenID(w, "ID", subject.ID)
-		DisplayHiddenID(w, "TeacherID", subject.TeacherID)
-		DisplayHiddenID(w, "GroupID", subject.GroupID)
-		DisplayHiddenString(w, "Name", subject.Name)
-		DisplaySubmit(w, GL, "", "Edit", true)
-		w.AppendString(`</form>`)
-
-		w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
-		DisplayHiddenID(w, "ID", subject.ID)
-		DisplaySubmit(w, GL, "", "Delete", true)
-		w.AppendString(`</form>`)
-
-		w.AppendString(`</div>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplaySubjectTitle(w, GL, &subject, &teacher)
+		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
-		w.AppendString(`<h2>`)
-		w.AppendString(Ls(GL, "Lessons"))
-		w.AppendString(`</h2>`)
-		DisplayLessons(w, GL, subject.Lessons)
-	}
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
-		w.AppendString(`<form method="POST" action="/subject/lessons">`)
-		DisplayHiddenID(w, "ID", subject.ID)
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplaySubjectTitle(w, GL, &subject, &teacher)
+			w.AppendString(`</h2>`)
 
-		if len(subject.Lessons) == 0 {
-			courses := make([]Course, 32)
-			var displayed bool
-			var pos int64
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Teacher"))
+			w.AppendString(`: `)
+			DisplayUserLink(w, GL, &teacher)
+			w.AppendString(`</p>`)
 
-			for {
-				n, err := GetCourses(&pos, courses)
-				if err != nil {
-					return http.ServerError(err)
-				}
-				if n == 0 {
-					break
-				}
-				for i := 0; i < n; i++ {
-					course := &courses[i]
-					if (course.Flags != CourseActive) || (!UserOwnsCourse(&teacher, course.ID)) {
-						continue
-					}
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Group"))
+			w.AppendString(`: `)
+			DisplayGroupLink(w, GL, &group)
+			w.AppendString(`</p>`)
 
-					if !displayed {
-						w.AppendString(`<label>`)
-						w.AppendString(Ls(GL, "Courses"))
-						w.AppendString(`: `)
-						w.AppendString(`<select name="CourseID">`)
-						displayed = true
-					}
-					w.AppendString(`<option value="`)
-					w.WriteInt(i)
-					w.AppendString(`">`)
-					w.WriteHTMLString(course.Name)
-					w.AppendString(`</option>`)
-				}
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Created on"))
+			w.AppendString(`: `)
+			DisplayFormattedTime(w, subject.CreatedOn)
+			w.AppendString(`</p>`)
+
+			if session.ID == AdminID {
+				w.AppendString(`<div>`)
+				w.AppendString(`<form style="display:inline" method="POST" action="/subject/edit">`)
+				DisplayHiddenID(w, "ID", subject.ID)
+				DisplayHiddenID(w, "TeacherID", subject.TeacherID)
+				DisplayHiddenID(w, "GroupID", subject.GroupID)
+				DisplayHiddenString(w, "Name", subject.Name)
+				DisplayButton(w, GL, "", "Edit")
+				w.AppendString(`</form>`)
+
+				w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
+				DisplayHiddenID(w, "ID", subject.ID)
+				DisplayButton(w, GL, "", "Delete")
+				w.AppendString(`</form>`)
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
 			}
-			if displayed {
-				w.AppendString(`</select>`)
-				w.AppendString(`</label> `)
 
-				DisplaySubmit(w, GL, "Action", "create from", true)
-				w.AppendString(`, `)
-				DisplaySubmit(w, GL, "Action", "give as is", true)
-				w.AppendString(` `)
-				w.AppendString(Ls(GL, "or"))
-				w.AppendString(` `)
+			if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
+				w.AppendString(`<h3>`)
+				w.AppendString(Ls(GL, "Lessons"))
+				w.AppendString(`</h3>`)
+				DisplayLessons(w, GL, subject.Lessons)
 			}
-			DisplaySubmit(w, GL, "Action", "create new from scratch", true)
-		} else {
-			DisplaySubmit(w, GL, "", "Edit", true)
+
+			if (session.ID == AdminID) || (session.ID == subject.TeacherID) {
+				DisplaySubjectCoursesSelect(w, GL, &subject, &teacher)
+			}
 		}
-
-		w.AppendString(`</form>`)
+		DisplayPageEnd(w)
 	}
+	DisplayBodyEnd(w)
 
+	DisplayHTMLEnd(w)
 	return nil
 }
 
