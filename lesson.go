@@ -788,7 +788,7 @@ func LessonTestVerify(l Language, test *StepTest) error {
 	return nil
 }
 
-func LessonAddTestPageHandler(w *http.Response, r *http.Request, test *StepTest) error {
+func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, test *StepTest) error {
 	w.AppendString(`<!DOCTYPE html>`)
 	w.AppendString(`<head><title>`)
 	w.AppendString(Ls(GL, "Test"))
@@ -1010,10 +1010,7 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepP
 	w.AppendString(`</ol>`)
 }
 
-func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *StepProgramming) error {
-	session, _ := GetSessionFromRequest(r)
-	_ = session
-
+func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, task *StepProgramming) error {
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -1082,28 +1079,26 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *St
 	return nil
 }
 
-func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) error {
+func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Session, step *Step) error {
 	switch step.Type {
 	default:
 		panic("invalid step type")
 	case StepTypeTest:
 		test, _ := Step2Test(step)
-		return LessonAddTestPageHandler(w, r, test)
+		return LessonAddTestPageHandler(w, r, session, test)
 	case StepTypeProgramming:
 		task, _ := Step2Programming(step)
-		return LessonAddProgrammingPageHandler(w, r, task)
+		return LessonAddProgrammingPageHandler(w, r, session, task)
 	}
 }
 
-func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) error {
-	session, _ := GetSessionFromRequest(r)
-
+func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, lesson *Lesson) error {
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Create lesson"))
+		w.AppendString(Ls(GL, "Lesson"))
 		w.AppendString(`</title>`)
 	}
 	DisplayHeadEnd(w)
@@ -1179,7 +1174,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) err
 	return nil
 }
 
-func LessonAddHandleCommand(w *http.Response, l Language, r *http.Request, lessons []database.ID, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, lessons []database.ID, currentPage, k, command string) error {
 	var lesson Lesson
 
 	/* TODO(anton2920): pass these as parameters. */
@@ -1212,14 +1207,14 @@ func LessonAddHandleCommand(w *http.Response, l Language, r *http.Request, lesso
 			step.Draft = true
 
 			r.Form.Set("StepIndex", spindex)
-			return LessonAddStepPageHandler(w, r, step)
+			return LessonAddStepPageHandler(w, r, session, step)
 		case "↑", "^|":
 			MoveUp(lesson.Steps, pindex)
 		case "↓", "|v":
 			MoveDown(lesson.Steps, pindex)
 		}
 
-		return LessonAddPageHandler(w, r, &lesson)
+		return LessonAddPageHandler(w, r, session, &lesson)
 	case "Test":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
 		if err != nil {
@@ -1327,7 +1322,7 @@ func LessonAddHandleCommand(w *http.Response, l Language, r *http.Request, lesso
 			}
 		}
 
-		return LessonAddTestPageHandler(w, r, test)
+		return LessonAddTestPageHandler(w, r, session, test)
 
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
@@ -1374,6 +1369,6 @@ func LessonAddHandleCommand(w *http.Response, l Language, r *http.Request, lesso
 			MoveDown(task.Checks[sindex], pindex)
 		}
 
-		return LessonAddProgrammingPageHandler(w, r, task)
+		return LessonAddProgrammingPageHandler(w, r, session, task)
 	}
 }

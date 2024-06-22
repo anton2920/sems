@@ -979,7 +979,7 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 	return nil
 }
 
-func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
+func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -1111,7 +1111,7 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
+func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
 	task, _ := Step2Programming(&submittedTask.Step)
 
 	w.AppendString(`<!DOCTYPE html>`)
@@ -1177,16 +1177,16 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, subm
 	return nil
 }
 
-func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, submittedStep *SubmittedStep) error {
+func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep) error {
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
-		return SubmissionNewTestPageHandler(w, r, submittedTest)
+		return SubmissionNewTestPageHandler(w, r, session, submittedTest)
 	case SubmittedTypeProgramming:
 		submittedProgramming, _ := Submitted2Programming(submittedStep)
-		return SubmissionNewProgrammingPageHandler(w, r, submittedProgramming)
+		return SubmissionNewProgrammingPageHandler(w, r, session, submittedProgramming)
 	}
 }
 
@@ -1213,7 +1213,7 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
 	return nil
 }
 
-func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission *Submission) error {
+func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, submission *Submission) error {
 	var lesson Lesson
 
 	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
@@ -1291,7 +1291,7 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, submission 
 
 }
 
-func SubmissionNewHandleCommand(w *http.Response, l Language, r *http.Request, submission *Submission, currentPage, k, command string) error {
+func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, submission *Submission, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -1313,7 +1313,7 @@ func SubmissionNewHandleCommand(w *http.Response, l Language, r *http.Request, s
 			submittedStep.Type = SubmittedType(submittedStep.Step.Type)
 
 			r.Form.Set("StepIndex", spindex)
-			return SubmissionNewStepPageHandler(w, r, submittedStep)
+			return SubmissionNewStepPageHandler(w, r, session, submittedStep)
 		}
 	}
 }
@@ -1401,7 +1401,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionNewHandleCommand(w, GL, r, &submission, currentPage, k, v)
+			return SubmissionNewHandleCommand(w, r, GL, session, &submission, currentPage, k, v)
 		}
 	}
 
@@ -1422,10 +1422,10 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				}
 
 				if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
-					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
+					return WritePageEx(w, r, session, SubmissionNewTestPageHandler, submittedTest, err)
 				}
 				if err := SubmissionNewTestVerify(GL, submittedTest); err != nil {
-					return WritePageEx(w, r, SubmissionNewTestPageHandler, submittedTest, err)
+					return WritePageEx(w, r, session, SubmissionNewTestPageHandler, submittedTest, err)
 				}
 			case "Programming":
 				submittedTask, err := Submitted2Programming(submittedStep)
@@ -1434,21 +1434,21 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				}
 
 				if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
+					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 				if err := SubmissionNewProgrammingVerify(submittedTask); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, err)
+					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 
 				if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
-					return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(err.Error()))
+					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(err.Error()))
 				}
 
 				scores := submittedTask.Scores[CheckTypeExample]
 				messages := submittedTask.Messages[CheckTypeExample]
 				for i := 0; i < len(scores); i++ {
 					if scores[i] == 0 {
-						return WritePageEx(w, r, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
+						return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
 					}
 				}
 			}
@@ -1462,10 +1462,10 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 
 	switch nextPage {
 	default:
-		return SubmissionNewMainPageHandler(w, r, &submission)
+		return SubmissionNewMainPageHandler(w, r, session, &submission)
 	case Ls(GL, "Finish"):
 		if err := SubmissionNewVerify(GL, &submission); err != nil {
-			return WritePageEx(w, r, SubmissionNewMainPageHandler, &submission, err)
+			return WritePageEx(w, r, session, SubmissionNewMainPageHandler, &submission, err)
 		}
 		submission.Flags = SubmissionActive
 		submission.FinishedAt = time.Now().Unix()
