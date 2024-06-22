@@ -139,38 +139,49 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	DisplayCourseTitle(w, GL, &course)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	DisplayCourseTitle(w, GL, &course)
-	w.AppendString(`</h1>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplayCourseTitle(w, GL, &course)
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
 
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Lessons"))
-	w.AppendString(`</h2>`)
-	DisplayLessons(w, GL, course.Lessons)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	w.AppendString(`<div>`)
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplayCourseTitle(w, GL, &course)
+			w.AppendString(`</h2>`)
 
-	w.AppendString(`<form style="display:inline" method="POST" action="/course/edit">`)
-	DisplayHiddenID(w, "ID", course.ID)
-	DisplaySubmit(w, GL, "", "Edit", true)
-	w.AppendString(`</form> `)
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Lessons"))
+			w.AppendString(`</h3>`)
+			DisplayLessons(w, GL, course.Lessons)
 
-	w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
-	DisplayHiddenID(w, "ID", course.ID)
-	DisplaySubmit(w, GL, "", "Delete", true)
-	w.AppendString(`</form>`)
+			w.AppendString(`<div>`)
+			w.AppendString(`<form style="display:inline" method="POST" action="/course/edit">`)
+			DisplayHiddenID(w, "ID", course.ID)
+			DisplayButton(w, GL, "", "Edit")
+			w.AppendString(`</form> `)
 
-	w.AppendString(`</div>`)
+			w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
+			DisplayHiddenID(w, "ID", course.ID)
+			DisplayButton(w, GL, "", "Delete")
+			w.AppendString(`</form>`)
+			w.AppendString(`</div>`)
+		}
+		DisplayPageEnd(w)
+	}
+	DisplayBodyEnd(w)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
