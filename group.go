@@ -273,7 +273,7 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 	users := make([]User, 32)
 	var pos int64
 
-	w.AppendString(`<select name="StudentID" multiple>`)
+	w.AppendString(`<select class="form-select" name="StudentID" multiple>`)
 	for {
 		n, err := GetUsers(&pos, users)
 		if err != nil {
@@ -310,6 +310,51 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 	w.AppendString(`</select>`)
 }
 
+func GroupCreateEditPageHandler(w *http.Response, l Language, r *http.Request, userID database.ID, endpoint string, title string, action string) error {
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, title))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, l)
+		DisplaySidebar(w, l, userID)
+
+		DisplayFormStart(w, endpoint)
+		{
+			w.AppendString(`<h3 class="text-center">`)
+			w.AppendString(Ls(GL, title))
+			w.AppendString(`</h3>`)
+			w.AppendString(`<br>`)
+
+			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+
+			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+
+			DisplayInputLabel(w, l, "Name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
+			w.AppendString(`<br>`)
+
+			DisplayInputLabel(w, l, "Students")
+			DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
+			w.AppendString(`<br>`)
+
+			DisplaySubmit(w, GL, "", action, true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
+}
+
 func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -323,44 +368,7 @@ func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Create group"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Group"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Create"))
-	w.AppendString(`</h2>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="/api/group/create">`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Students"))
-	w.AppendString(`:<br>`)
-	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "", "Create", true)
-
-	w.AppendString(`</form>`)
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
+	return GroupCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/group/create", "Create group", "Create")
 }
 
 func GroupEditPageHandler(w *http.Response, r *http.Request) error {
@@ -376,47 +384,7 @@ func GroupEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Edit group"))
-	w.AppendString(`</title></head>`)
-
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Group"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Edit"))
-	w.AppendString(`</h2>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="/api/group/edit">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Students"))
-	w.AppendString(`:<br>`)
-	DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "", "Save", true)
-
-	w.AppendString(`</form>`)
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
+	return GroupCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/group/edit", "Edit group", "Save")
 }
 
 func GroupCreateHandler(w *http.Response, r *http.Request) error {
