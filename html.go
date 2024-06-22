@@ -132,6 +132,22 @@ func DisplayFormStart(w *http.Response, r *http.Request, l Language, title strin
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
+func DisplayWideFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string) {
+	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
+	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-6" method="POST" action="`)
+	w.AppendString(endpoint)
+	w.AppendString(`">`)
+
+	w.AppendString(`<h3 class="text-center">`)
+	w.AppendString(Ls(l, title))
+	w.AppendString(`</h3>`)
+	w.AppendString(`<br>`)
+
+	DisplayErrorMessage(w, l, r.Form.Get("Error"))
+
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+}
+
 func DisplayFormEnd(w *http.Response) {
 	w.AppendString(`</form></main>`)
 }
@@ -232,7 +248,7 @@ func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLen
 }
 
 func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, maxLength int, name, value string, required bool) {
-	w.AppendString(` <textarea cols="`)
+	w.AppendString(` <textarea class="form-control" cols="`)
 	w.AppendString(cols)
 	w.AppendString(`" rows="`)
 	w.AppendString(rows)
@@ -307,7 +323,7 @@ func DisplayButton(w *http.Response, l Language, name string, value string) {
 	w.AppendString(`" formnovalidate>`)
 }
 
-func DisplayNextPageButton(w *http.Response, l Language, value string) {
+func DisplayNextPage(w *http.Response, l Language, value string) {
 	w.AppendString(` <input class="w-100 btn btn-outline-primary mt-2" type="submit" name="NextPage" value="`)
 	w.AppendString(Ls(l, value))
 	w.AppendString(`" formnovalidate>`)

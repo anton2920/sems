@@ -344,32 +344,6 @@ func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
 	}
 }
 
-func DisplayLessonStep(w *http.Response, l Language, step *Step, si int) {
-	w.AppendString(`<div class="border rounded p-4">`)
-
-	w.AppendString(`<p><b>`)
-	w.AppendString(Ls(GL, "Step"))
-	w.AppendString(` #`)
-	w.WriteInt(si + 1)
-	DisplayDraft(w, GL, step.Draft)
-	w.AppendString(`</b></p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(step.Name)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Type"))
-	w.AppendString(`: `)
-	w.AppendString(StepStringType(GL, step))
-	w.AppendString(`</p>`)
-
-	w.AppendString(`</div>`)
-	w.AppendString(`<br>`)
-}
-
 func DisplayLessonSubmissions(w *http.Response, l Language, lesson *Lesson, userID database.ID, who SubjectUserType) {
 	var submission Submission
 
@@ -555,7 +529,31 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 				w.AppendString(`</h3>`)
 
 				for i := 0; i < len(lesson.Steps); i++ {
-					DisplayLessonStep(w, GL, &lesson.Steps[i], i)
+					step := &lesson.Steps[i]
+
+					w.AppendString(`<div class="border rounded p-4">`)
+
+					w.AppendString(`<p><b>`)
+					w.AppendString(Ls(GL, "Step"))
+					w.AppendString(` #`)
+					w.WriteInt(i + 1)
+					DisplayDraft(w, GL, step.Draft)
+					w.AppendString(`</b></p>`)
+
+					w.AppendString(`<p>`)
+					w.AppendString(Ls(GL, "Name"))
+					w.AppendString(`: `)
+					w.WriteHTMLString(step.Name)
+					w.AppendString(`</p>`)
+
+					w.AppendString(`<p>`)
+					w.AppendString(Ls(GL, "Type"))
+					w.AppendString(`: `)
+					w.AppendString(StepStringType(GL, step))
+					w.AppendString(`</p>`)
+
+					w.AppendString(`</div>`)
+					w.AppendString(`<br>`)
 				}
 			}
 
@@ -1013,65 +1011,74 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepP
 }
 
 func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, task *StepProgramming) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Programming task"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	session, _ := GetSessionFromRequest(r)
+	_ = session
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Lesson"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Programming task"))
-	w.AppendString(`</h2>`)
+	DisplayHTMLStart(w)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<head><title>`)
+		w.AppendString(Ls(GL, "Programming task"))
+		w.AppendString(`</title></head>`)
+	}
 
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+	DisplayBodyStart(w)
+	{
+		w.AppendString(`<h1>`)
+		w.AppendString(Ls(GL, "Lesson"))
+		w.AppendString(`</h1>`)
+		w.AppendString(`<h2>`)
+		w.AppendString(Ls(GL, "Programming task"))
+		w.AppendString(`</h2>`)
 
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+		DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-	DisplayHiddenString(w, "CurrentPage", "Programming")
+		w.AppendString(`<form method="POST" action="`)
+		w.WriteString(r.URL.Path)
+		w.AppendString(`">`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+		DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Description"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintTextarea(w, "80", "24", MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+		DisplayHiddenString(w, "CurrentPage", "Programming")
 
-	w.AppendString(`<h3>`)
-	w.AppendString(Ls(GL, "Examples"))
-	w.AppendString(`</h3>`)
-	LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeExample)
-	DisplayCommand(w, GL, "Add example")
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(GL, "Name"))
+		w.AppendString(`: `)
+		DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
+		w.AppendString(`</label>`)
+		w.AppendString(`<br><br>`)
 
-	w.AppendString(`<h3>`)
-	w.AppendString(Ls(GL, "Tests"))
-	w.AppendString(`</h3>`)
-	LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
-	DisplayCommand(w, GL, "Add test")
+		w.AppendString(`<label>`)
+		w.AppendString(Ls(GL, "Description"))
+		w.AppendString(`:<br>`)
+		DisplayConstraintTextarea(w, "80", "24", MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
+		w.AppendString(`</label>`)
+		w.AppendString(`<br><br>`)
 
-	w.AppendString(`<br><br>`)
+		w.AppendString(`<h3>`)
+		w.AppendString(Ls(GL, "Examples"))
+		w.AppendString(`</h3>`)
+		LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeExample)
+		DisplayCommand(w, GL, "Add example")
 
-	DisplaySubmit(w, GL, "NextPage", "Continue", true)
-	w.AppendString(`</form>`)
+		w.AppendString(`<h3>`)
+		w.AppendString(Ls(GL, "Tests"))
+		w.AppendString(`</h3>`)
+		LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
+		DisplayCommand(w, GL, "Add test")
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+		w.AppendString(`<br><br>`)
 
+		DisplaySubmit(w, GL, "NextPage", "Continue", true)
+		w.AppendString(`</form>`)
+
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 	return nil
 }
 
@@ -1089,90 +1096,86 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, step *Step) err
 }
 
 func LessonAddPageHandler(w *http.Response, r *http.Request, lesson *Lesson) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Create lesson"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	session, _ := GetSessionFromRequest(r)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Lesson"))
-	w.AppendString(`</h1>`)
+	DisplayHTMLStart(w)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-
-	DisplayHiddenString(w, "CurrentPage", "Lesson")
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Theory"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintTextarea(w, "80", "24", MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	for i := 0; i < len(lesson.Steps); i++ {
-		step := &lesson.Steps[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Step"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		DisplayDraft(w, GL, step.Draft)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Name"))
-		w.AppendString(`: `)
-		w.WriteHTMLString(step.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Type"))
-		w.AppendString(`: `)
-		w.AppendString(StepStringType(GL, step))
-		w.AppendString(`</p>`)
-
-		DisplayIndexedCommand(w, GL, i, "Edit")
-		DisplayIndexedCommand(w, GL, i, "Delete")
-		if len(lesson.Steps) > 1 {
-			if i > 0 {
-				DisplayIndexedCommand(w, GL, i, "↑")
-			}
-			if i < len(lesson.Steps)-1 {
-				DisplayIndexedCommand(w, GL, i, "↓")
-			}
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Create lesson"))
+		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Add test", false)
-	DisplaySubmit(w, GL, "NextPage", "Add programming task", false)
-	w.AppendString(`<br><br>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	DisplaySubmit(w, GL, "NextPage", "Next", true)
-	w.AppendString(`</form>`)
+		DisplayWideFormStart(w, r, GL, "Lesson", r.URL.Path)
+		{
+			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+			DisplayHiddenString(w, "CurrentPage", "Lesson")
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+			DisplayInputLabel(w, GL, "Name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
+			w.AppendString(`<br>`)
 
+			DisplayInputLabel(w, GL, "Theory")
+			DisplayConstraintTextarea(w, "80", "24", MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
+			w.AppendString(`<br>`)
+
+			for i := 0; i < len(lesson.Steps); i++ {
+				step := &lesson.Steps[i]
+
+				w.AppendString(`<div class="border round p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.AppendString(Ls(GL, "Step"))
+				w.AppendString(` #`)
+				w.WriteInt(i + 1)
+				DisplayDraft(w, GL, step.Draft)
+				w.AppendString(`</b></p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Name"))
+				w.AppendString(`: `)
+				w.WriteHTMLString(step.Name)
+				w.AppendString(`</p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Type"))
+				w.AppendString(`: `)
+				w.AppendString(StepStringType(GL, step))
+				w.AppendString(`</p>`)
+
+				DisplayIndexedCommand(w, GL, i, "Edit")
+				DisplayIndexedCommand(w, GL, i, "Delete")
+				if len(lesson.Steps) > 1 {
+					if i > 0 {
+						DisplayIndexedCommand(w, GL, i, "↑")
+					}
+					if i < len(lesson.Steps)-1 {
+						DisplayIndexedCommand(w, GL, i, "↓")
+					}
+				}
+
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
+			}
+
+			DisplayNextPage(w, GL, "Add test")
+			DisplayNextPage(w, GL, "Add programming task")
+			w.AppendString(`<br><br>`)
+
+			DisplaySubmit(w, GL, "NextPage", "Next", true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 	return nil
 }
 

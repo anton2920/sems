@@ -250,7 +250,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course
 
 			DisplayLessonsEditableList(w, GL, course.Lessons)
 
-			DisplayNextPageButton(w, GL, "Add lesson")
+			DisplayNextPage(w, GL, "Add lesson")
 			w.AppendString(`<br><br>`)
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)

@@ -355,64 +355,6 @@ func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedP
 	w.AppendString(`</select>`)
 }
 
-func DisplaySubmittedStep(w *http.Response, l Language, submittedStep *SubmittedStep, si int, teacher bool) {
-	w.AppendString(`<div class="border rounded p-4">`)
-
-	w.AppendString(`<p><b>`)
-	w.AppendString(Ls(GL, "Step"))
-	w.AppendString(` #`)
-	w.WriteInt(si + 1)
-	w.AppendString(`</b></p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(submittedStep.Step.Name)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(GL, "Type"))
-	w.AppendString(`: `)
-	w.AppendString(StepStringType(GL, &submittedStep.Step))
-	w.AppendString(`</p>`)
-
-	if submittedStep.Flags == SubmittedStepSkipped {
-		DisplaySubmittedStepScore(w, GL, submittedStep)
-
-		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "This step has been skipped"))
-		w.AppendString(`.</i></p>`)
-	} else {
-		switch submittedStep.Status {
-		case SubmissionCheckPending:
-			w.AppendString(`<p><i>`)
-			w.AppendString(Ls(GL, "Pending"))
-			w.AppendString(` `)
-			w.AppendString(Ls(GL, "verification"))
-			w.AppendString(`...`)
-			w.AppendString(`</i></p>`)
-		case SubmissionCheckInProgress:
-			w.AppendString(`<p><i>`)
-			w.AppendString(Ls(GL, "Verification"))
-			w.AppendString(` `)
-			w.AppendString(Ls(GL, "in progress"))
-			w.AppendString(`...`)
-			w.AppendString(`</i></p>`)
-		case SubmissionCheckDone:
-			DisplaySubmittedStepScore(w, GL, submittedStep)
-			DisplayErrorMessage(w, GL, submittedStep.Error)
-
-			DisplayIndexedCommand(w, GL, si, "Open")
-			if teacher {
-				DisplayIndexedCommand(w, GL, si, "Re-check")
-			}
-		}
-	}
-
-	w.AppendString(`</div>`)
-	w.AppendString(`<br>`)
-}
-
 func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
 	w.AppendString(Ls(l, "Submission"))
 	w.AppendString(` `)
@@ -531,7 +473,63 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			DisplayHiddenID(w, "ID", submission.ID)
 
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
-				DisplaySubmittedStep(w, GL, &submission.SubmittedSteps[i], i, teacher)
+				submittedStep := &submission.SubmittedSteps[i]
+
+				w.AppendString(`<div class="border rounded p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.AppendString(Ls(GL, "Step"))
+				w.AppendString(` #`)
+				w.WriteInt(i + 1)
+				w.AppendString(`</b></p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Name"))
+				w.AppendString(`: `)
+				w.WriteHTMLString(submittedStep.Step.Name)
+				w.AppendString(`</p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Type"))
+				w.AppendString(`: `)
+				w.AppendString(StepStringType(GL, &submittedStep.Step))
+				w.AppendString(`</p>`)
+
+				if submittedStep.Flags == SubmittedStepSkipped {
+					DisplaySubmittedStepScore(w, GL, submittedStep)
+
+					w.AppendString(`<p><i>`)
+					w.AppendString(Ls(GL, "This step has been skipped"))
+					w.AppendString(`.</i></p>`)
+				} else {
+					switch submittedStep.Status {
+					case SubmissionCheckPending:
+						w.AppendString(`<p><i>`)
+						w.AppendString(Ls(GL, "Pending"))
+						w.AppendString(` `)
+						w.AppendString(Ls(GL, "verification"))
+						w.AppendString(`...`)
+						w.AppendString(`</i></p>`)
+					case SubmissionCheckInProgress:
+						w.AppendString(`<p><i>`)
+						w.AppendString(Ls(GL, "Verification"))
+						w.AppendString(` `)
+						w.AppendString(Ls(GL, "in progress"))
+						w.AppendString(`...`)
+						w.AppendString(`</i></p>`)
+					case SubmissionCheckDone:
+						DisplaySubmittedStepScore(w, GL, submittedStep)
+						DisplayErrorMessage(w, GL, submittedStep.Error)
+
+						DisplayIndexedCommand(w, GL, i, "Open")
+						if teacher {
+							DisplayIndexedCommand(w, GL, i, "Re-check")
+						}
+					}
+				}
+
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
 			}
 
 			switch submission.Status {
