@@ -159,6 +159,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<h2>`)
 			DisplayCourseTitle(w, GL, &course)
 			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
 
 			w.AppendString(`<h3>`)
 			w.AppendString(Ls(GL, "Lessons"))

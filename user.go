@@ -343,6 +343,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<h2>`)
 			DisplayUserTitle(w, GL, &user)
 			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
 
 			w.AppendString(`<h3>`)
 			w.AppendString(Ls(GL, "Info"))

@@ -308,6 +308,146 @@ func StepStringType(l Language, s *Step) string {
 		return Ls(l, "Programming task")
 	}
 }
+func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
+	var lesson Lesson
+
+	for i := 0; i < len(lessons); i++ {
+		if err := GetLessonByID(lessons[i], &lesson); err != nil {
+			/* TODO(anton2920): report error. */
+		}
+
+		w.AppendString(`<div class="border rounded p-4">`)
+
+		w.AppendString(`<p><b>`)
+		w.AppendString(Ls(l, "Lesson"))
+		w.AppendString(` #`)
+		w.WriteInt(i + 1)
+		DisplayDraft(w, l, lesson.Flags == LessonDraft)
+		w.AppendString(`</b></p>`)
+
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(l, "Name"))
+		w.AppendString(`: `)
+		w.WriteHTMLString(lesson.Name)
+		w.AppendString(`</p>`)
+
+		w.AppendString(`<p>`)
+		w.AppendString(Ls(l, "Theory"))
+		w.AppendString(`: `)
+		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
+		w.AppendString(`</p>`)
+
+		DisplayLessonLink(w, l, &lesson)
+
+		w.AppendString(`</div>`)
+		w.AppendString(`<br>`)
+	}
+}
+
+func DisplayLessonStep(w *http.Response, l Language, step *Step, si int) {
+	w.AppendString(`<div class="border rounded p-4">`)
+
+	w.AppendString(`<p><b>`)
+	w.AppendString(Ls(GL, "Step"))
+	w.AppendString(` #`)
+	w.WriteInt(si + 1)
+	DisplayDraft(w, GL, step.Draft)
+	w.AppendString(`</b></p>`)
+
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Name"))
+	w.AppendString(`: `)
+	w.WriteHTMLString(step.Name)
+	w.AppendString(`</p>`)
+
+	w.AppendString(`<p>`)
+	w.AppendString(Ls(GL, "Type"))
+	w.AppendString(`: `)
+	w.AppendString(StepStringType(GL, step))
+	w.AppendString(`</p>`)
+
+	w.AppendString(`</div>`)
+	w.AppendString(`<br>`)
+}
+
+func DisplayLessonSubmissions(w *http.Response, l Language, lesson *Lesson, userID database.ID, who SubjectUserType) {
+	var submission Submission
+
+	var displayed bool
+
+	switch who {
+	case SubjectUserAdmin, SubjectUserTeacher:
+		if len(lesson.Submissions) > 0 {
+			for i := 0; i < len(lesson.Submissions); i++ {
+				if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
+					/* TODO(anton2920): report error. */
+				}
+
+				if submission.Flags == SubmissionActive {
+					if !displayed {
+						w.AppendString(`<h3>`)
+						w.AppendString(Ls(l, "Submissions"))
+						w.AppendString(`</h3>`)
+						w.AppendString(`<ul>`)
+						displayed = true
+					}
+
+					w.AppendString(`<li>`)
+					DisplaySubmissionLink(w, l, &submission)
+					w.AppendString(`</li>`)
+				}
+			}
+			if displayed {
+				w.AppendString(`</ul>`)
+			}
+		}
+	case SubjectUserStudent:
+		si := -1
+
+		for i := 0; i < len(lesson.Submissions); i++ {
+			if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
+				/* TODO(anton2920): report error. */
+			}
+
+			if submission.UserID == userID {
+				if submission.Flags == SubmissionActive {
+					si = -1
+
+					if !displayed {
+						w.AppendString(`<h3>`)
+						w.AppendString(Ls(l, "Submissions"))
+						w.AppendString(`</h3>`)
+						w.AppendString(`<ul>`)
+						displayed = true
+					}
+
+					w.AppendString(`<li>`)
+					DisplaySubmissionLink(w, l, &submission)
+					w.AppendString(`</li>`)
+				} else if submission.Flags == SubmissionDraft {
+					si = i
+				}
+			}
+		}
+		if displayed {
+			w.AppendString(`</ul>`)
+		} else {
+			w.AppendString(`<br>`)
+		}
+
+		if len(lesson.Steps) > 0 {
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+			DisplayHiddenID(w, "ID", lesson.ID)
+			if si == -1 {
+				DisplayButton(w, l, "", "Pass")
+			} else {
+				DisplayHiddenInt(w, "SubmissionIndex", si)
+				DisplayButton(w, l, "", "Edit")
+			}
+			w.AppendString(`</form>`)
+		}
+	}
+}
 
 func DisplayLessonTitle(w *http.Response, l Language, container string, lesson *Lesson) {
 	w.WriteHTMLString(container)
@@ -324,47 +464,9 @@ func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 	w.AppendString(`</a>`)
 }
 
-func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
-	var lesson Lesson
-
-	for i := 0; i < len(lessons); i++ {
-		if err := GetLessonByID(lessons[i], &lesson); err != nil {
-			/* TODO(anton2920): report error. */
-		}
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(l, "Lesson"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		DisplayDraft(w, l, lesson.Flags == LessonDraft)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(l, "Name"))
-		w.AppendString(`: `)
-		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(l, "Theory"))
-		w.AppendString(`: `)
-		DisplayShortenedString(w, lesson.Theory, LessonTheoryMaxDisplayLen)
-		w.AppendString(`</p>`)
-
-		DisplayLessonLink(w, l, &lesson)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
-	}
-}
-
 func LessonPageHandler(w *http.Response, r *http.Request) error {
-	var submission Submission
 	var who SubjectUserType
 	var container string
-	var displayed bool
 	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
@@ -417,138 +519,53 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		container = subject.Name
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	DisplayLessonTitle(w, GL, container, &lesson)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	DisplayLessonTitle(w, GL, container, &lesson)
-	w.AppendString(`</h1>`)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Theory"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(lesson.Theory)
-	w.AppendString(`</p>`)
-
-	if len(lesson.Steps) > 0 {
-		w.AppendString(`<h2>`)
-		w.AppendString(Ls(GL, "Evaluation"))
-		w.AppendString(`</h2>`)
-
-		w.AppendString(`<div style="max-width: max-content">`)
-		for i := 0; i < len(lesson.Steps); i++ {
-			step := &lesson.Steps[i]
-
-			if i > 0 {
-				w.AppendString(`<br>`)
-			}
-
-			w.AppendString(`<fieldset>`)
-
-			w.AppendString(`<legend>`)
-			w.AppendString(Ls(GL, "Step"))
-			w.AppendString(` #`)
-			w.WriteInt(i + 1)
-			DisplayDraft(w, GL, step.Draft)
-			w.AppendString(`</legend>`)
-
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Name"))
-			w.AppendString(`: `)
-			w.WriteHTMLString(step.Name)
-			w.AppendString(`</p>`)
-
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Type"))
-			w.AppendString(`: `)
-			w.AppendString(StepStringType(GL, step))
-			w.AppendString(`</p>`)
-
-			w.AppendString(`</fieldset>`)
-		}
-		w.AppendString(`</div>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		DisplayLessonTitle(w, GL, container, &lesson)
+		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	switch who {
-	case SubjectUserAdmin, SubjectUserTeacher:
-		if len(lesson.Submissions) > 0 {
-			for i := 0; i < len(lesson.Submissions); i++ {
-				if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
-					return http.ServerError(err)
-				}
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-				if submission.Flags == SubmissionActive {
-					if !displayed {
-						w.AppendString(`<h2>`)
-						w.AppendString(Ls(GL, "Submissions"))
-						w.AppendString(`</h2>`)
-						w.AppendString(`<ul>`)
-						displayed = true
-					}
-
-					w.AppendString(`<li>`)
-					DisplaySubmissionLink(w, GL, &submission)
-					w.AppendString(`</li>`)
-				}
-			}
-			if displayed {
-				w.AppendString(`</ul>`)
-			}
-		}
-	case SubjectUserStudent:
-		si := -1
-
-		for i := 0; i < len(lesson.Submissions); i++ {
-			if err := GetSubmissionByID(lesson.Submissions[i], &submission); err != nil {
-				return http.ServerError(err)
-			}
-
-			if submission.UserID == session.ID {
-				if submission.Flags == SubmissionActive {
-					si = -1
-
-					if !displayed {
-						w.AppendString(`<h2>`)
-						w.AppendString(Ls(GL, "Submissions"))
-						w.AppendString(`</h2>`)
-						w.AppendString(`<ul>`)
-						displayed = true
-					}
-
-					w.AppendString(`<li>`)
-					DisplaySubmissionLink(w, GL, &submission)
-					w.AppendString(`</li>`)
-				} else if submission.Flags == SubmissionDraft {
-					si = i
-				}
-			}
-		}
-		if displayed {
-			w.AppendString(`</ul>`)
-		} else {
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			DisplayLessonTitle(w, GL, container, &lesson)
+			w.AppendString(`</h2>`)
 			w.AppendString(`<br>`)
-		}
 
-		if len(lesson.Steps) > 0 {
-			w.AppendString(`<form method="POST" action="/submission/new">`)
-			DisplayHiddenID(w, "ID", lesson.ID)
-			if si == -1 {
-				DisplaySubmit(w, GL, "", "Pass", true)
-			} else {
-				DisplayHiddenInt(w, "SubmissionIndex", si)
-				DisplaySubmit(w, GL, "", "Edit", true)
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Theory"))
+			w.AppendString(`</h3>`)
+			w.AppendString(`<p>`)
+			w.WriteHTMLString(lesson.Theory)
+			w.AppendString(`</p>`)
+			w.AppendString(`<br>`)
+
+			if len(lesson.Steps) > 0 {
+				w.AppendString(`<h3>`)
+				w.AppendString(Ls(GL, "Evaluation"))
+				w.AppendString(`</h3>`)
+
+				for i := 0; i < len(lesson.Steps); i++ {
+					DisplayLessonStep(w, GL, &lesson.Steps[i], i)
+				}
 			}
-			w.AppendString(`</form>`)
+
+			DisplayLessonSubmissions(w, GL, &lesson, session.ID, who)
 		}
+		DisplayPageEnd(w)
 	}
+	DisplayBodyEnd(w)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 

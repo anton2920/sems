@@ -135,7 +135,6 @@ func SaveSubject(subject *Subject) error {
 }
 
 func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
-
 	w.AppendString(`<form method="POST" action="/subject/lessons">`)
 	DisplayHiddenID(w, "ID", subject.ID)
 
@@ -160,7 +159,7 @@ func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject,
 
 				if !displayed {
 					w.AppendString(`<label>`)
-					w.AppendString(Ls(GL, "Courses"))
+					w.AppendString(Ls(l, "Courses"))
 					w.AppendString(`: `)
 					w.AppendString(`<select name="CourseID">`)
 					displayed = true
@@ -176,16 +175,16 @@ func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject,
 			w.AppendString(`</select>`)
 			w.AppendString(`</label> `)
 
-			DisplayButton(w, GL, "Action", "create from")
+			DisplayButton(w, l, "Action", "create from")
 			w.AppendString(`, `)
-			DisplayButton(w, GL, "Action", "give as is")
+			DisplayButton(w, l, "Action", "give as is")
 			w.AppendString(` `)
-			w.AppendString(Ls(GL, "or"))
+			w.AppendString(Ls(l, "or"))
 			w.AppendString(` `)
 		}
-		DisplayButton(w, GL, "Action", "create new from scratch")
+		DisplayButton(w, l, "Action", "create new from scratch")
 	} else {
-		DisplayButton(w, GL, "", "Edit")
+		DisplayButton(w, l, "", "Edit")
 	}
 
 	w.AppendString(`</form>`)
@@ -278,6 +277,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<h2>`)
 			DisplaySubjectTitle(w, GL, &subject, &teacher)
 			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
 
 			w.AppendString(`<p>`)
 			w.AppendString(Ls(GL, "Teacher"))
