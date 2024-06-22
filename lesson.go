@@ -648,14 +648,14 @@ func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database
 			/* TODO(anton2920): report error. */
 		}
 
-		w.AppendString(`<fieldset>`)
+		w.AppendString(`<div class="border round p-4">`)
 
-		w.AppendString(`<legend>`)
+		w.AppendString(`<p><b>`)
 		w.AppendString(Ls(GL, "Lesson"))
 		w.AppendString(` #`)
 		w.WriteInt(i + 1)
 		DisplayDraft(w, l, lesson.Flags == LessonDraft)
-		w.AppendString(`</legend>`)
+		w.AppendString(`</b></p>`)
 
 		w.AppendString(`<p>`)
 		w.AppendString(Ls(GL, "Name"))
@@ -680,7 +680,7 @@ func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database
 			}
 		}
 
-		w.AppendString(`</fieldset>`)
+		w.AppendString(`</div>`)
 		w.AppendString(`<br>`)
 	}
 }

@@ -132,8 +132,7 @@ func DisplayFormStart(w *http.Response, r *http.Request, l Language, title strin
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
-func DisplayFormEnd(w *http.Response, l Language, action string) {
-	DisplaySubmit(w, GL, "", action, true)
+func DisplayFormEnd(w *http.Response) {
 	w.AppendString(`</form></main>`)
 }
 
@@ -304,6 +303,12 @@ func DisplayButton(w *http.Response, l Language, name string, value string) {
 	w.AppendString(` <input class="btn btn-outline-dark" type="submit" name="`)
 	w.AppendString(name)
 	w.AppendString(`" value="`)
+	w.AppendString(Ls(l, value))
+	w.AppendString(`" formnovalidate>`)
+}
+
+func DisplayNextPageButton(w *http.Response, l Language, value string) {
+	w.AppendString(` <input class="w-100 btn btn-outline-primary mt-2" type="submit" name="NextPage" value="`)
 	w.AppendString(Ls(l, value))
 	w.AppendString(`" formnovalidate>`)
 }

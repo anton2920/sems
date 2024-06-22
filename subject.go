@@ -455,8 +455,10 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint st
 			DisplayInputLabel(w, GL, "Group")
 			DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 			w.AppendString(`<br>`)
+
+			DisplaySubmit(w, GL, "", action, true)
 		}
-		DisplayFormEnd(w, GL, action)
+		DisplayFormEnd(w)
 	}
 	DisplayBodyEnd(w)
 

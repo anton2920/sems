@@ -223,45 +223,43 @@ func CourseVerify(l Language, course *Course) error {
 }
 
 func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, course *Course) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Course"))
-	w.AppendString(`</title></head>`)
+	session, _ := GetSessionFromRequest(r)
 
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Course"))
-	w.AppendString(`</h1>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Course"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+		DisplayFormStart(w, r, GL, "Course", r.URL.Path)
+		{
+			DisplayHiddenString(w, "CurrentPage", "Course")
 
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "CurrentPage", "Course")
+			DisplayInputLabel(w, GL, "Name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Name"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+			DisplayLessonsEditableList(w, GL, course.Lessons)
 
-	DisplayLessonsEditableList(w, GL, course.Lessons)
+			DisplayNextPageButton(w, GL, "Add lesson")
+			w.AppendString(`<br><br>`)
 
-	DisplaySubmit(w, GL, "NextPage", "Add lesson", false)
-	w.AppendString(`<br><br>`)
+			DisplaySubmit(w, GL, "NextPage", "Save", true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Save", true)
-
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
