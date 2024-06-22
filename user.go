@@ -391,6 +391,63 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	return nil
 }
 
+func UserCreateEditPageHandler(w *http.Response, l Language, r *http.Request, userID database.ID, endpoint string, title string, action string) error {
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(l, title))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, l)
+		DisplaySidebar(w, l, userID)
+
+		DisplayFormStart(w, endpoint)
+		{
+			w.AppendString(`<h3 class="text-center">`)
+			w.AppendString(Ls(l, title))
+			w.AppendString(`</h3>`)
+			w.AppendString(`<br>`)
+
+			DisplayErrorMessage(w, l, r.Form.Get("Error"))
+
+			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+
+			DisplayInputLabel(w, l, "First name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
+			w.AppendString(`<br>`)
+
+			DisplayInputLabel(w, l, "Last name")
+			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
+			w.AppendString(`<br>`)
+
+			DisplayInputLabel(w, l, "Email")
+			DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
+			w.AppendString(`<br>`)
+
+			DisplayInputLabel(w, l, "Password")
+			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
+			w.AppendString(`<br>`)
+
+			DisplayInputLabel(w, l, "Repeat password")
+			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
+			w.AppendString(`<br>`)
+
+			DisplaySubmit(w, l, "", action, true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
+}
+
 func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -400,68 +457,7 @@ func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Create user"))
-	w.AppendString(`</title></head>`)
-
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "User"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Create"))
-	w.AppendString(`</h2>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="/api/user/create">`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "First name"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Last name"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Email"))
-	w.AppendString(`:<br>`)
-	w.AppendString(`<input type="email" name="Email" value="`)
-	w.WriteHTMLString(r.Form.Get("Email"))
-	w.AppendString(`" required>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Password"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Repeat password"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "", "Create", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
+	return UserCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/user/create", "Create user", "Create")
 }
 
 func UserEditPageHandler(w *http.Response, r *http.Request) error {
@@ -482,70 +478,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Edit user"))
-	w.AppendString(`</title></head>`)
-
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "User"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Edit"))
-	w.AppendString(`</h2>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="/api/user/edit">`)
-
-	DisplayHiddenID(w, "ID", userID)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "First name"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Last name"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Email"))
-	w.AppendString(`:<br>`)
-	w.AppendString(`<input type="email" name="Email" value="`)
-	w.WriteHTMLString(r.Form.Get("Email"))
-	w.AppendString(`" required>`)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Password"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Repeat password"))
-	w.AppendString(`:<br>`)
-	DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "", "Save", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
-	return nil
+	return UserCreateEditPageHandler(w, GL, r, session.ID, APIPrefix+"/user/edit", "Edit user", "Save")
 }
 
 func UserSigninPageHandler(w *http.Response, r *http.Request) error {

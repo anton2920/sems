@@ -112,6 +112,17 @@ func DisplayPageEnd(w *http.Response) {
 	w.AppendString(`</div></main>`)
 }
 
+func DisplayFormStart(w *http.Response, endpoint string) {
+	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
+	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-4" method="POST" action="`)
+	w.AppendString(endpoint)
+	w.AppendString(`">`)
+}
+
+func DisplayFormEnd(w *http.Response) {
+	w.AppendString(`</form></main>`)
+}
+
 func DisplayBodyEnd(w *http.Response) {
 	/*
 		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
@@ -171,7 +182,7 @@ func DisplayInput(w *http.Response, t string, name, value string, required bool)
 }
 
 func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int, name, value string, required bool) {
-	w.AppendString(` <input type="`)
+	w.AppendString(` <input class="form-control" type="`)
 	w.AppendString(t)
 	w.AppendString(`" minlength="`)
 	w.WriteInt(minLength)
@@ -189,7 +200,7 @@ func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int
 }
 
 func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLength int, name string, index int, value string, required bool) {
-	w.AppendString(` <input type="`)
+	w.AppendString(` <input class="form-control" type="`)
 	w.AppendString(t)
 	w.AppendString(`" minlength="`)
 	w.WriteInt(minLength)

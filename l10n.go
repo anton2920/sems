@@ -76,7 +76,7 @@ var Localizations = map[string]*[XX]string{
 		RU: "Создать предмет",
 	},
 	"Create user": {
-		RU: "Создать пользователя",
+		RU: "Создание пользователя",
 	},
 	"Created on": {
 		RU: "Дата создания",
