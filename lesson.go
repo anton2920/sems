@@ -1042,11 +1042,9 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 			w.AppendString(`</h4>`)
 			LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
 			DisplayCommand(w, GL, "Add test")
-
 			w.AppendString(`<br><br>`)
 
 			DisplaySubmit(w, GL, "NextPage", "Continue", true)
-
 		}
 		DisplayFormEnd(w)
 	}

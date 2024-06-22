@@ -492,40 +492,37 @@ func SubjectLessonsVerify(l Language, subject *Subject) error {
 }
 
 func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Edit subject lessons"))
-	w.AppendString(`</title></head>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<body>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Edit subject lessons"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Subject"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Lessons"))
-	w.AppendString(`</h2>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+		DisplayFormStart(w, r, GL, "Edit subject lessons", r.URL.Path, 6)
+		{
+			DisplayHiddenString(w, "CurrentPage", "Main")
 
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
+			DisplayLessonsEditableList(w, GL, subject.Lessons)
 
-	DisplayHiddenID(w, "ID", subject.ID)
-	DisplayHiddenString(w, "CurrentPage", "Main")
+			DisplayNextPage(w, GL, "Add lesson")
+			w.AppendString(`<br><br>`)
 
-	DisplayLessonsEditableList(w, GL, subject.Lessons)
+			DisplaySubmit(w, GL, "NextPage", "Save", true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Add lesson", true)
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "NextPage", "Save", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
