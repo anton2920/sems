@@ -338,7 +338,7 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint stri
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		DisplayFormStart(w, r, GL, title, endpoint)
+		DisplayFormStart(w, r, GL, title, endpoint, 4)
 		{
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)

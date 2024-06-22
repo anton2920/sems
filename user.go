@@ -407,7 +407,7 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		DisplayFormStart(w, r, GL, title, endpoint)
+		DisplayFormStart(w, r, GL, title, endpoint, 4)
 		{
 			DisplayInputLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)

@@ -238,7 +238,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		DisplayFormStart(w, r, GL, "Course", r.URL.Path)
+		DisplayFormStart(w, r, GL, "Course", r.URL.Path, 4)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Course")
 

@@ -125,26 +125,12 @@ func DisplayPageEnd(w *http.Response) {
 	w.AppendString(`</div></main>`)
 }
 
-func DisplayFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string) {
+func DisplayFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string, width int) {
 	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
-	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-4" method="POST" action="`)
-	w.AppendString(endpoint)
-	w.AppendString(`">`)
-
-	w.AppendString(`<h3 class="text-center">`)
-	w.AppendString(Ls(l, title))
-	w.AppendString(`</h3>`)
-	w.AppendString(`<br>`)
-
-	DisplayErrorMessage(w, l, r.Form.Get("Error"))
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-}
-
-func DisplayWideFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string) {
-	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
-	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-6" method="POST" action="`)
-	w.AppendString(endpoint)
+	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-`)
+	w.WriteInt(width)
+	w.AppendString(`" method="POST" action="`)
+	w.WriteString(endpoint)
 	w.AppendString(`">`)
 
 	w.AppendString(`<h3 class="text-center">`)
@@ -256,12 +242,24 @@ func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLen
 	w.AppendString(`>`)
 }
 
-func DisplayConstraintTextarea(w *http.Response, cols, rows string, minLength, maxLength int, name, value string, required bool) {
-	w.AppendString(` <textarea class="form-control" cols="`)
-	w.AppendString(cols)
-	w.AppendString(`" rows="`)
-	w.AppendString(rows)
-	w.AppendString(`" minlength="`)
+func DisplayConstraintInlineTextarea(w *http.Response, minLength, maxLength int, name, value string, required bool) {
+	w.AppendString(` <textarea class="btn btn-outline-dark" rows="1" minlength="`)
+	w.WriteInt(minLength)
+	w.AppendString(`" maxlength="`)
+	w.WriteInt(maxLength)
+	w.AppendString(`" name="`)
+	w.AppendString(name)
+	w.AppendString(`"`)
+	if required {
+		w.AppendString(` required`)
+	}
+	w.AppendString(`>`)
+	w.WriteHTMLString(value)
+	w.AppendString(`</textarea>`)
+}
+
+func DisplayConstraintTextarea(w *http.Response, minLength, maxLength int, name, value string, required bool) {
+	w.AppendString(` <textarea class="form-control" rows="10" minlength="`)
 	w.WriteInt(minLength)
 	w.AppendString(`" maxlength="`)
 	w.WriteInt(maxLength)

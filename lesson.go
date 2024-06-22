@@ -808,7 +808,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		DisplayWideFormStart(w, r, GL, "Test", r.URL.Path)
+		DisplayFormStart(w, r, GL, "Test", r.URL.Path, 6)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Test")
 			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
@@ -971,18 +971,18 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepP
 	for i := 0; i < len(checks); i++ {
 		check := &checks[i]
 
-		w.AppendString(`<li>`)
+		w.AppendString(`<li class="mt-3">`)
 
 		w.AppendString(`<label>`)
 		w.AppendString(Ls(l, "Input"))
 		w.AppendString(`: `)
-		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyInput], check.Input, true)
+		DisplayConstraintInlineTextarea(w, MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyInput], check.Input, true)
 		w.AppendString(`</label> `)
 
 		w.AppendString(`<label>`)
 		w.AppendString(Ls(l, "output"))
 		w.AppendString(`: `)
-		DisplayConstraintTextarea(w, "", "1", MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyOutput], check.Output, true)
+		DisplayConstraintInlineTextarea(w, MinCheckLen, MaxCheckLen, CheckKeys[checkType][CheckKeyOutput], check.Output, true)
 		w.AppendString(`</label>`)
 
 		DisplayDoublyIndexedCommand(w, l, i, int(checkType), "-")
@@ -1005,63 +1005,50 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<head><title>`)
+		w.AppendString(`<title>`)
 		w.AppendString(Ls(GL, "Programming task"))
-		w.AppendString(`</title></head>`)
+		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
 	DisplayBodyStart(w)
 	{
-		w.AppendString(`<h1>`)
-		w.AppendString(Ls(GL, "Lesson"))
-		w.AppendString(`</h1>`)
-		w.AppendString(`<h2>`)
-		w.AppendString(Ls(GL, "Programming task"))
-		w.AppendString(`</h2>`)
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
 
-		DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+		DisplayFormStart(w, r, GL, "Programming task", r.URL.Path, 8)
+		{
+			DisplayHiddenString(w, "CurrentPage", "Programming")
+			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-		w.AppendString(`<form method="POST" action="`)
-		w.WriteString(r.URL.Path)
-		w.AppendString(`">`)
+			DisplayInputLabel(w, GL, "Name")
+			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
+			w.AppendString(`<br>`)
 
-		DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+			DisplayInputLabel(w, GL, "Description")
+			DisplayConstraintTextarea(w, MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
+			w.AppendString(`<br>`)
 
-		DisplayHiddenString(w, "CurrentPage", "Programming")
+			w.AppendString(`<h4>`)
+			w.AppendString(Ls(GL, "Examples"))
+			w.AppendString(`</h4>`)
+			LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeExample)
+			DisplayCommand(w, GL, "Add example")
+			w.AppendString(`<br><br>`)
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(GL, "Name"))
-		w.AppendString(`: `)
-		DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
-		w.AppendString(`</label>`)
-		w.AppendString(`<br><br>`)
+			w.AppendString(`<h4>`)
+			w.AppendString(Ls(GL, "Tests"))
+			w.AppendString(`</h4>`)
+			LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
+			DisplayCommand(w, GL, "Add test")
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(GL, "Description"))
-		w.AppendString(`:<br>`)
-		DisplayConstraintTextarea(w, "80", "24", MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
-		w.AppendString(`</label>`)
-		w.AppendString(`<br><br>`)
+			w.AppendString(`<br><br>`)
 
-		w.AppendString(`<h3>`)
-		w.AppendString(Ls(GL, "Examples"))
-		w.AppendString(`</h3>`)
-		LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeExample)
-		DisplayCommand(w, GL, "Add example")
+			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 
-		w.AppendString(`<h3>`)
-		w.AppendString(Ls(GL, "Tests"))
-		w.AppendString(`</h3>`)
-		LessonAddProgrammingDisplayChecks(w, GL, task, CheckTypeTest)
-		DisplayCommand(w, GL, "Add test")
-
-		w.AppendString(`<br><br>`)
-
-		DisplaySubmit(w, GL, "NextPage", "Continue", true)
-		w.AppendString(`</form>`)
-
+		}
+		DisplayFormEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1098,7 +1085,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session.ID)
 
-		DisplayWideFormStart(w, r, GL, "Lesson", r.URL.Path)
+		DisplayFormStart(w, r, GL, "Lesson", r.URL.Path, 6)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Lesson")
 			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
@@ -1108,7 +1095,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 			w.AppendString(`<br>`)
 
 			DisplayInputLabel(w, GL, "Theory")
-			DisplayConstraintTextarea(w, "80", "24", MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
+			DisplayConstraintTextarea(w, MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
 			w.AppendString(`<br>`)
 
 			for i := 0; i < len(lesson.Steps); i++ {
