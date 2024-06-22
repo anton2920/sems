@@ -428,10 +428,8 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 			DisplayInputLabel(w, GL, "Repeat password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
 			w.AppendString(`<br>`)
-
-			DisplaySubmit(w, GL, "", action, true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormEnd(w, GL, action)
 	}
 	DisplayBodyEnd(w)
 

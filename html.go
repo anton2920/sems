@@ -8,6 +8,8 @@ import (
 	"github.com/anton2920/gofa/net/http"
 )
 
+const EnableJS = false
+
 func DisplayHTMLStart(w *http.Response) {
 	w.AppendString(html.Header)
 	w.AppendString(`<html lang="en" data-bs-theme="light">`)
@@ -20,7 +22,9 @@ func DisplayHeadStart(w *http.Response) {
 
 	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
 	w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
-	// w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
+	if EnableJS {
+		w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
+	}
 }
 
 func DisplayHeadEnd(w *http.Response) {
@@ -128,19 +132,20 @@ func DisplayFormStart(w *http.Response, r *http.Request, l Language, title strin
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
-func DisplayFormEnd(w *http.Response) {
+func DisplayFormEnd(w *http.Response, l Language, action string) {
+	DisplaySubmit(w, GL, "", action, true)
 	w.AppendString(`</form></main>`)
 }
 
 func DisplayBodyEnd(w *http.Response) {
-	/*
+	if EnableJS {
 		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
 		w.AppendString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
 		w.AppendString(`<label style="cursor: pointer" for="btn-toggle">`)
 		w.AppendString(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half" viewBox="0 0 16 16"> <path d="M8 15A7 7 0 1 0 8 1v14zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16z"/></svg>`)
 		w.AppendString(`</label>`)
 		w.AppendString(`</div>`)
-	*/
+	}
 
 	w.AppendString(`</body>`)
 }

@@ -99,8 +99,18 @@ func SaveCourse(course *Course) error {
 	return database.Write(CoursesDB, courseDB.ID, &courseDB)
 }
 
-func DisplayCourseTitle(w *http.Response, l Language, course *Course) {
-	w.WriteHTMLString(course.Name)
+func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bool) {
+	if len(course.Name) == 0 {
+		if italics {
+			w.AppendString(`<i>`)
+		}
+		w.AppendString(Ls(l, "Unnamed"))
+		if italics {
+			w.AppendString(`</i>`)
+		}
+	} else {
+		w.WriteHTMLString(course.Name)
+	}
 	DisplayDraft(w, l, course.Flags == CourseDraft)
 	DisplayDeleted(w, l, course.Flags == CourseDeleted)
 }
@@ -109,7 +119,7 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 	w.AppendString(`<a href="/course/`)
 	w.WriteID(course.ID)
 	w.AppendString(`">`)
-	DisplayCourseTitle(w, l, course)
+	DisplayCourseTitle(w, l, course, true)
 	w.AppendString(`</a>`)
 }
 
@@ -144,7 +154,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		DisplayCourseTitle(w, GL, &course)
+		DisplayCourseTitle(w, GL, &course, false)
 		w.AppendString(`</title>`)
 	}
 	DisplayHeadEnd(w)
@@ -157,7 +167,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		DisplayPageStart(w)
 		{
 			w.AppendString(`<h2>`)
-			DisplayCourseTitle(w, GL, &course)
+			DisplayCourseTitle(w, GL, &course, true)
 			w.AppendString(`</h2>`)
 			w.AppendString(`<br>`)
 

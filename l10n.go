@@ -295,6 +295,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "Тип",
 		FR: "",
 	},
+	"Unnamed": {
+		RU: "Безымянный",
+	},
 	"User": {
 		RU: "Пользователь",
 		FR: "",
