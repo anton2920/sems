@@ -8,7 +8,10 @@ import (
 	"github.com/anton2920/gofa/net/http"
 )
 
-const EnableJS = false
+const (
+	CSSEnabled = true
+	JSEnabled  = CSSEnabled && false
+)
 
 func DisplayHTMLStart(w *http.Response) {
 	w.AppendString(html.Header)
@@ -20,9 +23,11 @@ func DisplayHeadStart(w *http.Response) {
 	w.AppendString(`<meta charset="utf-8"/>`)
 	w.AppendString(`<meta name="viewport" content="width=device-width, initial-scale=1"/>`)
 
-	w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
-	w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
-	if EnableJS {
+	if CSSEnabled {
+		w.AppendString(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
+		w.AppendString(`<style>.navbar-custom {position: fixed; z-index: 190; }</style>`)
+	}
+	if JSEnabled {
 		w.AppendString(`<script src="/fs/bootstrap.min.js"></script>`)
 	}
 }
@@ -36,13 +41,15 @@ func DisplayBodyStart(w *http.Response) {
 }
 
 func DisplayHeader(w *http.Response, l Language) {
-	w.AppendString(`<header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow fixed-top">`)
+	if CSSEnabled {
+		w.AppendString(`<header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow fixed-top">`)
 
-	w.AppendString(`<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-center" href="/">`)
-	w.AppendString(Ls(l, "Master's degree"))
-	w.AppendString(`</a>`)
+		w.AppendString(`<a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-center" href="/">`)
+		w.AppendString(Ls(l, "Master's degree"))
+		w.AppendString(`</a>`)
 
-	w.AppendString(`</header>`)
+		w.AppendString(`</header>`)
+	}
 }
 
 func DisplaySidebarStart(w *http.Response) {
@@ -81,30 +88,32 @@ func DisplaySidebarEnd(w *http.Response) {
 }
 
 func DisplaySidebar(w *http.Response, l Language, userID database.ID) {
-	var user User
+	if CSSEnabled {
+		var user User
 
-	if err := GetUserByID(userID, &user); err != nil {
-		/* TODO(anton2920): report error. */
-	}
-
-	DisplaySidebarStart(w)
-	{
-		DisplaySidebarUser(w, l, &user)
-		w.AppendString(`<hr>`)
-		DisplaySidebarListStart(w)
-		{
-			if userID == AdminID {
-				DisplaySidebarLink(w, l, "/users", "Users")
-			}
-			DisplaySidebarLink(w, l, "/groups", "Groups")
-			DisplaySidebarLink(w, l, "/courses", "Courses")
-			DisplaySidebarLink(w, l, "/subjects", "Subjects")
-			w.AppendString(`<hr>`)
-			DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
+		if err := GetUserByID(userID, &user); err != nil {
+			/* TODO(anton2920): report error. */
 		}
-		DisplaySidebarListEnd(w)
+
+		DisplaySidebarStart(w)
+		{
+			DisplaySidebarUser(w, l, &user)
+			w.AppendString(`<hr>`)
+			DisplaySidebarListStart(w)
+			{
+				if userID == AdminID {
+					DisplaySidebarLink(w, l, "/users", "Users")
+				}
+				DisplaySidebarLink(w, l, "/groups", "Groups")
+				DisplaySidebarLink(w, l, "/courses", "Courses")
+				DisplaySidebarLink(w, l, "/subjects", "Subjects")
+				w.AppendString(`<hr>`)
+				DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
+			}
+			DisplaySidebarListEnd(w)
+		}
+		DisplaySidebarEnd(w)
 	}
-	DisplaySidebarEnd(w)
 }
 
 func DisplayPageStart(w *http.Response) {
@@ -153,7 +162,7 @@ func DisplayFormEnd(w *http.Response) {
 }
 
 func DisplayBodyEnd(w *http.Response) {
-	if EnableJS {
+	if JSEnabled {
 		w.AppendString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
 		w.AppendString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
 		w.AppendString(`<label style="cursor: pointer" for="btn-toggle">`)
@@ -229,7 +238,7 @@ func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int
 }
 
 func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLength int, name string, index int, value string, required bool) {
-	w.AppendString(` <input class="form-control" type="`)
+	w.AppendString(` <input class="input-field" type="`)
 	w.AppendString(t)
 	w.AppendString(`" minlength="`)
 	w.WriteInt(minLength)

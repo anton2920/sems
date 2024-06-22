@@ -484,7 +484,10 @@ func UserSigninPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(`<title>`)
 		w.AppendString(Ls(GL, "Sign in"))
 		w.AppendString(`</title>`)
-		w.AppendString(`<style> html, body { height: 100%; } body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; }  .form-signin { max-width: 330px; padding: 15px; } </style>`)
+
+		if CSSEnabled {
+			w.AppendString(`<style> html, body { height: 100%; } body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; }  .form-signin { max-width: 330px; padding: 15px; } </style>`)
+		}
 	}
 	DisplayHeadEnd(w)
 

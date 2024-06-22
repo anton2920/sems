@@ -789,132 +789,122 @@ func LessonTestVerify(l Language, test *StepTest) error {
 }
 
 func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, test *StepTest) error {
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Test"))
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Lesson"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Test"))
-	w.AppendString(`</h2>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Test"))
+		w.AppendString(`</title>`)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form method="POST" action="`)
-	w.WriteString(r.URL.Path)
-	w.AppendString(`">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
-
-	DisplayHiddenString(w, "CurrentPage", "Test")
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Title"))
-	w.AppendString(`: `)
-	DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	if len(test.Questions) == 0 {
-		test.Questions = append(test.Questions, Question{})
-	}
-	for i := 0; i < len(test.Questions); i++ {
-		question := &test.Questions[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Question"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(GL, "Title"))
-		w.AppendString(`: `)
-		DisplayConstraintInput(w, "text", MinQuestionLen, MaxQuestionLen, "Question", question.Name, true)
-		w.AppendString(`</label>`)
-		w.AppendString(`<br>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Answers (mark the correct ones)"))
-		w.AppendString(`:</p>`)
-		w.AppendString(`<ol>`)
-
-		if len(question.Answers) == 0 {
-			question.Answers = append(question.Answers, "")
+		if CSSEnabled {
+			w.AppendString(`<style>.input-field{ padding: .375rem .75rem; width: 70%; font-size: 1rem; font-weight: 400; line-height: 1.5; color: var(--bs-body-color); -webkit-appearance: none; -moz-appearance: none; appearance: none; background-color: var(--bs-body-bg); background-clip: padding-box; border: var(--bs-border-width) solid var(--bs-border-color); border-radius: var(--bs-border-radius); transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out; margin-left: 5px; } </style>`)
 		}
-		for j := 0; j < len(question.Answers); j++ {
-			answer := question.Answers[j]
+	}
+	DisplayHeadEnd(w)
 
-			if j > 0 {
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session.ID)
+
+		DisplayWideFormStart(w, r, GL, "Test", r.URL.Path)
+		{
+			DisplayHiddenString(w, "CurrentPage", "Test")
+			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+
+			DisplayInputLabel(w, GL, "Title")
+			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
+			w.AppendString(`<br>`)
+
+			if len(test.Questions) == 0 {
+				test.Questions = append(test.Questions, Question{})
+			}
+			for i := 0; i < len(test.Questions); i++ {
+				question := &test.Questions[i]
+
+				w.AppendString(`<div class="border round p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.AppendString(Ls(GL, "Question"))
+				w.AppendString(` #`)
+				w.WriteInt(i + 1)
+				w.AppendString(`</b></p>`)
+
+				DisplayInputLabel(w, GL, "Title")
+				DisplayConstraintInput(w, "text", MinQuestionLen, MaxQuestionLen, "Question", question.Name, true)
+				w.AppendString(`<br>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Answers (mark the correct ones)"))
+				w.AppendString(`:</p>`)
+				w.AppendString(`<ol>`)
+
+				if len(question.Answers) == 0 {
+					question.Answers = append(question.Answers, "")
+				}
+				for j := 0; j < len(question.Answers); j++ {
+					answer := question.Answers[j]
+
+					w.AppendString(`<li>`)
+
+					w.AppendString(`<input type="checkbox" name="CorrectAnswer`)
+					w.WriteInt(i)
+					w.AppendString(`" value="`)
+					w.WriteInt(j)
+					w.AppendString(`"`)
+					for k := 0; k < len(question.CorrectAnswers); k++ {
+						correctAnswer := question.CorrectAnswers[k]
+						if j == correctAnswer {
+							w.AppendString(` checked`)
+							break
+						}
+					}
+					w.AppendString(`>`)
+
+					DisplayConstraintIndexedInput(w, "text", MinAnswerLen, MaxAnswerLen, "Answer", i, answer, true)
+
+					if len(question.Answers) > 1 {
+						DisplayDoublyIndexedCommand(w, GL, i, j, "-")
+						if j > 0 {
+							DisplayDoublyIndexedCommand(w, GL, i, j, "↑")
+						}
+						if j < len(question.Answers)-1 {
+							DisplayDoublyIndexedCommand(w, GL, i, j, "↓")
+						}
+					}
+
+					w.AppendString(`</li>`)
+				}
+				w.AppendString(`</ol>`)
+
+				DisplayIndexedCommand(w, GL, i, "Add another answer")
+				if len(test.Questions) > 1 {
+					w.AppendString(`<br><br>`)
+					DisplayIndexedCommand(w, GL, i, "Delete")
+					if i > 0 {
+						DisplayIndexedCommand(w, GL, i, "↑")
+					}
+					if i < len(test.Questions)-1 {
+						DisplayIndexedCommand(w, GL, i, "↓")
+					}
+				}
+
+				w.AppendString(`</div>`)
 				w.AppendString(`<br>`)
 			}
 
-			w.AppendString(`<li>`)
-
-			w.AppendString(`<input type="checkbox" name="CorrectAnswer`)
-			w.WriteInt(i)
-			w.AppendString(`" value="`)
-			w.WriteInt(j)
-			w.AppendString(`"`)
-			for k := 0; k < len(question.CorrectAnswers); k++ {
-				correctAnswer := question.CorrectAnswers[k]
-				if j == correctAnswer {
-					w.AppendString(` checked`)
-					break
-				}
-			}
-			w.AppendString(`>`)
-
-			DisplayConstraintIndexedInput(w, "text", MinAnswerLen, MaxAnswerLen, "Answer", i, answer, true)
-
-			if len(question.Answers) > 1 {
-				DisplayDoublyIndexedCommand(w, GL, i, j, "-")
-				if j > 0 {
-					DisplayDoublyIndexedCommand(w, GL, i, j, "↑")
-				}
-				if j < len(question.Answers)-1 {
-					DisplayDoublyIndexedCommand(w, GL, i, j, "↓")
-				}
-			}
-
-			w.AppendString(`</li>`)
-		}
-		w.AppendString(`</ol>`)
-
-		DisplayIndexedCommand(w, GL, i, "Add another answer")
-		if len(test.Questions) > 1 {
+			DisplayCommand(w, GL, "Add another question")
 			w.AppendString(`<br><br>`)
-			DisplayIndexedCommand(w, GL, i, "Delete")
-			if i > 0 {
-				DisplayIndexedCommand(w, GL, i, "↑")
-			}
-			if i < len(test.Questions)-1 {
-				DisplayIndexedCommand(w, GL, i, "↓")
-			}
+
+			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+		DisplayFormEnd(w)
 	}
+	DisplayBodyEnd(w)
 
-	DisplayCommand(w, GL, "Add another question")
-	w.AppendString(`<br><br>`)
-
-	DisplaySubmit(w, GL, "NextPage", "Continue", true)
-
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
@@ -1110,8 +1100,8 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 
 		DisplayWideFormStart(w, r, GL, "Lesson", r.URL.Path)
 		{
-			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 			DisplayHiddenString(w, "CurrentPage", "Lesson")
+			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
