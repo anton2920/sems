@@ -130,12 +130,14 @@ func DisplayFormStart(w *http.Response, r *http.Request, l Language, title strin
 	w.WriteString(endpoint)
 	w.AppendString(`">`)
 
-	w.AppendString(`<h3 class="text-center">`)
-	w.AppendString(Ls(l, title))
-	w.AppendString(`</h3>`)
-	w.AppendString(`<br>`)
+	if len(title) > 0 {
+		w.AppendString(`<h3 class="text-center">`)
+		w.AppendString(Ls(l, title))
+		w.AppendString(`</h3>`)
+		w.AppendString(`<br>`)
 
-	DisplayErrorMessage(w, l, r.Form.Get("Error"))
+		DisplayErrorMessage(w, l, r.Form.Get("Error"))
+	}
 
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }

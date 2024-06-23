@@ -1243,75 +1243,83 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 		return http.ServerError(err)
 	}
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Evaluation"))
-	w.AppendString(` `)
-	w.AppendString(Ls(GL, "for"))
-	w.AppendString(` `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Evaluation"))
-	w.AppendString(` `)
-	w.AppendString(Ls(GL, "for"))
-	w.AppendString(` `)
-	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`</h1>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-
-	DisplayHiddenString(w, "CurrentPage", "Main")
-
-	for i := 0; i < len(submission.SubmittedSteps); i++ {
-		submittedStep := &submission.SubmittedSteps[i]
-
-		w.AppendString(`<fieldset>`)
-
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Step"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		DisplayDraft(w, GL, submittedStep.Flags == SubmittedStepDraft)
-		w.AppendString(`</legend>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Name"))
-		w.AppendString(`: `)
-		w.WriteHTMLString(submittedStep.Step.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Type"))
-		w.AppendString(`: `)
-		w.AppendString(StepStringType(GL, &submittedStep.Step))
-		w.AppendString(`</p>`)
-
-		if submittedStep.Flags == SubmittedStepSkipped {
-			DisplayIndexedCommand(w, GL, i, "Pass")
-		} else {
-			DisplayIndexedCommand(w, GL, i, "Edit")
-		}
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Evaluation"))
+		w.AppendString(` `)
+		w.AppendString(Ls(GL, "for"))
+		w.AppendString(` «`)
+		w.WriteHTMLString(lesson.Name)
+		w.AppendString(`»</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Finish", true)
-	w.AppendString(`</form>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+		DisplayFormStart(w, r, GL, "", r.URL.Path, 4)
+		{
+			w.AppendString(`<h3 class="text-center">`)
+			w.AppendString(Ls(GL, "Evaluation"))
+			w.AppendString(` `)
+			w.AppendString(Ls(GL, "for"))
+			w.AppendString(` «`)
+			w.WriteHTMLString(lesson.Name)
+			w.AppendString(`»</h3>`)
+			w.AppendString(`<br>`)
 
+			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+
+			DisplayHiddenString(w, "CurrentPage", "Main")
+			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+
+			for i := 0; i < len(submission.SubmittedSteps); i++ {
+				submittedStep := &submission.SubmittedSteps[i]
+
+				w.AppendString(`<div class="border round p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.AppendString(Ls(GL, "Step"))
+				w.AppendString(` #`)
+				w.WriteInt(i + 1)
+				DisplayDraft(w, GL, submittedStep.Flags == SubmittedStepDraft)
+				w.AppendString(`</b></p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Name"))
+				w.AppendString(`: `)
+				w.WriteHTMLString(submittedStep.Step.Name)
+				w.AppendString(`</p>`)
+
+				w.AppendString(`<p>`)
+				w.AppendString(Ls(GL, "Type"))
+				w.AppendString(`: `)
+				w.AppendString(StepStringType(GL, &submittedStep.Step))
+				w.AppendString(`</p>`)
+
+				if submittedStep.Flags == SubmittedStepSkipped {
+					DisplayIndexedCommand(w, GL, i, "Pass")
+				} else {
+					DisplayIndexedCommand(w, GL, i, "Edit")
+				}
+
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
+			}
+
+			DisplaySubmit(w, GL, "NextPage", "Finish", true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 	return nil
-
 }
 
 func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, submission *Submission, currentPage, k, command string) error {
