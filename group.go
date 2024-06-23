@@ -220,7 +220,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{
@@ -336,7 +336,7 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint stri
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, title, endpoint, 4)
 		{

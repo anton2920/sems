@@ -455,11 +455,12 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
 		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{

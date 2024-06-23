@@ -270,7 +270,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{
@@ -440,7 +440,7 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint st
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, title, endpoint, 4)
 		{
@@ -505,7 +505,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, "Edit subject lessons", r.URL.Path, 6)
 		{

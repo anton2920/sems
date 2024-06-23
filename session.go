@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
@@ -17,6 +18,7 @@ type Session struct {
 	GobMutex
 	ID     database.ID
 	Expiry time.Time
+	User   User
 }
 
 const OneWeek = time.Hour * 24 * 7
@@ -69,6 +71,19 @@ func GenerateSessionToken() (string, error) {
 	base64.StdEncoding.Encode(token, buffer)
 
 	return string(token), nil
+}
+
+func UpdateAllUserSessions(user *User) {
+	SessionsLock.RLock()
+	for _, session := range Sessions {
+		if session.ID == user.ID {
+			session.Lock()
+			User2DBUser(&session.User, user, unsafe.Slice(&session.User.Data[0], len(session.User.Data)), 0)
+			DBUser2User(&session.User)
+			session.Unlock()
+		}
+	}
+	SessionsLock.RUnlock()
 }
 
 func RemoveAllUserSessions(userID database.ID) {

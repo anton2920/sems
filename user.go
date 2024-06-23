@@ -140,15 +140,11 @@ func DeleteUserByID(id database.ID) error {
 	return nil
 }
 
-func SaveUser(user *User) error {
-	var userDB User
-	var n int
-
+func User2DBUser(userDB *User, user *User, data []byte, n int) {
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags
 
 	/* TODO(anton2920): save up to a sizeof(user.Data). */
-	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
 	n += database.String2DBString(&userDB.FirstName, user.FirstName, data, n)
 	n += database.String2DBString(&userDB.LastName, user.LastName, data, n)
 	n += database.String2DBString(&userDB.Email, user.Email, data, n)
@@ -156,6 +152,13 @@ func SaveUser(user *User) error {
 	n += database.Slice2DBSlice(&userDB.Courses, user.Courses, data, n)
 
 	userDB.CreatedOn = user.CreatedOn
+}
+
+func SaveUser(user *User) error {
+	var userDB User
+
+	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
+	User2DBUser(&userDB, user, data, 0)
 
 	return database.Write(UsersDB, userDB.ID, &userDB)
 }
@@ -336,7 +339,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{
@@ -405,7 +408,7 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, title, endpoint, 4)
 		{
@@ -687,6 +690,8 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
+	UpdateAllUserSessions(&user)
+
 	w.RedirectID("/user/", userID, http.StatusSeeOther)
 	return nil
 }
@@ -721,11 +726,15 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 	}
 	expiry := time.Now().Add(OneWeek)
 
-	SessionsLock.Lock()
-	Sessions[token] = &Session{
+	session := &Session{
 		ID:     user.ID,
 		Expiry: expiry,
 	}
+	User2DBUser(&session.User, &user, unsafe.Slice(&session.User.Data[0], len(session.User.Data)), 0)
+	DBUser2User(&session.User)
+
+	SessionsLock.Lock()
+	Sessions[token] = session
 	SessionsLock.Unlock()
 
 	if Debug {

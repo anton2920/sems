@@ -506,7 +506,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{
@@ -806,7 +806,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, "Test", r.URL.Path, 6)
 		{
@@ -1014,7 +1014,7 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, "Programming task", r.URL.Path, 8)
 		{
@@ -1081,7 +1081,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, "Lesson", r.URL.Path, 6)
 		{

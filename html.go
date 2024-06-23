@@ -87,21 +87,15 @@ func DisplaySidebarEnd(w *http.Response) {
 	w.AppendString(`</div></nav>`)
 }
 
-func DisplaySidebar(w *http.Response, l Language, userID database.ID) {
+func DisplaySidebar(w *http.Response, l Language, session *Session) {
 	if CSSEnabled {
-		var user User
-
-		if err := GetUserByID(userID, &user); err != nil {
-			/* TODO(anton2920): report error. */
-		}
-
 		DisplaySidebarStart(w)
 		{
-			DisplaySidebarUser(w, l, &user)
+			DisplaySidebarUser(w, l, &session.User)
 			w.AppendString(`<hr>`)
 			DisplaySidebarListStart(w)
 			{
-				if userID == AdminID {
+				if session.ID == AdminID {
 					DisplaySidebarLink(w, l, "/users", "Users")
 				}
 				DisplaySidebarLink(w, l, "/groups", "Groups")

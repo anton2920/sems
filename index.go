@@ -62,7 +62,7 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		w.AppendString(`<div class="container-fluid">`)
 		w.AppendString(`<div class="row">`)

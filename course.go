@@ -162,7 +162,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayPageStart(w)
 		{
@@ -236,7 +236,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session.ID)
+		DisplaySidebar(w, GL, session)
 
 		DisplayFormStart(w, r, GL, "Course", r.URL.Path, 4)
 		{
