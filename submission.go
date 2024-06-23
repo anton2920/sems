@@ -334,7 +334,7 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 }
 
 func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
-	w.AppendString(`<select name="LanguageID"`)
+	w.AppendString(` <select name="LanguageID"`)
 	if !enabled {
 		w.AppendString(` disabled`)
 	}
@@ -390,11 +390,11 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 		w.AppendString(`<i>`)
 		w.AppendString(Ls(l, "pending"))
 		w.AppendString(` `)
-		w.AppendString(Ls(GL, "verification"))
+		w.AppendString(Ls(l, "verification"))
 		w.AppendString(`</i>`)
 	case SubmissionCheckInProgress:
 		w.AppendString(`<i>`)
-		w.AppendString(Ls(GL, "verification"))
+		w.AppendString(Ls(l, "verification"))
 		w.AppendString(` `)
 		w.AppendString(Ls(l, "in progress"))
 		w.AppendString(`</i>`)
@@ -580,9 +580,9 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 	{
 		w.AppendString(`<title>`)
 		w.AppendString(Ls(GL, "Submitted test"))
-		w.AppendString(`: `)
+		w.AppendString(`: «`)
 		w.WriteHTMLString(test.Name)
-		w.AppendString(`</title>`)
+		w.AppendString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -694,13 +694,13 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 		score := scores[i]
 		message := messages[i]
 
-		w.AppendString(`<li>`)
+		w.AppendString(`<li class="mt-3">`)
 
 		w.AppendString(`<label>`)
 		w.AppendString(Ls(l, "Input"))
 		w.AppendString(`: `)
 
-		w.AppendString(`<textarea rows="1" readonly>`)
+		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
 		w.AppendString(`</textarea>`)
 
@@ -710,7 +710,7 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 		w.AppendString(Ls(l, "output"))
 		w.AppendString(`: `)
 
-		w.AppendString(`<textarea rows="1" readonly>`)
+		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
 		w.AppendString(`</textarea>`)
 
@@ -737,59 +737,71 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	task, _ := Step2Programming(&submittedTask.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Submitted programming task"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(task.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Submitted programming task"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(task.Name)
-	w.AppendString(`</h1>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Description"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(task.Description)
-	w.AppendString(`</p>`)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Examples"))
-	w.AppendString(`</h2>`)
-	SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
-
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Solution"))
-	w.AppendString(`</h2>`)
-
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Programming language"))
-	w.AppendString(`: `)
-	DisplaySubmissionLanguageSelect(w, submittedTask, false)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
-
-	w.AppendString(`<textarea cols="80" rows="24" name="Solution" readonly>`)
-	w.WriteHTMLString(submittedTask.Solution)
-	w.AppendString(`</textarea>`)
-
-	if teacher {
-		w.AppendString(`<h2>`)
-		w.AppendString(Ls(GL, "Tests"))
-		w.AppendString(`</h2>`)
-		SubmissionResultsProgrammingDisplayChecks(w, GL, submittedTask, CheckTypeTest)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Submitted programming task"))
+		w.AppendString(`: «`)
+		w.WriteHTMLString(task.Name)
+		w.AppendString(`»</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
 
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			w.AppendString(Ls(GL, "Submitted programming task"))
+			w.AppendString(`: «`)
+			w.WriteHTMLString(task.Name)
+			w.AppendString(`»</h2>`)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Description"))
+			w.AppendString(`</h3>`)
+			w.AppendString(`<p>`)
+			w.WriteHTMLString(task.Description)
+			w.AppendString(`</p>`)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Examples"))
+			w.AppendString(`</h3>`)
+			SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<h3>`)
+			w.AppendString(Ls(GL, "Solution"))
+			w.AppendString(`</h3>`)
+
+			DisplayInputLabel(w, GL, "Programming language")
+			DisplaySubmissionLanguageSelect(w, submittedTask, false)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<textarea class="form-control" rows="10" readonly>`)
+			w.WriteHTMLString(submittedTask.Solution)
+			w.AppendString(`</textarea>`)
+
+			if teacher {
+				w.AppendString(`<br><br>`)
+				w.AppendString(`<h3>`)
+				w.AppendString(Ls(GL, "Tests"))
+				w.AppendString(`</h3>`)
+				SubmissionResultsProgrammingDisplayChecks(w, GL, submittedTask, CheckTypeTest)
+			}
+		}
+		DisplayPageEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 	return nil
 }
 
@@ -1095,13 +1107,13 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
 
-		w.AppendString(`<li>`)
+		w.AppendString(`<li class="mt-3">`)
 
 		w.AppendString(`<label>`)
 		w.AppendString(Ls(l, "Input"))
 		w.AppendString(`: `)
 
-		w.AppendString(`<textarea rows="1" readonly>`)
+		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
 		w.AppendString(`</textarea>`)
 
@@ -1111,7 +1123,7 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 		w.AppendString(Ls(l, "output"))
 		w.AppendString(`: `)
 
-		w.AppendString(`<textarea rows="1" readonly>`)
+		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
 		w.AppendString(`</textarea>`)
 
