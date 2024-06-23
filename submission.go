@@ -1005,100 +1005,101 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Test"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(test.Name)
-	w.AppendString(`</title></head>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<body>`)
-
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Test"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(test.Name)
-	w.AppendString(`</h1>`)
-
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
-
-	w.AppendString(`<form style="min-width: 300px; max-width: max-content;" method="POST" action="/submission/new">`)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
-
-	DisplayHiddenString(w, "CurrentPage", "Test")
-
-	if len(submittedTest.SubmittedQuestions) == 0 {
-		submittedTest.SubmittedQuestions = make([]SubmittedQuestion, len(test.Questions))
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Test"))
+		w.AppendString(`: «`)
+		w.WriteHTMLString(test.Name)
+		w.AppendString(`»</title>`)
 	}
-	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
-		submittedQuestion := &submittedTest.SubmittedQuestions[i]
-		question := &test.Questions[i]
+	DisplayHeadEnd(w)
 
-		w.AppendString(`<fieldset>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
 
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Question"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
+		DisplayFormStart(w, r, GL, "", r.URL.Path, 6)
+		{
+			w.AppendString(`<h3 class="text-center">`)
+			w.AppendString(Ls(GL, "Test"))
+			w.AppendString(`: «`)
+			w.WriteHTMLString(test.Name)
+			w.AppendString(`»</h3>`)
+			w.AppendString(`<br>`)
 
-		w.AppendString(`<p>`)
-		w.WriteHTMLString(question.Name)
-		w.AppendString(`</p>`)
+			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-		w.AppendString(`<ol>`)
-		for j := 0; j < len(question.Answers); j++ {
-			answer := question.Answers[j]
+			DisplayHiddenString(w, "CurrentPage", "Test")
+			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-			if j > 0 {
+			if len(submittedTest.SubmittedQuestions) == 0 {
+				submittedTest.SubmittedQuestions = make([]SubmittedQuestion, len(test.Questions))
+			}
+			for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
+				submittedQuestion := &submittedTest.SubmittedQuestions[i]
+				question := &test.Questions[i]
+
+				w.AppendString(`<div class="border round p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.WriteHTMLString(question.Name)
+				w.AppendString(`</b></p>`)
+
+				w.AppendString(`<ol>`)
+				for j := 0; j < len(question.Answers); j++ {
+					answer := question.Answers[j]
+
+					if j > 0 {
+						w.AppendString(`<br>`)
+					}
+
+					w.AppendString(`<li>`)
+
+					w.AppendString(`<input type="`)
+					if len(question.CorrectAnswers) > 1 {
+						w.AppendString(`checkbox`)
+					} else {
+						w.AppendString(`radio`)
+					}
+					w.AppendString(`" name="SelectedAnswer`)
+					w.WriteInt(i)
+					w.AppendString(`" value="`)
+					w.WriteInt(j)
+					w.AppendString(`"`)
+
+					for k := 0; k < len(submittedQuestion.SelectedAnswers); k++ {
+						if j == submittedQuestion.SelectedAnswers[k] {
+							w.AppendString(` checked`)
+							break
+						}
+					}
+
+					w.AppendString(`> `)
+
+					w.AppendString(`<span>`)
+					w.WriteHTMLString(answer)
+					w.AppendString(`</span>`)
+
+					w.AppendString(`</li>`)
+				}
+				w.AppendString(`</ol>`)
+
+				w.AppendString(`</div>`)
 				w.AppendString(`<br>`)
 			}
-
-			w.AppendString(`<li>`)
-
-			w.AppendString(`<input type="`)
-			if len(question.CorrectAnswers) > 1 {
-				w.AppendString(`checkbox`)
-			} else {
-				w.AppendString(`radio`)
-			}
-			w.AppendString(`" name="SelectedAnswer`)
-			w.WriteInt(i)
-			w.AppendString(`" value="`)
-			w.WriteInt(j)
-			w.AppendString(`"`)
-
-			for k := 0; k < len(submittedQuestion.SelectedAnswers); k++ {
-				if j == submittedQuestion.SelectedAnswers[k] {
-					w.AppendString(` checked`)
-					break
-				}
-			}
-
-			w.AppendString(`> `)
-
-			w.AppendString(`<span>`)
-			w.WriteHTMLString(answer)
-			w.AppendString(`</span>`)
-
-			w.AppendString(`</li>`)
+			DisplaySubmit(w, GL, "NextPage", "Save", true)
+			DisplaySubmit(w, GL, "NextPage", "Discard", true)
 		}
-		w.AppendString(`</ol>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+		DisplayFormEnd(w)
 	}
+	DisplayBodyEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Save", true)
-	DisplaySubmit(w, GL, "NextPage", "Discard", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
