@@ -460,8 +460,17 @@ var Localizations = map[string]*[XX]string{
 		RU: "запрашиваемой страницы не существует",
 		FR: "",
 	},
+	"score": {
+		RU: "оценка",
+	},
 	"second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes": {
 		RU: "второй и последующий символы имени/фамилии должны быть буквы, пробелы, точки, дефисы и апострофы",
+	},
+	"selected language is not available": {
+		RU: "выбранный язык недоступен",
+	},
+	"solution length must be between %d and %d characters long": {
+		RU: "решение должно сожержать от %d до %d символов",
 	},
 	"step %d is still a draft": {
 		RU: "задание %d всё ещё черновик",

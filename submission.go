@@ -843,10 +843,13 @@ func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, l Languag
 
 			submission.Status = SubmissionCheckPending
 			submittedStep.Status = SubmissionCheckPending
+			submittedStep.Error = ""
 		} else {
 			submission.Status = SubmissionCheckPending
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
-				submission.SubmittedSteps[i].Status = SubmissionCheckPending
+				submittedStep := &submission.SubmittedSteps[i]
+				submittedStep.Status = SubmissionCheckPending
+				submittedStep.Error = ""
 			}
 		}
 		if err := SaveSubmission(submission); err != nil {
@@ -1103,6 +1106,29 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 	return nil
 }
 
+func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
+	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
+	if err != nil {
+		return http.ClientError(err)
+	}
+	submittedTask.LanguageID = id
+
+	submittedTask.Solution = vs.Get("Solution")
+	return nil
+}
+
+func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Language) error {
+	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
+		return http.BadRequest(Ls(l, "selected language is not available"))
+	}
+
+	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
+		return http.BadRequest(Ls(l, "solution length must be between %d and %d characters long"), MinSolutionLen, MaxSolutionLen)
+	}
+
+	return nil
+}
+
 func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
 	w.AppendString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
@@ -1138,66 +1164,72 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
 	task, _ := Step2Programming(&submittedTask.Step)
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Programming task"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(task.Name)
-	w.AppendString(`</title></head>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<body>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Programming task"))
+		w.AppendString(`: «`)
+		w.WriteHTMLString(task.Name)
+		w.AppendString(`»</title>`)
+	}
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Programming task"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(task.Name)
-	w.AppendString(`</h1>`)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
 
-	DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+		DisplayFormStart(w, r, GL, "", r.URL.Path, 8)
+		{
+			w.AppendString(`<h3 class="text-center">`)
+			w.AppendString(Ls(GL, "Programming task"))
+			w.AppendString(`: «`)
+			w.WriteHTMLString(task.Name)
+			w.AppendString(`»</h3>`)
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Description"))
-	w.AppendString(`</h2>`)
-	w.AppendString(`<p>`)
-	w.WriteHTMLString(task.Description)
-	w.AppendString(`</p>`)
+			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
 
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Examples"))
-	w.AppendString(`</h2>`)
-	SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
+			DisplayHiddenString(w, "CurrentPage", "Programming")
+			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
-	w.AppendString(`<form method="POST" action="/submission/new">`)
+			w.AppendString(`<h4>`)
+			w.AppendString(Ls(GL, "Description"))
+			w.AppendString(`</h4>`)
+			w.AppendString(`<p>`)
+			w.WriteHTMLString(task.Description)
+			w.AppendString(`</p>`)
 
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
-	DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-	DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+			w.AppendString(`<h4>`)
+			w.AppendString(Ls(GL, "Examples"))
+			w.AppendString(`</h4>`)
+			SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
 
-	DisplayHiddenString(w, "CurrentPage", "Programming")
+			w.AppendString(`<h4>`)
+			w.AppendString(Ls(GL, "Solution"))
+			w.AppendString(`</h4>`)
 
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(GL, "Solution"))
-	w.AppendString(`</h2>`)
+			DisplayInputLabel(w, GL, "Programming language")
+			DisplaySubmissionLanguageSelect(w, submittedTask, true)
+			w.AppendString(`</label>`)
+			w.AppendString(`<br>`)
 
-	w.AppendString(`<label>`)
-	w.AppendString(Ls(GL, "Programming language"))
-	w.AppendString(`: `)
-	DisplaySubmissionLanguageSelect(w, submittedTask, true)
-	w.AppendString(`</label>`)
-	w.AppendString(`<br><br>`)
+			w.AppendString(`<textarea class="form-control" rows="10" name="Solution">`)
+			w.WriteHTMLString(submittedTask.Solution)
+			w.AppendString(`</textarea>`)
 
-	w.AppendString(`<textarea cols="80" rows="24" name="Solution">`)
-	w.WriteHTMLString(submittedTask.Solution)
-	w.AppendString(`</textarea>`)
+			w.AppendString(`<br><br>`)
 
-	w.AppendString(`<br><br>`)
+			DisplaySubmit(w, GL, "NextPage", "Save", true)
+			DisplaySubmit(w, GL, "NextPage", "Discard", true)
+		}
+		DisplayFormEnd(w)
+	}
+	DisplayBodyEnd(w)
 
-	DisplaySubmit(w, GL, "NextPage", "Save", true)
-	DisplaySubmit(w, GL, "NextPage", "Discard", true)
-	w.AppendString(`</form>`)
-
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+	DisplayHTMLEnd(w)
 	return nil
 }
 
@@ -1212,29 +1244,6 @@ func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Se
 		submittedProgramming, _ := Submitted2Programming(submittedStep)
 		return SubmissionNewProgrammingPageHandler(w, r, session, submittedProgramming)
 	}
-}
-
-func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
-	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
-	if err != nil {
-		return http.ClientError(err)
-	}
-	submittedTask.LanguageID = id
-
-	submittedTask.Solution = vs.Get("Solution")
-	return nil
-}
-
-func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming) error {
-	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
-		return http.BadRequest("selected language is not available")
-	}
-
-	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
-		return http.BadRequest("solution length must be between %d and %d characters long", MinSolutionLen, MaxSolutionLen)
-	}
-
-	return nil
 }
 
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, submission *Submission) error {
@@ -1468,7 +1477,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
 					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
-				if err := SubmissionNewProgrammingVerify(submittedTask); err != nil {
+				if err := SubmissionNewProgrammingVerify(submittedTask, GL); err != nil {
 					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
 				}
 
