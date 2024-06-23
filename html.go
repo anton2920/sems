@@ -91,7 +91,10 @@ func DisplaySidebar(w *http.Response, l Language, session *Session) {
 	if CSSEnabled {
 		DisplaySidebarStart(w)
 		{
+			session.Lock()
 			DisplaySidebarUser(w, l, &session.User)
+			session.Unlock()
+
 			w.AppendString(`<hr>`)
 			DisplaySidebarListStart(w)
 			{
