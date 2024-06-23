@@ -570,106 +570,116 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 }
 
-func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, submittedTest *SubmittedTest) error {
+func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
 	test, _ := Step2Test(&submittedTest.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(GL, "Submitted test"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(test.Name)
-	w.AppendString(`</title></head>`)
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(GL, "Submitted test"))
-	w.AppendString(`: `)
-	w.WriteHTMLString(test.Name)
-	w.AppendString(`</h1>`)
-
-	if teacher {
-		w.AppendString(`<p><i>`)
-		w.AppendString(Ls(GL, "Note: answers marked with [x] are correct"))
-		w.AppendString(`.</i></p>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Submitted test"))
+		w.AppendString(`: `)
+		w.WriteHTMLString(test.Name)
+		w.AppendString(`</title>`)
 	}
+	DisplayHeadEnd(w)
 
-	for i := 0; i < len(test.Questions); i++ {
-		question := &test.Questions[i]
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
 
-		w.AppendString(`<fieldset>`)
-		w.AppendString(`<legend>`)
-		w.AppendString(Ls(GL, "Question"))
-		w.AppendString(` #`)
-		w.WriteInt(i + 1)
-		w.AppendString(`</legend>`)
-		w.AppendString(`<p>`)
-		w.WriteHTMLString(question.Name)
-		w.AppendString(`</p>`)
-
-		w.AppendString(`<ol>`)
-		for j := 0; j < len(question.Answers); j++ {
-			answer := question.Answers[j]
-
-			if j > 0 {
-				w.AppendString(`<br>`)
-			}
-
-			w.AppendString(`<li>`)
-
-			w.AppendString(`<input type="`)
-			if len(question.CorrectAnswers) > 1 {
-				w.AppendString(`checkbox`)
-			} else {
-				w.AppendString(`radio`)
-			}
-			w.AppendString(`" name="SelectedAnswer`)
-			w.WriteInt(i)
-			w.AppendString(`" value="`)
-			w.WriteInt(j)
-			w.AppendString(`"`)
-
-			for k := 0; k < len(submittedTest.SubmittedQuestions[i].SelectedAnswers); k++ {
-				selectedAnswer := submittedTest.SubmittedQuestions[i].SelectedAnswers[k]
-				if j == selectedAnswer {
-					w.AppendString(` checked`)
-					break
-				}
-			}
-
-			w.AppendString(` disabled> `)
-
-			w.AppendString(`<span>`)
-			w.WriteHTMLString(answer)
-			w.AppendString(`</span>`)
+		DisplayPageStart(w)
+		{
+			w.AppendString(`<h2>`)
+			w.AppendString(Ls(GL, "Submitted test"))
+			w.AppendString(`: «`)
+			w.WriteHTMLString(test.Name)
+			w.AppendString(`»</h2>`)
+			w.AppendString(`<br>`)
 
 			if teacher {
-				for k := 0; k < len(question.CorrectAnswers); k++ {
-					correctAnswer := question.CorrectAnswers[k]
-					if j == correctAnswer {
-						w.AppendString(` <span>[x]</span>`)
-						break
-					}
-				}
+				w.AppendString(`<p><i>`)
+				w.AppendString(Ls(GL, "Note: answers marked with [x] are correct"))
+				w.AppendString(`.</i></p>`)
 			}
 
-			w.AppendString(`</li>`)
+			for i := 0; i < len(test.Questions); i++ {
+				question := &test.Questions[i]
+
+				w.AppendString(`<div class="border round p-4">`)
+
+				w.AppendString(`<p><b>`)
+				w.WriteHTMLString(question.Name)
+				w.AppendString(`</b></p>`)
+
+				w.AppendString(`<ol>`)
+				for j := 0; j < len(question.Answers); j++ {
+					answer := question.Answers[j]
+
+					if j > 0 {
+						w.AppendString(`<br>`)
+					}
+
+					w.AppendString(`<li>`)
+
+					w.AppendString(`<input type="`)
+					if len(question.CorrectAnswers) > 1 {
+						w.AppendString(`checkbox`)
+					} else {
+						w.AppendString(`radio`)
+					}
+					w.AppendString(`" name="SelectedAnswer`)
+					w.WriteInt(i)
+					w.AppendString(`" value="`)
+					w.WriteInt(j)
+					w.AppendString(`"`)
+
+					for k := 0; k < len(submittedTest.SubmittedQuestions[i].SelectedAnswers); k++ {
+						selectedAnswer := submittedTest.SubmittedQuestions[i].SelectedAnswers[k]
+						if j == selectedAnswer {
+							w.AppendString(` checked`)
+							break
+						}
+					}
+
+					w.AppendString(` disabled> `)
+
+					w.AppendString(`<span>`)
+					w.WriteHTMLString(answer)
+					w.AppendString(`</span>`)
+
+					if teacher {
+						for k := 0; k < len(question.CorrectAnswers); k++ {
+							correctAnswer := question.CorrectAnswers[k]
+							if j == correctAnswer {
+								w.AppendString(` <span>[x]</span>`)
+								break
+							}
+						}
+					}
+
+					w.AppendString(`</li>`)
+				}
+				w.AppendString(`</ol>`)
+
+				w.AppendString(`<span>`)
+				w.AppendString(Ls(GL, "Score"))
+				w.AppendString(`: `)
+				w.WriteInt(submittedTest.Scores[i])
+				w.AppendString(`/1</span>`)
+
+				w.AppendString(`</div>`)
+				w.AppendString(`<br>`)
+			}
 		}
-		w.AppendString(`</ol>`)
-
-		w.AppendString(`<p>`)
-		w.AppendString(Ls(GL, "Score"))
-		w.AppendString(`: `)
-		w.WriteInt(submittedTest.Scores[i])
-		w.AppendString(`/1</p>`)
-
-		w.AppendString(`</fieldset>`)
-		w.AppendString(`<br>`)
+		DisplayPageEnd(w)
 	}
+	DisplayBodyEnd(w)
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
-
+	DisplayHTMLEnd(w)
 	return nil
 }
 
@@ -723,7 +733,7 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, submittedTask *SubmittedProgramming) error {
+func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
 	task, _ := Step2Programming(&submittedTask.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
@@ -783,20 +793,20 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	return nil
 }
 
-func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, submittedStep *SubmittedStep) error {
+func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep) error {
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
-		return SubmissionResultsTestPageHandler(w, r, submittedTest)
+		return SubmissionResultsTestPageHandler(w, r, session, submittedTest)
 	case SubmittedTypeProgramming:
 		submittedTask, _ := Submitted2Programming(submittedStep)
-		return SubmissionResultsProgrammingPageHandler(w, r, submittedTask)
+		return SubmissionResultsProgrammingPageHandler(w, r, session, submittedTask)
 	}
 }
 
-func SubmissionResultsHandleCommand(w *http.Response, l Language, r *http.Request, submission *Submission, k, command string) error {
+func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, submission *Submission, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -811,7 +821,7 @@ func SubmissionResultsHandleCommand(w *http.Response, l Language, r *http.Reques
 		}
 		submittedStep := &submission.SubmittedSteps[pindex]
 
-		return SubmissionResultsStepPageHandler(w, r, submittedStep)
+		return SubmissionResultsStepPageHandler(w, r, session, submittedStep)
 	case Ls(l, "Re-check"):
 		if spindex != "" {
 			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
@@ -893,7 +903,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionResultsHandleCommand(w, GL, r, &submission, k, v)
+			return SubmissionResultsHandleCommand(w, r, GL, session, &submission, k, v)
 		}
 	}
 
