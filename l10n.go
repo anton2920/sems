@@ -425,7 +425,7 @@ var Localizations = map[string]*[XX]string{
 		RU: "пароль должен содержать от %d до %d символов",
 	},
 	"pending": {
-		RU: "ожидается проверка",
+		RU: "ожидается",
 		FR: "",
 	},
 	"provided email is not valid": {

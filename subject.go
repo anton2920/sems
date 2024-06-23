@@ -316,6 +316,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			}
 
 			if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
+				w.AppendString(`<br>`)
 				w.AppendString(`<h3>`)
 				w.AppendString(Ls(GL, "Lessons"))
 				w.AppendString(`</h3>`)
