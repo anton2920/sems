@@ -9,7 +9,7 @@ import (
 func TestIndexPageHandler(t *testing.T) {
 	const endpoint = "/"
 
-	testGet(t, endpoint, http.StatusOK)
+	testGet(t, endpoint, http.StatusSeeOther)
 
 	t.Run("expectedOK", func(t *testing.T) {
 		for _, token := range testTokens {
