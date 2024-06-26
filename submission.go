@@ -466,6 +466,14 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayMainStart(w)
 
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsItem(w, GL, "Submission")
+		}
+		DisplayCrumbsEnd(w)
+
 		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
@@ -575,7 +583,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 }
 
-func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
+func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTest *SubmittedTest) error {
 	const width = WidthLarge
 
 	test, _ := Step2Test(&submittedTest.Step)
@@ -599,6 +607,15 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 		DisplaySidebar(w, GL, session)
 
 		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsLinkID(w, "/submission", submission.ID, Ls(GL, "Submission"))
+			DisplayCrumbsItem(w, GL, "Submitted test")
+		}
+		DisplayCrumbsEnd(w)
 
 		DisplayPageStart(w, width)
 		{
@@ -743,7 +760,7 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
+func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTask *SubmittedProgramming) error {
 	const width = WidthLarge
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -767,6 +784,15 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 		DisplaySidebar(w, GL, session)
 
 		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsLinkID(w, "/submission", submission.ID, Ls(GL, "Submission"))
+			DisplayCrumbsItem(w, GL, "Submitted programming task")
+		}
+		DisplayCrumbsEnd(w)
 
 		DisplayPageStart(w, width)
 		{
@@ -821,61 +847,16 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	return nil
 }
 
-func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep) error {
+func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedStep *SubmittedStep) error {
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
-		return SubmissionResultsTestPageHandler(w, r, session, submittedTest)
+		return SubmissionResultsTestPageHandler(w, r, session, subject, lesson, submission, submittedTest)
 	case SubmittedTypeProgramming:
 		submittedTask, _ := Submitted2Programming(submittedStep)
-		return SubmissionResultsProgrammingPageHandler(w, r, session, submittedTask)
-	}
-}
-
-func SubmissionResultsHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, submission *Submission, k, command string) error {
-	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
-	if err != nil {
-		return http.ClientError(err)
-	}
-
-	switch command {
-	default:
-		return http.ClientError(nil)
-	case Ls(l, "Open"):
-		if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
-			return http.ClientError(nil)
-		}
-		submittedStep := &submission.SubmittedSteps[pindex]
-
-		return SubmissionResultsStepPageHandler(w, r, session, submittedStep)
-	case Ls(l, "Re-check"):
-		if spindex != "" {
-			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
-				return http.ClientError(nil)
-			}
-			submittedStep := &submission.SubmittedSteps[pindex]
-
-			submission.Status = SubmissionCheckPending
-			submittedStep.Status = SubmissionCheckPending
-			submittedStep.Error = ""
-		} else {
-			submission.Status = SubmissionCheckPending
-			for i := 0; i < len(submission.SubmittedSteps); i++ {
-				submittedStep := &submission.SubmittedSteps[i]
-				submittedStep.Status = SubmissionCheckPending
-				submittedStep.Error = ""
-			}
-		}
-		if err := SaveSubmission(submission); err != nil {
-			return http.ServerError(err)
-		}
-
-		SubmissionVerifyChannel <- submission.ID
-
-		w.RedirectID("/submission/", submission.ID, http.StatusSeeOther)
-		return nil
+		return SubmissionResultsProgrammingPageHandler(w, r, session, subject, lesson, submission, submittedTask)
 	}
 }
 
@@ -933,8 +914,48 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
-			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionResultsHandleCommand(w, r, GL, session, &submission, k, v)
+			pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
+			if err != nil {
+				return http.ClientError(err)
+			}
+
+			switch v {
+			default:
+				return http.ClientError(nil)
+			case Ls(GL, "Open"):
+				if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
+					return http.ClientError(nil)
+				}
+				submittedStep := &submission.SubmittedSteps[pindex]
+
+				return SubmissionResultsStepPageHandler(w, r, session, &subject, &lesson, &submission, submittedStep)
+			case Ls(GL, "Re-check"):
+				if spindex != "" {
+					if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
+						return http.ClientError(nil)
+					}
+					submittedStep := &submission.SubmittedSteps[pindex]
+
+					submission.Status = SubmissionCheckPending
+					submittedStep.Status = SubmissionCheckPending
+					submittedStep.Error = ""
+				} else {
+					submission.Status = SubmissionCheckPending
+					for i := 0; i < len(submission.SubmittedSteps); i++ {
+						submittedStep := &submission.SubmittedSteps[i]
+						submittedStep.Status = SubmissionCheckPending
+						submittedStep.Error = ""
+					}
+				}
+				if err := SaveSubmission(&submission); err != nil {
+					return http.ServerError(err)
+				}
+
+				SubmissionVerifyChannel <- submission.ID
+
+				w.RedirectID("/submission/", submission.ID, http.StatusSeeOther)
+				return nil
+			}
 		}
 	}
 
