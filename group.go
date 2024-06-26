@@ -358,7 +358,7 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, title, endpoint, err)
+		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinGroupNameLen, MaxGroupNameLen, "Name", r.Form.Get("Name"), true)
@@ -370,7 +370,7 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 
 			DisplaySubmit(w, GL, "", action, true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormPageEnd(w)
 
 		DisplayMainEnd(w)
 	}

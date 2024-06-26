@@ -160,6 +160,20 @@ func DisplayCrumbsLink(w *http.Response, l Language, href string, title string) 
 	DisplayCrumbsLinkEnd(w)
 }
 
+func DisplayCrumbsSubmitRaw(w *http.Response, l Language, nextPage, title string) {
+	w.AppendString(`<li class="breadcrumb-item">`)
+	w.AppendString(`<button style="border: 0; vertical-align: top" class="btn btn-link link-body-emphasis text-decoration-none p-0" name="NextPage" value="`)
+	w.WriteString(Ls(l, nextPage))
+	w.AppendString(`" formnovalidate>`)
+	w.WriteString(title)
+	w.AppendString(`</button>`)
+	w.AppendString(`</li>`)
+}
+
+func DisplayCrumbsSubmit(w *http.Response, l Language, nextPage, title string) {
+	DisplayCrumbsSubmitRaw(w, l, nextPage, Ls(l, title))
+}
+
 func DisplayCrumbsItemStart(w *http.Response) {
 	w.AppendString(`<li class="breadcrumb-item fw-semibold" aria-current="page">`)
 }
@@ -168,16 +182,14 @@ func DisplayCrumbsItemEnd(w *http.Response) {
 	w.AppendString(`</li>`)
 }
 
-func DisplayCrumbsItem(w *http.Response, l Language, title string) {
-	DisplayCrumbsItemStart(w)
-	w.WriteString(Ls(l, title))
-	DisplayCrumbsItemEnd(w)
-}
-
 func DisplayCrumbsItemRaw(w *http.Response, title string) {
 	DisplayCrumbsItemStart(w)
 	w.WriteString(title)
 	DisplayCrumbsItemEnd(w)
+}
+
+func DisplayCrumbsItem(w *http.Response, l Language, title string) {
+	DisplayCrumbsItemRaw(w, Ls(l, title))
 }
 
 func DisplayCrumbsEnd(w *http.Response) {
@@ -194,24 +206,40 @@ func DisplayPageEnd(w *http.Response) {
 	w.AppendString(`</div>`)
 }
 
-func DisplayFormStart(w *http.Response, r *http.Request, l Language, width int, title string, endpoint string, err error) {
+func DisplayFormPageStart(w *http.Response, r *http.Request, l Language, width int, title string, endpoint string, err error) {
 	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-`)
 	w.WriteInt(width)
 	w.AppendString(`" method="POST" action="`)
 	w.WriteString(endpoint)
 	w.AppendString(`">`)
 
+	DisplayFormTitle(w, l, title, err)
+
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+}
+
+func DisplayFormStart(w *http.Response, r *http.Request, endpoint string) {
+	w.AppendString(`<form method="POST" action="`)
+	w.WriteString(endpoint)
+	w.AppendString(`">`)
+
+	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+}
+
+func DisplayFormTitle(w *http.Response, l Language, title string, err error) {
 	w.AppendString(`<h3 class="text-center">`)
 	w.AppendString(Ls(l, title))
 	w.AppendString(`</h3>`)
 	w.AppendString(`<br>`)
 
 	DisplayError(w, l, err)
-
-	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
 func DisplayFormEnd(w *http.Response) {
+	w.AppendString(`</form>`)
+}
+
+func DisplayFormPageEnd(w *http.Response) {
 	w.AppendString(`</form>`)
 }
 

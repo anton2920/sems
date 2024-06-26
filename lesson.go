@@ -834,7 +834,7 @@ func LessonTestVerify(l Language, test *StepTest) error {
 }
 
 func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, test *StepTest, err error) error {
-	const width = WidthMedium
+	const width = WidthMedium + 1
 
 	DisplayHTMLStart(w)
 
@@ -857,19 +857,23 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 
 		DisplayMainStart(w)
 
+		DisplayFormStart(w, r, r.URL.Path)
+		DisplayHiddenString(w, "CurrentPage", "Test")
+		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+
 		DisplayCrumbsStart(w, width)
 		{
 			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
-			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, strings.Or(lesson.Name, Ls(GL, "Lesson")))
+			DisplayCrumbsSubmit(w, GL, "Back2", "Edit lessons")
+			DisplayCrumbsSubmitRaw(w, GL, "Back", strings.Or(lesson.Name, Ls(GL, "Lesson")))
 			DisplayCrumbsItemRaw(w, strings.Or(test.Name, Ls(GL, "Test")))
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, "Test", r.URL.Path, err)
+		DisplayPageStart(w, width)
 		{
-			DisplayHiddenString(w, "CurrentPage", "Test")
-			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+			DisplayFormTitle(w, GL, "Test", err)
 
 			DisplayInputLabel(w, GL, "Title")
 			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
@@ -957,8 +961,8 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 
 			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 		}
+		DisplayPageEnd(w)
 		DisplayFormEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -1079,19 +1083,23 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 
 		DisplayMainStart(w)
 
+		DisplayFormStart(w, r, r.URL.Path)
+		DisplayHiddenString(w, "CurrentPage", "Programming")
+		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+
 		DisplayCrumbsStart(w, width)
 		{
 			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
-			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, strings.Or(lesson.Name, Ls(GL, "Lesson")))
+			DisplayCrumbsSubmit(w, GL, "Back2", "Edit lessons")
+			DisplayCrumbsSubmitRaw(w, GL, "Back", strings.Or(lesson.Name, Ls(GL, "Lesson")))
 			DisplayCrumbsItemRaw(w, strings.Or(task.Name, Ls(GL, "Programming task")))
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, "Programming task", r.URL.Path, err)
+		DisplayPageStart(w, width)
 		{
-			DisplayHiddenString(w, "CurrentPage", "Programming")
-			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
-			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+			DisplayFormTitle(w, GL, "Programming task", err)
 
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
@@ -1117,14 +1125,27 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 
 			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 		}
+		DisplayPageEnd(w)
 		DisplayFormEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
 	DisplayHTMLEnd(w)
 	return nil
+}
+
+func LessonStepVerify(l Language, step *Step) error {
+	switch step.Type {
+	default:
+		panic("invalid step type")
+	case StepTypeTest:
+		test, _ := Step2Test(step)
+		return LessonTestVerify(l, test)
+	case StepTypeProgramming:
+		task, _ := Step2Programming(step)
+		return LessonProgrammingVerify(task)
+	}
 }
 
 func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, step *Step, err error) error {
@@ -1160,17 +1181,21 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 
 		DisplayMainStart(w)
 
+		DisplayFormStart(w, r, r.URL.Path)
+		DisplayHiddenString(w, "CurrentPage", "Lesson")
+		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+
 		DisplayCrumbsStart(w, width)
 		{
-			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, container.Name)
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
+			DisplayCrumbsSubmit(w, GL, "Back", "Edit lessons")
 			DisplayCrumbsItemRaw(w, strings.Or(lesson.Name, Ls(GL, "Lesson")))
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, "Lesson", r.URL.Path, err)
+		DisplayPageStart(w, width)
 		{
-			DisplayHiddenString(w, "CurrentPage", "Lesson")
-			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
+			DisplayFormTitle(w, GL, "Lesson", err)
 
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
@@ -1225,8 +1250,8 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 
 			DisplaySubmit(w, GL, "NextPage", "Next", true)
 		}
+		DisplayPageEnd(w)
 		DisplayFormEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)

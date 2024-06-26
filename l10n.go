@@ -104,8 +104,8 @@ var Localizations = map[string]*[XX]string{
 		RU: "Редактирование предмета",
 		FR: "",
 	},
-	"Edit subject lessons": {
-		RU: "Редактирование уроков предмета",
+	"Edit lessons": {
+		RU: "Редактирование уроков",
 		FR: "",
 	},
 	"Edit user": {

@@ -250,7 +250,14 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 
 		DisplayMainStart(w)
 
-		DisplayFormStart(w, r, GL, width, "Course", r.URL.Path, err)
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/course", course.ID, strings.Or(course.Name, Ls(GL, "Course")))
+			DisplayCrumbsItem(w, GL, "Edit lessons")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormPageStart(w, r, GL, width, "Course", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Course")
 
@@ -265,7 +272,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormPageEnd(w)
 
 		DisplayMainEnd(w)
 	}
@@ -378,7 +385,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 	}
 
-	/* 'currentPage' is the page to save/check before leaving it. */
+	/* 'currentPage' is the page to save before leaving it. */
 	switch currentPage {
 	case "Course":
 		CourseFillFromRequest(r.Form, &course)
@@ -411,11 +418,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
-			return LessonAddTestPageHandler(w, r, session, &course.LessonContainer, &lesson, test, err)
-		}
-		if err := LessonTestVerify(GL, test); err != nil {
 			return LessonAddTestPageHandler(w, r, session, &course.LessonContainer, &lesson, test, err)
 		}
 	case "Programming":
@@ -436,11 +439,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
-			return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, err)
-		}
-		if err := LessonProgrammingVerify(task); err != nil {
 			return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, err)
 		}
 	}
@@ -448,6 +447,13 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 	switch nextPage {
 	default:
 		return CourseCreateEditCoursePageHandler(w, r, session, &course, nil)
+	case Ls(GL, "Back"):
+		switch currentPage {
+		default:
+			return CourseCreateEditCoursePageHandler(w, r, session, &course, nil)
+		case "Test", "Programming":
+			return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)
+		}
 	case Ls(GL, "Next"):
 		if err := LessonVerify(GL, &lesson); err != nil {
 			return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, err)
@@ -477,6 +483,9 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(err)
 		}
 		step := &lesson.Steps[si]
+		if err := LessonStepVerify(GL, step); err != nil {
+			return LessonAddStepPageHandler(w, r, session, &course.LessonContainer, &lesson, step, err)
+		}
 		step.Draft = false
 
 		return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)

@@ -442,7 +442,7 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, title, endpoint, err)
+		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
@@ -466,7 +466,7 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 
 			DisplaySubmit(w, GL, "", action, true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormPageEnd(w)
 
 		DisplayMainEnd(w)
 	}

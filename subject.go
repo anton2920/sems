@@ -456,7 +456,7 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, title, endpoint, err)
+		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
@@ -472,7 +472,7 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 
 			DisplaySubmit(w, GL, "", action, true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormPageEnd(w)
 
 		DisplayMainEnd(w)
 	}
@@ -552,7 +552,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Edit subject lessons"))
+		w.AppendString(Ls(GL, "Edit lessons"))
 		w.AppendString(`</title>`)
 	}
 	DisplayHeadEnd(w)
@@ -567,11 +567,11 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 		DisplayCrumbsStart(w, width)
 		{
 			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
-			DisplayCrumbsItem(w, GL, "Edit subject lessons")
+			DisplayCrumbsItem(w, GL, "Edit lessons")
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormStart(w, r, GL, width, "Edit subject lessons", r.URL.Path, err)
+		DisplayFormPageStart(w, r, GL, width, "Edit lessons", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Main")
 
@@ -582,7 +582,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
-		DisplayFormEnd(w)
+		DisplayFormPageEnd(w)
 
 		DisplayMainEnd(w)
 	}
@@ -729,7 +729,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 	}
 
-	/* 'currentPage' is the page to save/check before leaving it. */
+	/* 'currentPage' is the page to save before leaving it. */
 	switch currentPage {
 	case "Lesson":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
@@ -760,11 +760,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
-			return LessonAddTestPageHandler(w, r, session, &subject.LessonContainer, &lesson, test, err)
-		}
-		if err := LessonTestVerify(GL, test); err != nil {
 			return LessonAddTestPageHandler(w, r, session, &subject.LessonContainer, &lesson, test, err)
 		}
 	case "Programming":
@@ -785,11 +781,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		if err != nil {
 			return http.ClientError(err)
 		}
-
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
-			return LessonAddProgrammingPageHandler(w, r, session, &subject.LessonContainer, &lesson, task, err)
-		}
-		if err := LessonProgrammingVerify(task); err != nil {
 			return LessonAddProgrammingPageHandler(w, r, session, &subject.LessonContainer, &lesson, task, err)
 		}
 	}
@@ -797,6 +789,13 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 	switch nextPage {
 	default:
 		return SubjectLessonsMainPageHandler(w, r, session, &subject, nil)
+	case Ls(GL, "Back"):
+		switch currentPage {
+		default:
+			return SubjectLessonsMainPageHandler(w, r, session, &subject, nil)
+		case "Test", "Programming":
+			return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
+		}
 	case Ls(GL, "Next"):
 		if err := LessonVerify(GL, &lesson); err != nil {
 			return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, err)
@@ -826,6 +825,9 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(err)
 		}
 		step := &lesson.Steps[si]
+		if err := LessonStepVerify(GL, step); err != nil {
+			return LessonAddStepPageHandler(w, r, session, &subject.LessonContainer, &lesson, step, err)
+		}
 		step.Draft = false
 
 		return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
