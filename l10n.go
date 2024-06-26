@@ -123,6 +123,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "Задания",
 		FR: "",
 	},
+	"Evaluation pass": {
+		RU: "Выполнение заданий",
+	},
 	"Examples": {
 		RU: "Примеры",
 		FR: "",

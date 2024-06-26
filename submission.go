@@ -1042,7 +1042,7 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 	return nil
 }
 
-func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest, err error) error {
+func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTest *SubmittedTest, err error) error {
 	const width = WidthMedium
 
 	test, _ := Step2Test(&submittedTest.Step)
@@ -1066,6 +1066,20 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 
 		DisplayMainStart(w)
 
+		DisplayFormStart(w, r, "/submission/new")
+		DisplayHiddenString(w, "CurrentPage", "Test")
+		DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsSubmit(w, GL, "Back", "Evaluation pass")
+			DisplayCrumbsItemRaw(w, test.Name)
+		}
+		DisplayCrumbsEnd(w)
+
 		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h3 class="text-center">`)
@@ -1076,11 +1090,6 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 			w.AppendString(`<br>`)
 
 			DisplayError(w, GL, err)
-
-			DisplayFormStart(w, r, "/submission/new")
-			DisplayHiddenString(w, "CurrentPage", "Test")
-			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
 			if len(submittedTest.SubmittedQuestions) == 0 {
 				submittedTest.SubmittedQuestions = make([]SubmittedQuestion, len(test.Questions))
@@ -1138,11 +1147,9 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 			}
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
-
-			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
-
+		DisplayFormEnd(w)
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -1206,7 +1213,7 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming, err error) error {
+func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTask *SubmittedProgramming, err error) error {
 	const width = WidthLarge
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -1230,6 +1237,20 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 		DisplayMainStart(w)
 
+		DisplayFormStart(w, r, "/submission/new")
+		DisplayHiddenString(w, "CurrentPage", "Programming")
+		DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
+		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsSubmit(w, GL, "Back", "Evaluation pass")
+			DisplayCrumbsItemRaw(w, task.Name)
+		}
+		DisplayCrumbsEnd(w)
+
 		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h3 class="text-center">`)
@@ -1240,11 +1261,6 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 			w.AppendString(`<br>`)
 
 			DisplayError(w, GL, err)
-
-			DisplayFormStart(w, r, "/submission/new")
-			DisplayHiddenString(w, "CurrentPage", "Programming")
-			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
-			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
 
 			w.AppendString(`<h4>`)
 			w.AppendString(Ls(GL, "Description"))
@@ -1275,11 +1291,9 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
-
-			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
-
+		DisplayFormEnd(w)
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -1288,20 +1302,48 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 	return nil
 }
 
-func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep, err error) error {
+func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
-		return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
+		return SubmissionNewTestVerify(l, submittedTest)
 	case SubmittedTypeProgramming:
-		submittedProgramming, _ := Submitted2Programming(submittedStep)
-		return SubmissionNewProgrammingPageHandler(w, r, session, submittedProgramming, err)
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		if err := SubmissionNewProgrammingVerify(submittedTask, GL); err != nil {
+			return err
+		}
+
+		if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
+			return http.BadRequest(err.Error())
+		}
+
+		scores := submittedTask.Scores[CheckTypeExample]
+		messages := submittedTask.Messages[CheckTypeExample]
+		for i := 0; i < len(scores); i++ {
+			if scores[i] == 0 {
+				return http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i])
+			}
+		}
+	}
+	return nil
+}
+
+func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedStep *SubmittedStep, err error) error {
+	switch submittedStep.Type {
+	default:
+		panic("invalid step type")
+	case SubmittedTypeTest:
+		submittedTest, _ := Submitted2Test(submittedStep)
+		return SubmissionNewTestPageHandler(w, r, session, subject, lesson, submittedTest, err)
+	case SubmittedTypeProgramming:
+		submittedTask, _ := Submitted2Programming(submittedStep)
+		return SubmissionNewProgrammingPageHandler(w, r, session, subject, lesson, submittedTask, err)
 	}
 }
 
-func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, lesson *Lesson, submission *Submission, err error) error {
+func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, err error) error {
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -1324,6 +1366,14 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 		DisplaySidebar(w, GL, session)
 
 		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, lesson.Name)
+			DisplayCrumbsItem(w, GL, "Evaluation pass")
+		}
+		DisplayCrumbsEnd(w)
 
 		DisplayPageStart(w, width)
 		{
@@ -1389,31 +1439,27 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 	return nil
 }
 
-func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, submission *Submission, currentPage, k, command string) error {
+func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, subject *Subject, lesson *Lesson, submission *Submission, currentPage, k, command string) error {
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
 	}
 
-	switch currentPage {
+	switch command {
 	default:
 		return http.ClientError(nil)
-	case "Main":
-		switch command {
-		default:
+	case Ls(l, "Pass"), Ls(l, "Edit"):
+		if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
 			return http.ClientError(nil)
-		case Ls(l, "Pass"), Ls(l, "Edit"):
-			if (pindex < 0) || (pindex >= len(submission.SubmittedSteps)) {
-				return http.ClientError(nil)
-			}
-			submittedStep := &submission.SubmittedSteps[pindex]
-			submittedStep.Flags = SubmittedStepDraft
-			submittedStep.Type = SubmittedType(submittedStep.Step.Type)
-
-			r.Form.Set("StepIndex", spindex)
-			return SubmissionNewStepPageHandler(w, r, session, submittedStep, nil)
 		}
+		submittedStep := &submission.SubmittedSteps[pindex]
+		submittedStep.Flags = SubmittedStepDraft
+		submittedStep.Type = SubmittedType(submittedStep.Step.Type)
+
+		r.Form.Set("StepIndex", spindex)
+		return SubmissionNewStepPageHandler(w, r, session, subject, lesson, submittedStep, nil)
 	}
+
 }
 
 func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
@@ -1499,71 +1545,71 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
 			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionNewHandleCommand(w, r, GL, session, &submission, currentPage, k, v)
+			return SubmissionNewHandleCommand(w, r, GL, session, &subject, &lesson, &submission, currentPage, k, v)
 		}
 	}
 
-	stepIndex := r.Form.Get("StepIndex")
-	if stepIndex != "" {
+	/* 'currentPage' is the page to save before leaving it. */
+	switch currentPage {
+	case "Test":
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
 			return http.ClientError(err)
 		}
 		submittedStep := &submission.SubmittedSteps[si]
 
-		if nextPage != Ls(GL, "Discard") {
-			switch currentPage {
-			case "Test":
-				submittedTest, err := Submitted2Test(submittedStep)
-				if err != nil {
-					return http.ClientError(err)
-				}
+		submittedTest, err := Submitted2Test(submittedStep)
+		if err != nil {
+			return http.ClientError(err)
+		}
+		if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
+			return SubmissionNewTestPageHandler(w, r, session, &subject, &lesson, submittedTest, err)
+		}
+	case "Programming":
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
+		if err != nil {
+			return http.ClientError(err)
+		}
+		submittedStep := &submission.SubmittedSteps[si]
 
-				if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
-					return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
-				}
-				if err := SubmissionNewTestVerify(GL, submittedTest); err != nil {
-					return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
-				}
-			case "Programming":
-				submittedTask, err := Submitted2Programming(submittedStep)
-				if err != nil {
-					return http.ClientError(err)
-				}
-
-				if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
-					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, err)
-				}
-				if err := SubmissionNewProgrammingVerify(submittedTask, GL); err != nil {
-					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, err)
-				}
-
-				if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
-					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, http.BadRequest(err.Error()))
-				}
-
-				scores := submittedTask.Scores[CheckTypeExample]
-				messages := submittedTask.Messages[CheckTypeExample]
-				for i := 0; i < len(scores); i++ {
-					if scores[i] == 0 {
-						return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
-					}
-				}
-			}
-
-			submittedStep.Flags = SubmittedStepPassed
-		} else {
-			submittedStep.Flags = SubmittedStepSkipped
-			SubmittedStepClear(submittedStep)
+		submittedTask, err := Submitted2Programming(submittedStep)
+		if err != nil {
+			return http.ClientError(err)
+		}
+		if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
+			return SubmissionNewProgrammingPageHandler(w, r, session, &subject, &lesson, submittedTask, err)
 		}
 	}
 
 	switch nextPage {
 	default:
-		return SubmissionNewMainPageHandler(w, r, session, &lesson, &submission, nil)
+		return SubmissionNewMainPageHandler(w, r, session, &subject, &lesson, &submission, nil)
+	case Ls(GL, "Save"):
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
+		if err != nil {
+			return http.ClientError(err)
+		}
+		submittedStep := &submission.SubmittedSteps[si]
+
+		if err := SubmissionNewStepVerify(GL, submittedStep); err != nil {
+			return SubmissionNewStepPageHandler(w, r, session, &subject, &lesson, submittedStep, err)
+		}
+		submittedStep.Flags = SubmittedStepPassed
+
+		return SubmissionNewMainPageHandler(w, r, session, &subject, &lesson, &submission, nil)
+	case Ls(GL, "Discard"):
+		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
+		if err != nil {
+			return http.ClientError(err)
+		}
+		submittedStep := &submission.SubmittedSteps[si]
+		submittedStep.Flags = SubmittedStepSkipped
+		SubmittedStepClear(submittedStep)
+
+		return SubmissionNewMainPageHandler(w, r, session, &subject, &lesson, &submission, nil)
 	case Ls(GL, "Finish"):
 		if err := SubmissionNewVerify(GL, &submission); err != nil {
-			return SubmissionNewMainPageHandler(w, r, session, &lesson, &submission, err)
+			return SubmissionNewMainPageHandler(w, r, session, &subject, &lesson, &submission, err)
 		}
 		submission.Flags = SubmissionActive
 		submission.FinishedAt = time.Now().Unix()
