@@ -52,9 +52,9 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		default:
 			return GroupPageHandler(w, r)
 		case "/create":
-			return GroupCreatePageHandler(w, r)
+			return GroupCreatePageHandler(w, r, nil)
 		case "/edit":
-			return GroupEditPageHandler(w, r)
+			return GroupEditPageHandler(w, r, nil)
 		}
 	case strings.StartsWith(path, "/lesson"):
 		switch path[len("/lesson"):] {
@@ -66,9 +66,9 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		default:
 			return SubjectPageHandler(w, r)
 		case "/create":
-			return SubjectCreatePageHandler(w, r)
+			return SubjectCreatePageHandler(w, r, nil)
 		case "/edit":
-			return SubjectEditPageHandler(w, r)
+			return SubjectEditPageHandler(w, r, nil)
 		case "/lessons":
 			return SubjectLessonsPageHandler(w, r)
 		}
@@ -86,11 +86,11 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		default:
 			return UserPageHandler(w, r)
 		case "/create":
-			return UserCreatePageHandler(w, r)
+			return UserCreatePageHandler(w, r, nil)
 		case "/edit":
-			return UserEditPageHandler(w, r)
+			return UserEditPageHandler(w, r, nil)
 		case "/signin":
-			return UserSigninPageHandler(w, r)
+			return UserSigninPageHandler(w, r, nil)
 		}
 	}
 
@@ -195,28 +195,12 @@ func Router(ws []http.Response, rs []http.Request) {
 
 		err := RouterFunc(w, r)
 		if err != nil {
-			var message string
-
-			if httpError, ok := err.(http.Error); ok {
-				w.StatusCode = httpError.StatusCode
-				message = httpError.DisplayMessage
-				if (w.StatusCode >= http.StatusBadRequest) && (w.StatusCode < http.StatusInternalServerError) {
-					level = log.LevelWarn
-				} else {
-					level = log.LevelError
-				}
-			} else if _, ok := err.(errors.Panic); ok {
-				w.StatusCode = http.ServerError(nil).StatusCode
-				message = http.ServerError(nil).DisplayMessage
-				level = log.LevelError
+			ErrorPageHandler(w, GL, err)
+			if (w.StatusCode >= http.StatusBadRequest) && (w.StatusCode < http.StatusInternalServerError) {
+				level = log.LevelWarn
 			} else {
-				log.Panicf("Unsupported error type %T", err)
+				level = log.LevelError
 			}
-
-			if Debug {
-				message = err.Error()
-			}
-			ErrorPageHandler(w, GL, message)
 		}
 
 		addr := r.RemoteAddr

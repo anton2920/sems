@@ -186,6 +186,8 @@ func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 }
 
 func GroupPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
 	var group Group
 
 	session, err := GetSessionFromRequest(r)
@@ -222,7 +224,17 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItemStart(w)
+			DisplayGroupTitle(w, GL, &group)
+			DisplayCrumbsItemEnd(w)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplayGroupTitle(w, GL, &group)
@@ -262,6 +274,8 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 			DisplayGroupSubjects(w, GL, &group)
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -310,18 +324,8 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 	w.AppendString(`</select>`)
 }
 
-func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint string, title string, action string) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
+func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, group *Group, endpoint string, title string, action string, err error) error {
+	const width = WidthSmall
 
 	DisplayHTMLStart(w)
 
@@ -338,10 +342,26 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint stri
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, title, endpoint, 4)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			switch title {
+			case "Create group":
+				DisplayCrumbsLink(w, GL, "/groups", "Groups")
+			case "Edit group":
+				DisplayCrumbsLinkIDStart(w, "/group", group.ID)
+				DisplayGroupTitle(w, GL, group)
+				DisplayCrumbsLinkEnd(w)
+			}
+			DisplayCrumbsItem(w, GL, title)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "Name")
-			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
+			DisplayConstraintInput(w, "text", MinGroupNameLen, MaxGroupNameLen, "Name", r.Form.Get("Name"), true)
 			w.AppendString(`<br>`)
 
 			DisplayInputLabel(w, GL, "Students")
@@ -351,6 +371,8 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint stri
 			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -358,12 +380,49 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, endpoint stri
 	return nil
 }
 
-func GroupCreatePageHandler(w *http.Response, r *http.Request) error {
-	return GroupCreateEditPageHandler(w, r, APIPrefix+"/group/create", "Create group", "Create")
+func GroupCreatePageHandler(w *http.Response, r *http.Request, e error) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	return GroupCreateEditPageHandler(w, r, session, nil, APIPrefix+"/group/create", "Create group", "Create", e)
 }
 
-func GroupEditPageHandler(w *http.Response, r *http.Request) error {
-	return GroupCreateEditPageHandler(w, r, APIPrefix+"/group/edit", "Edit group", "Save")
+func GroupEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	var group Group
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	groupID, err := r.Form.GetID("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if err := GetGroupByID(groupID, &group); err != nil {
+		if err == database.NotFound {
+			return http.NotFound("group with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
+
+	return GroupCreateEditPageHandler(w, r, session, &group, APIPrefix+"/group/edit", "Edit group", "Save", e)
 }
 
 func GroupCreateHandler(w *http.Response, r *http.Request) error {
@@ -381,7 +440,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
+		return GroupCreatePageHandler(w, r, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -391,7 +450,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 
 	sids := r.Form.GetMany("StudentID")
 	if len(sids) == 0 {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "add at least one student")))
+		return GroupCreatePageHandler(w, r, http.BadRequest(Ls(GL, "add at least one student")))
 	}
 	students := make([]database.ID, len(sids))
 	for i := 0; i < len(sids); i++ {
@@ -436,7 +495,7 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetGroupByID(groupID, &group); err != nil {
 		if err == database.NotFound {
-			return WritePage(w, r, GroupEditPageHandler, http.NotFound(Ls(GL, "group with this ID does not exist")))
+			return http.NotFound(Ls(GL, "group with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -470,14 +529,14 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetGroupByID(groupID, &group); err != nil {
 		if err == database.NotFound {
-			return WritePage(w, r, GroupEditPageHandler, http.NotFound(Ls(GL, "group with this ID does not exist")))
+			return GroupEditPageHandler(w, r, http.NotFound(Ls(GL, "group with this ID does not exist")))
 		}
 		return http.ServerError(err)
 	}
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinGroupNameLen, MaxGroupNameLen) {
-		return WritePage(w, r, GroupEditPageHandler, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
+		return GroupEditPageHandler(w, r, http.BadRequest(Ls(GL, "group name length must be between %d and %d characters long"), MinGroupNameLen, MaxGroupNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -487,7 +546,7 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 
 	sids := r.Form.GetMany("StudentID")
 	if len(sids) == 0 {
-		return WritePage(w, r, GroupCreatePageHandler, http.BadRequest(Ls(GL, "add at least one student")))
+		return GroupEditPageHandler(w, r, http.BadRequest(Ls(GL, "add at least one student")))
 	}
 	students := group.Students[:0]
 	for i := 0; i < len(sids); i++ {

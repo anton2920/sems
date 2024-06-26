@@ -3,12 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"time"
 	"unsafe"
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/time"
 )
 
 var (
@@ -24,10 +24,10 @@ const AdminID database.ID = 0
 
 func CreateInitialDBs() error {
 	users := [...]User{
-		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: time.Now().Unix(), Courses: []database.ID{0}},
-		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: time.Now().Unix(), Courses: []database.ID{1}},
-		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: time.Now().Unix()},
-		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: time.Now().Unix()},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Unix()), Courses: []database.ID{0}},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: int64(time.Unix()), Courses: []database.ID{1}},
+		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: int64(time.Unix())},
+		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: int64(time.Unix())},
 	}
 
 	if err := database.Drop(UsersDB); err != nil {
@@ -40,7 +40,7 @@ func CreateInitialDBs() error {
 	}
 
 	groups := [...]Group{
-		{Name: "18-SWE", Students: []database.ID{2, 3}, CreatedOn: time.Now().Unix()},
+		{Name: "18-SWE", Students: []database.ID{2, 3}, CreatedOn: int64(time.Unix())},
 	}
 	if err := database.Drop(GroupsDB); err != nil {
 		return fmt.Errorf("failed to drop groups data: %w", err)
@@ -54,20 +54,20 @@ func CreateInitialDBs() error {
 	lessons := [...]Lesson{
 		Lesson{
 			ContainerID:   0,
-			ContainerType: ContainerTypeCourse,
+			ContainerType: LessonContainerCourse,
 			Name:          "Introduction",
 			Theory:        "This is an introduction.",
 			Steps:         make([]Step, 2),
 		},
 		Lesson{
 			ContainerID:   1,
-			ContainerType: ContainerTypeCourse,
+			ContainerType: LessonContainerCourse,
 			Name:          "Test lesson",
 			Theory:        "This is a test lesson.",
 		},
 		Lesson{
 			ContainerID:   1,
-			ContainerType: ContainerTypeSubject,
+			ContainerType: LessonContainerSubject,
 			Name:          "New lesson",
 			Theory:        "New theory",
 			Steps:         make([]Step, 2),
@@ -130,8 +130,8 @@ func CreateInitialDBs() error {
 	}
 
 	courses := [...]Course{
-		{Name: "Programming basics", Lessons: []database.ID{0}},
-		{Name: "Test course", Lessons: []database.ID{1}},
+		{LessonContainer{Name: "Programming basics", Lessons: []database.ID{0}}, [1024]byte{}},
+		{LessonContainer{Name: "Test course", Lessons: []database.ID{1}}, [1024]byte{}},
 	}
 	if err := database.Drop(CoursesDB); err != nil {
 		return fmt.Errorf("failed to drop courses data: %w", err)
@@ -143,8 +143,8 @@ func CreateInitialDBs() error {
 	}
 
 	subjects := [...]Subject{
-		{Name: "Programming", TeacherID: 0, GroupID: 0, CreatedOn: time.Now().Unix()},
-		{Name: "Physics", TeacherID: 1, GroupID: 0, CreatedOn: time.Now().Unix(), Lessons: []database.ID{2}},
+		{LessonContainer{Name: "Programming"}, 0, 0, int64(time.Unix()), [1024]byte{}},
+		{LessonContainer{Name: "Physics", Lessons: []database.ID{2}}, 1, 0, int64(time.Unix()), [1024]byte{}},
 	}
 	if err := database.Drop(SubjectsDB); err != nil {
 		return fmt.Errorf("failed to drop subjects data: %w", err)

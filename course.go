@@ -12,11 +12,7 @@ import (
 )
 
 type Course struct {
-	ID    database.ID
-	Flags int32
-
-	Name    string
-	Lessons []database.ID
+	LessonContainer
 
 	Data [1024]byte
 }
@@ -124,6 +120,8 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 }
 
 func CoursePageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
 	var course Course
 	var user User
 
@@ -164,7 +162,15 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItemRaw(w, course.Name)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplayCourseTitle(w, GL, &course, true)
@@ -189,6 +195,8 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`</div>`)
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -222,7 +230,9 @@ func CourseVerify(l Language, course *Course) error {
 	return nil
 }
 
-func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, session *Session, course *Course) error {
+func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, session *Session, course *Course, err error) error {
+	const width = WidthSmall
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -238,7 +248,9 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "Course", r.URL.Path, 4)
+		DisplayMainStart(w)
+
+		DisplayFormStart(w, r, GL, width, "Course", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Course")
 
@@ -254,6 +266,8 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -271,7 +285,7 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 
 	switch currentPage {
 	default:
-		return LessonAddHandleCommand(w, r, l, session, course.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, r, l, session, &course.LessonContainer, currentPage, k, command)
 	case "Course":
 		switch command {
 		case Ls(l, "Delete"):
@@ -289,14 +303,14 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 			}
 
 			r.Form.Set("LessonIndex", spindex)
-			return LessonAddPageHandler(w, r, session, &lesson)
+			return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)
 		case "↑", "^|":
 			MoveUp(course.Lessons, pindex)
 		case "↓", "|v":
 			MoveDown(course.Lessons, pindex)
 		}
 
-		return CourseCreateEditCoursePageHandler(w, r, session, course)
+		return CourseCreateEditCoursePageHandler(w, r, session, course, nil)
 	}
 }
 
@@ -399,10 +413,10 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
-			return WritePageEx(w, r, session, LessonAddTestPageHandler, test, err)
+			return LessonAddTestPageHandler(w, r, session, &course.LessonContainer, &lesson, test, err)
 		}
 		if err := LessonTestVerify(GL, test); err != nil {
-			return WritePageEx(w, r, session, LessonAddTestPageHandler, test, err)
+			return LessonAddTestPageHandler(w, r, session, &course.LessonContainer, &lesson, test, err)
 		}
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(course.Lessons))
@@ -424,30 +438,30 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
-			return WritePageEx(w, r, session, LessonAddProgrammingPageHandler, task, err)
+			return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, err)
 		}
 		if err := LessonProgrammingVerify(task); err != nil {
-			return WritePageEx(w, r, session, LessonAddProgrammingPageHandler, task, err)
+			return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, err)
 		}
 	}
 
 	switch nextPage {
 	default:
-		return CourseCreateEditCoursePageHandler(w, r, session, &course)
+		return CourseCreateEditCoursePageHandler(w, r, session, &course, nil)
 	case Ls(GL, "Next"):
 		if err := LessonVerify(GL, &lesson); err != nil {
-			return WritePageEx(w, r, session, LessonAddPageHandler, &lesson, err)
+			return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, err)
 		}
 		lesson.Flags = LessonActive
 		if err := SaveLesson(&lesson); err != nil {
 			return http.ServerError(err)
 		}
 
-		return CourseCreateEditCoursePageHandler(w, r, session, &course)
+		return CourseCreateEditCoursePageHandler(w, r, session, &course, nil)
 	case Ls(GL, "Add lesson"):
 		lesson.Flags = LessonDraft
 		lesson.ContainerID = course.ID
-		lesson.ContainerType = ContainerTypeCourse
+		lesson.ContainerType = LessonContainerCourse
 
 		if err := CreateLesson(&lesson); err != nil {
 			return http.ServerError(err)
@@ -456,7 +470,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		course.Lessons = append(course.Lessons, lesson.ID)
 		r.Form.SetInt("LessonIndex", len(course.Lessons)-1)
 
-		return LessonAddPageHandler(w, r, session, &lesson)
+		return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)
 	case Ls(GL, "Continue"):
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -465,7 +479,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		step := &lesson.Steps[si]
 		step.Draft = false
 
-		return LessonAddPageHandler(w, r, session, &lesson)
+		return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)
 	case Ls(GL, "Add test"):
 		lesson.Flags = LessonDraft
 
@@ -473,7 +487,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		test, _ := Step2Test(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonAddTestPageHandler(w, r, session, test)
+		return LessonAddTestPageHandler(w, r, session, &course.LessonContainer, &lesson, test, nil)
 	case Ls(GL, "Add programming task"):
 		lesson.Flags = LessonDraft
 
@@ -481,10 +495,10 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		task, _ := Step2Programming(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonAddProgrammingPageHandler(w, r, session, task)
+		return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, nil)
 	case Ls(GL, "Save"):
 		if err := CourseVerify(GL, &course); err != nil {
-			return WritePageEx(w, r, session, CourseCreateEditCoursePageHandler, &course, err)
+			return CourseCreateEditCoursePageHandler(w, r, session, &course, err)
 		}
 		course.Flags = CourseActive
 

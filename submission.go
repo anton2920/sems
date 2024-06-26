@@ -406,6 +406,8 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
 	var submission Submission
 	var subject Subject
 	var lesson Lesson
@@ -462,7 +464,9 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
@@ -471,7 +475,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 			w.AppendString(`<form method="POST" action="/submission/results">`)
 
-			DisplayHiddenID(w, "ID", submission.ID)
+			DisplayHiddenID(w, "ID", id)
 
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
 				submittedStep := &submission.SubmittedSteps[i]
@@ -562,6 +566,8 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`</form>`)
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -571,6 +577,8 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
+	const width = WidthLarge
+
 	test, _ := Step2Test(&submittedTest.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
@@ -591,7 +599,9 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			w.AppendString(Ls(GL, "Submitted test"))
@@ -676,6 +686,8 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 			}
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -734,6 +746,8 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 }
 
 func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
+	const width = WidthLarge
+
 	task, _ := Step2Programming(&submittedTask.Step)
 	teacher := r.Form.Get("Teacher") != ""
 
@@ -754,7 +768,9 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			w.AppendString(Ls(GL, "Submitted programming task"))
@@ -798,6 +814,8 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 			}
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1005,7 +1023,9 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 	return nil
 }
 
-func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest) error {
+func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, submittedTest *SubmittedTest, err error) error {
+	const width = WidthMedium
+
 	test, _ := Step2Test(&submittedTest.Step)
 
 	DisplayHTMLStart(w)
@@ -1025,7 +1045,9 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "", r.URL.Path, 6)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h3 class="text-center">`)
 			w.AppendString(Ls(GL, "Test"))
@@ -1034,8 +1056,11 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 			w.AppendString(`»</h3>`)
 			w.AppendString(`<br>`)
 
-			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+			DisplayError(w, GL, err)
 
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+
+			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 			DisplayHiddenString(w, "CurrentPage", "Test")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1097,8 +1122,12 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 			}
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
+
+			w.AppendString(`<form>`)
 		}
-		DisplayFormEnd(w)
+		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1161,7 +1190,9 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 	w.AppendString(`</ol>`)
 }
 
-func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming) error {
+func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, submittedTask *SubmittedProgramming, err error) error {
+	const width = WidthLarge
+
 	task, _ := Step2Programming(&submittedTask.Step)
 
 	DisplayHTMLStart(w)
@@ -1174,13 +1205,16 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 		w.WriteHTMLString(task.Name)
 		w.AppendString(`»</title>`)
 	}
+	DisplayHeadEnd(w)
 
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "", r.URL.Path, 8)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h3 class="text-center">`)
 			w.AppendString(Ls(GL, "Programming task"))
@@ -1189,8 +1223,11 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 			w.AppendString(`»</h3>`)
 			w.AppendString(`<br>`)
 
-			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+			DisplayError(w, GL, err)
 
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+
+			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 			DisplayHiddenString(w, "CurrentPage", "Programming")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1224,8 +1261,12 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
+
+			w.AppendString(`<form>`)
 		}
-		DisplayFormEnd(w)
+		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1233,25 +1274,21 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 	return nil
 }
 
-func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep) error {
+func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, submittedStep *SubmittedStep, err error) error {
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
-		return SubmissionNewTestPageHandler(w, r, session, submittedTest)
+		return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
 	case SubmittedTypeProgramming:
 		submittedProgramming, _ := Submitted2Programming(submittedStep)
-		return SubmissionNewProgrammingPageHandler(w, r, session, submittedProgramming)
+		return SubmissionNewProgrammingPageHandler(w, r, session, submittedProgramming, err)
 	}
 }
 
-func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, submission *Submission) error {
-	var lesson Lesson
-
-	if err := GetLessonByID(submission.LessonID, &lesson); err != nil {
-		return http.ServerError(err)
-	}
+func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, lesson *Lesson, submission *Submission, err error) error {
+	const width = WidthSmall
 
 	DisplayHTMLStart(w)
 
@@ -1272,7 +1309,9 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "", r.URL.Path, 4)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h3 class="text-center">`)
 			w.AppendString(Ls(GL, "Evaluation"))
@@ -1283,8 +1322,11 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 			w.AppendString(`»</h3>`)
 			w.AppendString(`<br>`)
 
-			DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+			DisplayError(w, GL, err)
 
+			w.AppendString(`<form method="POST" action="/submission/new">`)
+
+			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 			DisplayHiddenString(w, "CurrentPage", "Main")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 
@@ -1323,8 +1365,12 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 			}
 
 			DisplaySubmit(w, GL, "NextPage", "Finish", true)
+
+			w.AppendString(`<form>`)
 		}
-		DisplayFormEnd(w)
+		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1354,7 +1400,7 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, s
 			submittedStep.Type = SubmittedType(submittedStep.Step.Type)
 
 			r.Form.Set("StepIndex", spindex)
-			return SubmissionNewStepPageHandler(w, r, session, submittedStep)
+			return SubmissionNewStepPageHandler(w, r, session, submittedStep, nil)
 		}
 	}
 }
@@ -1386,7 +1432,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		}
 		return http.ServerError(err)
 	}
-	if lesson.ContainerType != ContainerTypeSubject {
+	if lesson.ContainerType != LessonContainerSubject {
 		return http.ClientError(nil)
 	}
 
@@ -1463,10 +1509,10 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				}
 
 				if err := SubmissionNewTestFillFromRequest(r.Form, submittedTest); err != nil {
-					return WritePageEx(w, r, session, SubmissionNewTestPageHandler, submittedTest, err)
+					return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
 				}
 				if err := SubmissionNewTestVerify(GL, submittedTest); err != nil {
-					return WritePageEx(w, r, session, SubmissionNewTestPageHandler, submittedTest, err)
+					return SubmissionNewTestPageHandler(w, r, session, submittedTest, err)
 				}
 			case "Programming":
 				submittedTask, err := Submitted2Programming(submittedStep)
@@ -1475,21 +1521,21 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 				}
 
 				if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
-					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
+					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, err)
 				}
 				if err := SubmissionNewProgrammingVerify(submittedTask, GL); err != nil {
-					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, err)
+					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, err)
 				}
 
 				if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
-					return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(err.Error()))
+					return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, http.BadRequest(err.Error()))
 				}
 
 				scores := submittedTask.Scores[CheckTypeExample]
 				messages := submittedTask.Messages[CheckTypeExample]
 				for i := 0; i < len(scores); i++ {
 					if scores[i] == 0 {
-						return WritePageEx(w, r, session, SubmissionNewProgrammingPageHandler, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
+						return SubmissionNewProgrammingPageHandler(w, r, session, submittedTask, http.BadRequest(Ls(GL, "example %d: %s"), i+1, messages[i]))
 					}
 				}
 			}
@@ -1503,10 +1549,10 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 
 	switch nextPage {
 	default:
-		return SubmissionNewMainPageHandler(w, r, session, &submission)
+		return SubmissionNewMainPageHandler(w, r, session, &lesson, &submission, nil)
 	case Ls(GL, "Finish"):
 		if err := SubmissionNewVerify(GL, &submission); err != nil {
-			return WritePageEx(w, r, session, SubmissionNewMainPageHandler, &submission, err)
+			return SubmissionNewMainPageHandler(w, r, session, &lesson, &submission, err)
 		}
 		submission.Flags = SubmissionActive
 		submission.FinishedAt = time.Now().Unix()

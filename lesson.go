@@ -51,7 +51,7 @@ type (
 		ID            database.ID
 		Flags         int32
 		ContainerID   database.ID
-		ContainerType ContainerType
+		ContainerType LessonContainerType
 
 		Name        string
 		Theory      string
@@ -60,13 +60,21 @@ type (
 
 		Data [16384]byte
 	}
+
+	LessonContainer struct {
+		ID    database.ID
+		Flags int32
+
+		Name    string
+		Lessons []database.ID
+	}
 )
 
-type ContainerType int32
+type LessonContainerType int32
 
 const (
-	ContainerTypeCourse ContainerType = iota
-	ContainerTypeSubject
+	LessonContainerCourse LessonContainerType = iota
+	LessonContainerSubject
 )
 
 type CheckType int
@@ -308,6 +316,29 @@ func StepStringType(l Language, s *Step) string {
 		return Ls(l, "Programming task")
 	}
 }
+
+func LessonContainerLink(containerType LessonContainerType) string {
+	switch containerType {
+	default:
+		panic("invalid lesson container type")
+	case LessonContainerCourse:
+		return "/course"
+	case LessonContainerSubject:
+		return "/subject"
+	}
+}
+
+func LessonContainerName(l Language, containerType LessonContainerType) string {
+	switch containerType {
+	default:
+		panic("invalid lesson container type")
+	case LessonContainerCourse:
+		return Ls(l, "Course")
+	case LessonContainerSubject:
+		return Ls(l, "Subject")
+	}
+}
+
 func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
 	var lesson Lesson
 
@@ -439,8 +470,10 @@ func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 }
 
 func LessonPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
+	var prefix, container string
 	var who SubjectUserType
-	var container string
 	var lesson Lesson
 
 	session, err := GetSessionFromRequest(r)
@@ -462,7 +495,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	switch lesson.ContainerType {
 	default:
 		panic("invalid container type")
-	case ContainerTypeCourse:
+	case LessonContainerCourse:
 		var course Course
 		var user User
 
@@ -475,10 +508,10 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		if err := GetCourseByID(lesson.ContainerID, &course); err != nil {
 			return http.ServerError(err)
 		}
+		prefix = "/course"
 		container = course.Name
-	case ContainerTypeSubject:
+	case LessonContainerSubject:
 		var subject Subject
-		var err error
 
 		if err := GetSubjectByID(lesson.ContainerID, &subject); err != nil {
 			return http.ServerError(err)
@@ -490,6 +523,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		if who == SubjectUserNone {
 			return http.ForbiddenError
 		}
+		prefix = "/subject"
 		container = subject.Name
 	}
 
@@ -508,7 +542,16 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, prefix, lesson.ContainerID, container)
+			DisplayCrumbsItemRaw(w, lesson.Name)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplayLessonTitle(w, GL, container, &lesson)
@@ -546,11 +589,11 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 					w.WriteHTMLString(step.Name)
 					w.AppendString(`</p>`)
 
-					w.AppendString(`<p>`)
+					w.AppendString(`<span>`)
 					w.AppendString(Ls(GL, "Type"))
 					w.AppendString(`: `)
 					w.AppendString(StepStringType(GL, step))
-					w.AppendString(`</p>`)
+					w.AppendString(`</span>`)
 
 					w.AppendString(`</div>`)
 					w.AppendString(`<br>`)
@@ -560,6 +603,8 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			DisplayLessonSubmissions(w, GL, &lesson, session.ID, who)
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -610,7 +655,7 @@ func StepDeepCopy(dst *Step, src *Step) {
 	}
 }
 
-func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database.ID, containerType ContainerType) {
+func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database.ID, containerType LessonContainerType) {
 	*dst = make([]database.ID, len(src))
 
 	for i := 0; i < len(src); i++ {
@@ -788,7 +833,9 @@ func LessonTestVerify(l Language, test *StepTest) error {
 	return nil
 }
 
-func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, test *StepTest) error {
+func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, test *StepTest, err error) error {
+	const width = WidthMedium
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -808,7 +855,17 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "Test", r.URL.Path, 6)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, strings.Or(lesson.Name, Ls(GL, "Lesson")))
+			DisplayCrumbsItemRaw(w, strings.Or(test.Name, Ls(GL, "Test")))
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, "Test", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Test")
 			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
@@ -901,6 +958,8 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1000,7 +1059,9 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepP
 	w.AppendString(`</ol>`)
 }
 
-func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, task *StepProgramming) error {
+func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, task *StepProgramming, err error) error {
+	const width = WidthLarge
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -1016,7 +1077,17 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "Programming task", r.URL.Path, 8)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
+			DisplayCrumbsLinkID(w, "/lesson", lesson.ID, strings.Or(lesson.Name, Ls(GL, "Lesson")))
+			DisplayCrumbsItemRaw(w, strings.Or(task.Name, Ls(GL, "Programming task")))
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, "Programming task", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Programming")
 			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
@@ -1047,6 +1118,8 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 			DisplaySubmit(w, GL, "NextPage", "Continue", true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1054,20 +1127,22 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 	return nil
 }
 
-func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Session, step *Step) error {
+func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, step *Step, err error) error {
 	switch step.Type {
 	default:
 		panic("invalid step type")
 	case StepTypeTest:
 		test, _ := Step2Test(step)
-		return LessonAddTestPageHandler(w, r, session, test)
+		return LessonAddTestPageHandler(w, r, session, container, lesson, test, err)
 	case StepTypeProgramming:
 		task, _ := Step2Programming(step)
-		return LessonAddProgrammingPageHandler(w, r, session, task)
+		return LessonAddProgrammingPageHandler(w, r, session, container, lesson, task, err)
 	}
 }
 
-func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, lesson *Lesson) error {
+func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, err error) error {
+	const width = WidthMedium
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -1083,7 +1158,16 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "Lesson", r.URL.Path, 6)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, container.Name)
+			DisplayCrumbsItemRaw(w, strings.Or(lesson.Name, Ls(GL, "Lesson")))
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, "Lesson", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Lesson")
 			DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
@@ -1142,6 +1226,8 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 			DisplaySubmit(w, GL, "NextPage", "Next", true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -1149,7 +1235,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, l
 	return nil
 }
 
-func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, lessons []database.ID, currentPage, k, command string) error {
+func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, container *LessonContainer, currentPage, k, command string) error {
 	var lesson Lesson
 
 	/* TODO(anton2920): pass these as parameters. */
@@ -1162,11 +1248,11 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 	default:
 		return http.ClientError(nil)
 	case "Lesson":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(container.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(container.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		defer SaveLesson(&lesson)
@@ -1182,20 +1268,20 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			step.Draft = true
 
 			r.Form.Set("StepIndex", spindex)
-			return LessonAddStepPageHandler(w, r, session, step)
+			return LessonAddStepPageHandler(w, r, session, container, &lesson, step, nil)
 		case "↑", "^|":
 			MoveUp(lesson.Steps, pindex)
 		case "↓", "|v":
 			MoveDown(lesson.Steps, pindex)
 		}
 
-		return LessonAddPageHandler(w, r, session, &lesson)
+		return LessonAddPageHandler(w, r, session, container, &lesson, nil)
 	case "Test":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(container.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(container.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		defer SaveLesson(&lesson)
@@ -1297,14 +1383,13 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			}
 		}
 
-		return LessonAddTestPageHandler(w, r, session, test)
-
+		return LessonAddTestPageHandler(w, r, session, container, &lesson, test, nil)
 	case "Programming":
-		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(lessons))
+		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(container.Lessons))
 		if err != nil {
 			return http.ClientError(err)
 		}
-		if err := GetLessonByID(lessons[li], &lesson); err != nil {
+		if err := GetLessonByID(container.Lessons[li], &lesson); err != nil {
 			return http.ServerError(err)
 		}
 		defer SaveLesson(&lesson)
@@ -1344,6 +1429,6 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			MoveDown(task.Checks[sindex], pindex)
 		}
 
-		return LessonAddProgrammingPageHandler(w, r, session, task)
+		return LessonAddProgrammingPageHandler(w, r, session, container, &lesson, task, nil)
 	}
 }

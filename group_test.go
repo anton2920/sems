@@ -36,8 +36,7 @@ func TestGroupPageHandler(t *testing.T) {
 }
 
 func testGroupCreateEditPageHandler(t *testing.T, endpoint string) {
-	testGetAuth(t, endpoint, testTokens[AdminID], http.StatusOK)
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}}, http.StatusOK)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}}, http.StatusOK)
 
 	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 

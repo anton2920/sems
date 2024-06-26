@@ -80,6 +80,7 @@ func UpdateAllUserSessions(user *User) {
 			session.Lock()
 			User2DBUser(&session.User, user, unsafe.Slice(&session.User.Data[0], len(session.User.Data)), 0)
 			DBUser2User(&session.User)
+			session.User.Courses = nil
 			session.Unlock()
 		}
 	}

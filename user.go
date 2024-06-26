@@ -305,6 +305,8 @@ func DisplayUserLink(w *http.Response, l Language, user *User) {
 }
 
 func UserPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -341,7 +343,17 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItemStart(w)
+			DisplayUserTitle(w, GL, &user)
+			DisplayCrumbsItemEnd(w)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplayUserTitle(w, GL, &user)
@@ -387,6 +399,8 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 			DisplayUserSubjects(w, GL, user.ID)
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -394,7 +408,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	return nil
 }
 
-func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, endpoint string, title string, action string) error {
+func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, user *User, endpoint string, title string, action string, err error) error {
+	const width = WidthSmall
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -410,7 +426,23 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, title, endpoint, 4)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			switch title {
+			case "Create user":
+				DisplayCrumbsLink(w, GL, "/users", "Users")
+			case "Edit user":
+				DisplayCrumbsLinkIDStart(w, "/user", user.ID)
+				DisplayUserTitle(w, GL, user)
+				DisplayCrumbsLinkEnd(w)
+			}
+			DisplayCrumbsItem(w, GL, title)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
@@ -435,6 +467,8 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -442,7 +476,7 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 	return nil
 }
 
-func UserCreatePageHandler(w *http.Response, r *http.Request) error {
+func UserCreatePageHandler(w *http.Response, r *http.Request, e error) error {
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -455,10 +489,12 @@ func UserCreatePageHandler(w *http.Response, r *http.Request) error {
 		return http.ClientError(err)
 	}
 
-	return UserCreateEditPageHandler(w, r, session, APIPrefix+"/user/create", "Create user", "Create")
+	return UserCreateEditPageHandler(w, r, session, nil, APIPrefix+"/user/create", "Create user", "Create", e)
 }
 
-func UserEditPageHandler(w *http.Response, r *http.Request) error {
+func UserEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	var user User
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -476,10 +512,17 @@ func UserEditPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
-	return UserCreateEditPageHandler(w, r, session, APIPrefix+"/user/edit", "Edit user", "Save")
+	if err := GetUserByID(userID, &user); err != nil {
+		if err == database.NotFound {
+			return http.NotFound(Ls(GL, "user with this ID does not exist"))
+		}
+		return http.ServerError(err)
+	}
+
+	return UserCreateEditPageHandler(w, r, session, &user, APIPrefix+"/user/edit", "Edit user", "Save", e)
 }
 
-func UserSigninPageHandler(w *http.Response, r *http.Request) error {
+func UserSigninPageHandler(w *http.Response, r *http.Request, err error) error {
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -502,7 +545,7 @@ func UserSigninPageHandler(w *http.Response, r *http.Request) error {
 		w.AppendString(Ls(GL, "Sign in"))
 		w.AppendString(`</b></h2>`)
 
-		DisplayErrorMessage(w, GL, r.Form.Get("Error"))
+		DisplayError(w, GL, err)
 
 		w.AppendString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
 
@@ -540,32 +583,32 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 
 	firstName := r.Form.Get("FirstName")
 	if err := UserNameValid(GL, firstName); err != nil {
-		return WritePage(w, r, UserCreatePageHandler, err)
+		return UserCreatePageHandler(w, r, err)
 	}
 
 	lastName := r.Form.Get("LastName")
 	if err := UserNameValid(GL, lastName); err != nil {
-		return WritePage(w, r, UserCreatePageHandler, err)
+		return UserCreatePageHandler(w, r, err)
 	}
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserCreatePageHandler, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !strings.LengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserCreatePageHandler, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
+		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserCreatePageHandler, http.BadRequest(Ls(GL, "passwords do not match each other")))
+		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "passwords do not match each other")))
 	}
 
 	var user User
 	if err := GetUserByEmail(email, &user); err == nil {
-		return WritePage(w, r, UserCreatePageHandler, http.Conflict(Ls(GL, "user with this email already exists")))
+		return UserCreatePageHandler(w, r, http.Conflict(Ls(GL, "user with this email already exists")))
 	}
 
 	user.FirstName = firstName
@@ -653,32 +696,32 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 
 	firstName := r.Form.Get("FirstName")
 	if err := UserNameValid(GL, firstName); err != nil {
-		return WritePage(w, r, UserEditPageHandler, err)
+		return UserEditPageHandler(w, r, err)
 	}
 
 	lastName := r.Form.Get("LastName")
 	if err := UserNameValid(GL, lastName); err != nil {
-		return WritePage(w, r, UserEditPageHandler, err)
+		return UserEditPageHandler(w, r, err)
 	}
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserEditPageHandler, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
 	password := r.Form.Get("Password")
 	repeatPassword := r.Form.Get("RepeatPassword")
 	if !strings.LengthInRange(password, MinPasswordLen, MaxPasswordLen) {
-		return WritePage(w, r, UserEditPageHandler, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
+		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return WritePage(w, r, UserEditPageHandler, http.BadRequest(Ls(GL, "passwords do not match each other")))
+		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "passwords do not match each other")))
 	}
 
 	var user2 User
 	if err := GetUserByEmail(email, &user2); (err == nil) && (user2.ID != userID) {
-		return WritePage(w, r, UserEditPageHandler, http.Conflict(Ls(GL, "user with this email already exists")))
+		return UserEditPageHandler(w, r, http.Conflict(Ls(GL, "user with this email already exists")))
 	}
 
 	user.FirstName = firstName
@@ -703,21 +746,21 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return WritePage(w, r, UserSigninPageHandler, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserSigninPageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
 	var user User
 	if err := GetUserByEmail(email, &user); err != nil {
 		if err == database.NotFound {
-			return WritePage(w, r, UserSigninPageHandler, http.NotFound(Ls(GL, "user with this email does not exist")))
+			return UserSigninPageHandler(w, r, http.NotFound(Ls(GL, "user with this email does not exist")))
 		}
 		return http.ServerError(err)
 	}
 
 	password := r.Form.Get("Password")
 	if user.Password != password {
-		return WritePage(w, r, UserSigninPageHandler, http.Conflict(Ls(GL, "provided password is incorrect")))
+		return UserSigninPageHandler(w, r, http.Conflict(Ls(GL, "provided password is incorrect")))
 	}
 
 	token, err := GenerateSessionToken()

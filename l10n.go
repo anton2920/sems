@@ -428,6 +428,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "ожидается",
 		FR: "",
 	},
+	"programming task %d is a draft": {
+		RU: "задание по программированию %d всё ещё черновик",
+	},
 	"provided email is not valid": {
 		RU: "недопустимый адрес электронной почты",
 	},
@@ -481,6 +484,9 @@ var Localizations = map[string]*[XX]string{
 	},
 	"subject with this ID does not exist": {
 		RU: "предмета с таким ID не существует",
+	},
+	"test %d is a draft": {
+		RU: "тест %d всё ещё черновик",
 	},
 	"test error": {
 		RU: "тестовая ошибка",

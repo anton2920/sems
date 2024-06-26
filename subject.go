@@ -12,13 +12,10 @@ import (
 )
 
 type Subject struct {
-	ID    database.ID
-	Flags int32
+	LessonContainer
 
 	TeacherID database.ID
 	GroupID   database.ID
-	Name      string
-	Lessons   []database.ID
 	CreatedOn int64
 
 	Data [1024]byte
@@ -221,6 +218,8 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 }
 
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
 	var subject Subject
 
 	session, err := GetSessionFromRequest(r)
@@ -272,7 +271,15 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayPageStart(w)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItemRaw(w, subject.Name)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
 			DisplaySubjectTitle(w, GL, &subject, &teacher)
@@ -328,6 +335,8 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			}
 		}
 		DisplayPageEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -415,18 +424,8 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 	w.AppendString(`</select>`)
 }
 
-func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint string, title string, action string) error {
-	session, err := GetSessionFromRequest(r)
-	if err != nil {
-		return http.UnauthorizedError
-	}
-	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
+func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, endpoint string, title string, action string, err error) error {
+	const width = WidthSmall
 
 	DisplayHTMLStart(w)
 
@@ -443,7 +442,21 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint st
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, title, endpoint, 4)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			switch title {
+			case "Create subject":
+				DisplayCrumbsLink(w, GL, "/subjects", "Subjects")
+			case "Edit subject":
+				DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			}
+			DisplayCrumbsItem(w, GL, title)
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, title, endpoint, err)
 		{
 			DisplayInputLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
@@ -460,6 +473,8 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint st
 			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -467,12 +482,49 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, endpoint st
 	return nil
 }
 
-func SubjectCreatePageHandler(w *http.Response, r *http.Request) error {
-	return SubjectCreateEditPageHandler(w, r, APIPrefix+"/subject/create", "Create subject", "Create")
+func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error {
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	return SubjectCreateEditPageHandler(w, r, session, nil, APIPrefix+"/subject/create", "Create subject", "Create", e)
 }
 
-func SubjectEditPageHandler(w *http.Response, r *http.Request) error {
-	return SubjectCreateEditPageHandler(w, r, APIPrefix+"/subject/edit", "Edit subject", "Save")
+func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	var subject Subject
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return http.ClientError(err)
+	}
+
+	subjectID, err := r.Form.GetID("ID")
+	if err != nil {
+		return http.ClientError(err)
+	}
+	if err := GetSubjectByID(subjectID, &subject); err != nil {
+		if err == database.NotFound {
+			return http.NotFound("subject with this ID does not exist")
+		}
+		return http.ServerError(err)
+	}
+
+	return SubjectCreateEditPageHandler(w, r, session, &subject, APIPrefix+"/subject/edit", "Edit subject", "Save", e)
 }
 
 func SubjectLessonsVerify(l Language, subject *Subject) error {
@@ -492,7 +544,9 @@ func SubjectLessonsVerify(l Language, subject *Subject) error {
 	return nil
 }
 
-func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject) error {
+func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, err error) error {
+	const width = WidthSmall
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -508,7 +562,16 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		DisplayFormStart(w, r, GL, "Edit subject lessons", r.URL.Path, 6)
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsLinkID(w, "/subject", subject.ID, subject.Name)
+			DisplayCrumbsItem(w, GL, "Edit subject lessons")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayFormStart(w, r, GL, width, "Edit subject lessons", r.URL.Path, err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Main")
 
@@ -520,6 +583,8 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
 		DisplayFormEnd(w)
+
+		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
 
@@ -537,7 +602,7 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 
 	switch currentPage {
 	default:
-		return LessonAddHandleCommand(w, r, l, session, subject.Lessons, currentPage, k, command)
+		return LessonAddHandleCommand(w, r, l, session, &subject.LessonContainer, currentPage, k, command)
 	case "Main":
 		switch command {
 		case Ls(l, "Delete"):
@@ -555,14 +620,14 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 			}
 
 			r.Form.Set("LessonIndex", spindex)
-			return LessonAddPageHandler(w, r, session, &lesson)
+			return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
 		case "↑", "^|":
 			MoveUp(subject.Lessons, pindex)
 		case "↓", "|v":
 			MoveDown(subject.Lessons, pindex)
 		}
 
-		return SubjectLessonsMainPageHandler(w, r, session, subject)
+		return SubjectLessonsMainPageHandler(w, r, session, subject, nil)
 	}
 }
 
@@ -623,7 +688,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(nil)
 		}
 
-		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
+		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, LessonContainerSubject)
 	case Ls(GL, "give as is"):
 		var course Course
 
@@ -644,7 +709,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(nil)
 		}
 
-		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, ContainerTypeSubject)
+		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, LessonContainerSubject)
 
 		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
 		return nil
@@ -697,10 +762,10 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		if err := LessonTestFillFromRequest(r.Form, test); err != nil {
-			return WritePageEx(w, r, session, LessonAddTestPageHandler, test, err)
+			return LessonAddTestPageHandler(w, r, session, &subject.LessonContainer, &lesson, test, err)
 		}
 		if err := LessonTestVerify(GL, test); err != nil {
-			return WritePageEx(w, r, session, LessonAddTestPageHandler, test, err)
+			return LessonAddTestPageHandler(w, r, session, &subject.LessonContainer, &lesson, test, err)
 		}
 	case "Programming":
 		li, err := GetValidIndex(r.Form.Get("LessonIndex"), len(subject.Lessons))
@@ -722,30 +787,30 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		}
 
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
-			return WritePageEx(w, r, session, LessonAddProgrammingPageHandler, task, err)
+			return LessonAddProgrammingPageHandler(w, r, session, &subject.LessonContainer, &lesson, task, err)
 		}
 		if err := LessonProgrammingVerify(task); err != nil {
-			return WritePageEx(w, r, session, LessonAddProgrammingPageHandler, task, err)
+			return LessonAddProgrammingPageHandler(w, r, session, &subject.LessonContainer, &lesson, task, err)
 		}
 	}
 
 	switch nextPage {
 	default:
-		return SubjectLessonsMainPageHandler(w, r, session, &subject)
+		return SubjectLessonsMainPageHandler(w, r, session, &subject, nil)
 	case Ls(GL, "Next"):
 		if err := LessonVerify(GL, &lesson); err != nil {
-			return WritePageEx(w, r, session, LessonAddPageHandler, &lesson, err)
+			return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, err)
 		}
 		lesson.Flags = LessonActive
 		if err := SaveLesson(&lesson); err != nil {
 			return http.ServerError(err)
 		}
 
-		return SubjectLessonsMainPageHandler(w, r, session, &subject)
+		return SubjectLessonsMainPageHandler(w, r, session, &subject, nil)
 	case Ls(GL, "Add lesson"):
 		lesson.Flags = LessonDraft
 		lesson.ContainerID = subject.ID
-		lesson.ContainerType = ContainerTypeSubject
+		lesson.ContainerType = LessonContainerSubject
 
 		if err := CreateLesson(&lesson); err != nil {
 			return http.ServerError(err)
@@ -754,7 +819,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		subject.Lessons = append(subject.Lessons, lesson.ID)
 		r.Form.SetInt("LessonIndex", len(subject.Lessons)-1)
 
-		return LessonAddPageHandler(w, r, session, &lesson)
+		return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
 	case Ls(GL, "Continue"):
 		si, err := GetValidIndex(r.Form.Get("StepIndex"), len(lesson.Steps))
 		if err != nil {
@@ -763,7 +828,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		step := &lesson.Steps[si]
 		step.Draft = false
 
-		return LessonAddPageHandler(w, r, session, &lesson)
+		return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
 	case Ls(GL, "Add test"):
 		lesson.Flags = LessonDraft
 
@@ -771,7 +836,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		test, _ := Step2Test(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonAddTestPageHandler(w, r, session, test)
+		return LessonAddTestPageHandler(w, r, session, &subject.LessonContainer, &lesson, test, nil)
 	case Ls(GL, "Add programming task"):
 		lesson.Flags = LessonDraft
 
@@ -779,10 +844,10 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 		task, _ := Step2Programming(&lesson.Steps[len(lesson.Steps)-1])
 
 		r.Form.SetInt("StepIndex", len(lesson.Steps)-1)
-		return LessonAddProgrammingPageHandler(w, r, session, task)
+		return LessonAddProgrammingPageHandler(w, r, session, &subject.LessonContainer, &lesson, task, nil)
 	case Ls(GL, "Save"):
 		if err := SubjectLessonsVerify(GL, &subject); err != nil {
-			return WritePageEx(w, r, session, SubjectLessonsMainPageHandler, &subject, err)
+			return SubjectLessonsMainPageHandler(w, r, session, &subject, err)
 		}
 
 		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
@@ -805,7 +870,7 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectCreatePageHandler, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
+		return SubjectCreatePageHandler(w, r, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)
@@ -902,7 +967,7 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 
 	name := r.Form.Get("Name")
 	if !strings.LengthInRange(name, MinSubjectNameLen, MaxSubjectNameLen) {
-		return WritePage(w, r, SubjectEditPageHandler, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
+		return SubjectEditPageHandler(w, r, http.BadRequest(Ls(GL, "subject name length must be between %d and %d characters long"), MinSubjectNameLen, MaxSubjectNameLen))
 	}
 
 	nextUserID, err := database.GetNextID(UsersDB)

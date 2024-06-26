@@ -13,6 +13,12 @@ const (
 	JSEnabled  = CSSEnabled && false
 )
 
+const (
+	WidthSmall  = 4
+	WidthMedium = 6
+	WidthLarge  = 8
+)
+
 func DisplayHTMLStart(w *http.Response) {
 	w.AppendString(html.Header)
 	w.AppendString(`<html lang="en" data-bs-theme="light">`)
@@ -113,37 +119,104 @@ func DisplaySidebar(w *http.Response, l Language, session *Session) {
 	}
 }
 
-func DisplayPageStart(w *http.Response) {
+func DisplayMainStart(w *http.Response) {
 	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
-	w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-8">`)
+}
+
+func DisplayCrumbsStart(w *http.Response, width int) {
+	w.AppendString(`<nav aria-label="breadcrumb" class="col-lg-`)
+	w.WriteInt(width)
+	w.AppendString(` mx-auto" style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);">`)
+	w.AppendString(`<ol class="breadcrumb breadcrumb-chevron p-3 bg-body-tertiary rounded-2 border">`)
+	w.AppendString(`<li class="breadcrumb-item"><a class="link-body-emphasis" href="/"><svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="17" viewBox="0 0 24 24"><path d="M 12 2.0996094 L 1 12 L 4 12 L 4 21 L 11 21 L 11 15 L 13 15 L 13 21 L 20 21 L 20 12 L 23 12 L 12 2.0996094 z M 12 4.7910156 L 18 10.191406 L 18 11 L 18 19 L 15 19 L 15 13 L 9 13 L 9 19 L 6 19 L 6 10.191406 L 12 4.7910156 z"></path></svg><span class="visually-hidden">Home</span></a></li>`)
+}
+
+func DisplayCrumbsLinkIDStart(w *http.Response, prefix string, id database.ID) {
+	w.AppendString(`<li class="breadcrumb-item">`)
+	w.AppendString(`<a class="link-body-emphasis text-decoration-none" href="`)
+	w.WriteString(prefix)
+	w.AppendString(`/`)
+	w.WriteID(id)
+	w.AppendString(`">`)
+}
+
+func DisplayCrumbsLinkEnd(w *http.Response) {
+	w.AppendString(`</a>`)
+	w.AppendString(`</li>`)
+}
+
+func DisplayCrumbsLinkID(w *http.Response, prefix string, id database.ID, title string) {
+	DisplayCrumbsLinkIDStart(w, prefix, id)
+	w.WriteString(title)
+	DisplayCrumbsLinkEnd(w)
+}
+
+func DisplayCrumbsLink(w *http.Response, l Language, href string, title string) {
+	w.AppendString(`<li class="breadcrumb-item">`)
+	w.AppendString(`<a class="link-body-emphasis text-decoration-none" href="`)
+	w.WriteString(href)
+	w.AppendString(`">`)
+	w.WriteString(Ls(l, title))
+	DisplayCrumbsLinkEnd(w)
+}
+
+func DisplayCrumbsItemStart(w *http.Response) {
+	w.AppendString(`<li class="breadcrumb-item fw-semibold" aria-current="page">`)
+}
+
+func DisplayCrumbsItemEnd(w *http.Response) {
+	w.AppendString(`</li>`)
+}
+
+func DisplayCrumbsItem(w *http.Response, l Language, title string) {
+	DisplayCrumbsItemStart(w)
+	w.WriteString(Ls(l, title))
+	DisplayCrumbsItemEnd(w)
+}
+
+func DisplayCrumbsItemRaw(w *http.Response, title string) {
+	DisplayCrumbsItemStart(w)
+	w.WriteString(title)
+	DisplayCrumbsItemEnd(w)
+}
+
+func DisplayCrumbsEnd(w *http.Response) {
+	w.AppendString(`</ol></nav>`)
+}
+
+func DisplayPageStart(w *http.Response, width int) {
+	w.AppendString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-`)
+	w.WriteInt(width)
+	w.AppendString(`">`)
 }
 
 func DisplayPageEnd(w *http.Response) {
-	w.AppendString(`</div></main>`)
+	w.AppendString(`</div>`)
 }
 
-func DisplayFormStart(w *http.Response, r *http.Request, l Language, title string, endpoint string, width int) {
-	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
+func DisplayFormStart(w *http.Response, r *http.Request, l Language, width int, title string, endpoint string, err error) {
 	w.AppendString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-`)
 	w.WriteInt(width)
 	w.AppendString(`" method="POST" action="`)
 	w.WriteString(endpoint)
 	w.AppendString(`">`)
 
-	if len(title) > 0 {
-		w.AppendString(`<h3 class="text-center">`)
-		w.AppendString(Ls(l, title))
-		w.AppendString(`</h3>`)
-		w.AppendString(`<br>`)
+	w.AppendString(`<h3 class="text-center">`)
+	w.AppendString(Ls(l, title))
+	w.AppendString(`</h3>`)
+	w.AppendString(`<br>`)
 
-		DisplayErrorMessage(w, l, r.Form.Get("Error"))
-	}
+	DisplayError(w, l, err)
 
 	DisplayHiddenString(w, "ID", r.Form.Get("ID"))
 }
 
 func DisplayFormEnd(w *http.Response) {
-	w.AppendString(`</form></main>`)
+	w.AppendString(`</form>`)
+}
+
+func DisplayMainEnd(w *http.Response) {
+	w.AppendString(`</main>`)
 }
 
 func DisplayBodyEnd(w *http.Response) {
