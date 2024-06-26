@@ -347,7 +347,7 @@ func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
 			/* TODO(anton2920): report error. */
 		}
 
-		w.AppendString(`<div class="border rounded p-4">`)
+		DisplayFrameStart(w)
 
 		w.AppendString(`<p><b>`)
 		w.AppendString(Ls(l, "Lesson"))
@@ -370,14 +370,12 @@ func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
 
 		DisplayLessonLink(w, l, &lesson)
 
-		w.AppendString(`</div>`)
-		w.AppendString(`<br>`)
+		DisplayFrameEnd(w)
 	}
 }
 
 func DisplayLessonSubmissions(w *http.Response, l Language, lesson *Lesson, userID database.ID, who SubjectUserType) {
 	var submission Submission
-
 	var displayed bool
 
 	switch who {
@@ -574,7 +572,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 				for i := 0; i < len(lesson.Steps); i++ {
 					step := &lesson.Steps[i]
 
-					w.AppendString(`<div class="border rounded p-4">`)
+					DisplayFrameStart(w)
 
 					w.AppendString(`<p><b>`)
 					w.AppendString(Ls(GL, "Step"))
@@ -595,8 +593,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 					w.AppendString(StepStringType(GL, step))
 					w.AppendString(`</span>`)
 
-					w.AppendString(`</div>`)
-					w.AppendString(`<br>`)
+					DisplayFrameEnd(w)
 				}
 			}
 
@@ -691,7 +688,7 @@ func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database
 			/* TODO(anton2920): report error. */
 		}
 
-		w.AppendString(`<div class="border round p-4">`)
+		DisplayFrameStart(w)
 
 		w.AppendString(`<p><b>`)
 		w.AppendString(Ls(GL, "Lesson"))
@@ -723,8 +720,7 @@ func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database
 			}
 		}
 
-		w.AppendString(`</div>`)
-		w.AppendString(`<br>`)
+		DisplayFrameEnd(w)
 	}
 }
 
@@ -885,7 +881,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 			for i := 0; i < len(test.Questions); i++ {
 				question := &test.Questions[i]
 
-				w.AppendString(`<div class="border round p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.AppendString(Ls(GL, "Question"))
@@ -952,8 +948,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 					}
 				}
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 
 			DisplayCommand(w, GL, "Add another question")
@@ -1208,7 +1203,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 			for i := 0; i < len(lesson.Steps); i++ {
 				step := &lesson.Steps[i]
 
-				w.AppendString(`<div class="border round p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.AppendString(Ls(GL, "Step"))
@@ -1240,8 +1235,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 					}
 				}
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 
 			DisplayNextPage(w, GL, "Add test")

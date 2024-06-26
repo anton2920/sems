@@ -480,7 +480,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
 				submittedStep := &submission.SubmittedSteps[i]
 
-				w.AppendString(`<div class="border rounded p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.AppendString(Ls(GL, "Step"))
@@ -533,8 +533,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 					}
 				}
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 
 			switch submission.Status {
@@ -619,7 +618,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 			for i := 0; i < len(test.Questions); i++ {
 				question := &test.Questions[i]
 
-				w.AppendString(`<div class="border round p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.WriteHTMLString(question.Name)
@@ -681,8 +680,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 				w.WriteInt(submittedTest.Scores[i])
 				w.AppendString(`/1</span>`)
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 		}
 		DisplayPageEnd(w)
@@ -1058,9 +1056,7 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 
 			DisplayError(w, GL, err)
 
-			w.AppendString(`<form method="POST" action="/submission/new">`)
-
-			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+			DisplayFormStart(w, r, "/submission/new")
 			DisplayHiddenString(w, "CurrentPage", "Test")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1072,7 +1068,7 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 				submittedQuestion := &submittedTest.SubmittedQuestions[i]
 				question := &test.Questions[i]
 
-				w.AppendString(`<div class="border round p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.WriteHTMLString(question.Name)
@@ -1117,13 +1113,12 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 				}
 				w.AppendString(`</ol>`)
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
 
-			w.AppendString(`<form>`)
+			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
 
@@ -1225,9 +1220,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 			DisplayError(w, GL, err)
 
-			w.AppendString(`<form method="POST" action="/submission/new">`)
-
-			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+			DisplayFormStart(w, r, "/submission/new")
 			DisplayHiddenString(w, "CurrentPage", "Programming")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 			DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1262,7 +1255,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
 
-			w.AppendString(`<form>`)
+			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
 
@@ -1324,16 +1317,14 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 
 			DisplayError(w, GL, err)
 
-			w.AppendString(`<form method="POST" action="/submission/new">`)
-
-			DisplayHiddenString(w, "ID", r.Form.Get("ID"))
+			DisplayFormStart(w, r, "/submission/new")
 			DisplayHiddenString(w, "CurrentPage", "Main")
 			DisplayHiddenString(w, "SubmissionIndex", r.Form.Get("SubmissionIndex"))
 
 			for i := 0; i < len(submission.SubmittedSteps); i++ {
 				submittedStep := &submission.SubmittedSteps[i]
 
-				w.AppendString(`<div class="border round p-4">`)
+				DisplayFrameStart(w)
 
 				w.AppendString(`<p><b>`)
 				w.AppendString(Ls(GL, "Step"))
@@ -1360,13 +1351,12 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 					DisplayIndexedCommand(w, GL, i, "Edit")
 				}
 
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				DisplayFrameEnd(w)
 			}
 
 			DisplaySubmit(w, GL, "NextPage", "Finish", true)
 
-			w.AppendString(`<form>`)
+			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
 

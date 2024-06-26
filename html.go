@@ -284,6 +284,15 @@ func DisplayDraft(w *http.Response, l Language, draft bool) {
 	}
 }
 
+func DisplayFrameStart(w *http.Response) {
+	w.AppendString(`<div class="border round p-4">`)
+}
+
+func DisplayFrameEnd(w *http.Response) {
+	w.AppendString(`</div>`)
+	w.AppendString(`<br>`)
+}
+
 func DisplayInputLabel(w *http.Response, l Language, text string) {
 	w.AppendString(`<label class="form-label">`)
 	w.AppendString(Ls(l, text))
