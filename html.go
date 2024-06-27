@@ -337,6 +337,12 @@ func DisplayTableItemID(w *http.Response, id database.ID) {
 	DisplayTableItemEnd(w)
 }
 
+func DisplayTableItemInt(w *http.Response, x int) {
+	DisplayTableItemStart(w)
+	w.WriteInt(x)
+	DisplayTableItemEnd(w)
+}
+
 func DisplayTableItemString(w *http.Response, s string) {
 	DisplayTableItemStart(w)
 	w.WriteHTMLString(s)
@@ -362,7 +368,7 @@ func DisplayTableItemFlags(w *http.Response, l Language, flags int32) {
 		w.AppendString(`</small>`)
 	case 2: /* draft */
 		w.AppendString(`<small class="d-inline-flex px-2 py-1 fw-semibold text-primary-emphasis bg-primary-subtle border border-primary-subtle rounded-2">`)
-		w.AppendString(Ls(l, "Deleted"))
+		w.AppendString(Ls(l, "Draft"))
 		w.AppendString(`</small>`)
 	}
 	DisplayTableItemEnd(w)

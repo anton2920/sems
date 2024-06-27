@@ -19,8 +19,8 @@ type Course struct {
 
 const (
 	CourseActive int32 = iota
-	CourseDraft
 	CourseDeleted
+	CourseDraft
 )
 
 const (
@@ -117,6 +117,96 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 	w.AppendString(`">`)
 	DisplayCourseTitle(w, l, course, true)
 	w.AppendString(`</a>`)
+}
+
+func CoursesPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
+	var user User
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	if err := GetUserByID(session.ID, &user); err != nil {
+		return http.ServerError(err)
+	}
+
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Courses"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
+
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItem(w, GL, "Courses")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
+		{
+			w.AppendString(`<h2 class="text-center">`)
+			w.AppendString(Ls(GL, "Courses"))
+			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
+
+			DisplayTableStart(w, GL, []string{"ID", "Name", "Lessons", "Status"})
+			{
+				courses := make([]Course, 32)
+				var pos int64
+
+				for {
+					n, err := GetCourses(&pos, courses)
+					if err != nil {
+						return http.ServerError(err)
+					}
+					if n == 0 {
+						break
+					}
+
+					for i := 0; i < n; i++ {
+						course := &courses[i]
+
+						if !UserOwnsCourse(&user, course.ID) {
+							continue
+						}
+						DisplayTableRowLinkIDStart(w, "/course", course.ID)
+
+						DisplayTableItemString(w, strings.Or(course.Name, Ls(GL, "Unnamed")))
+						DisplayTableItemInt(w, len(course.Lessons))
+						DisplayTableItemFlags(w, GL, course.Flags)
+
+						DisplayTableRowEnd(w)
+					}
+				}
+			}
+			DisplayTableEnd(w)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<form method="POST" action="/course/create">`)
+			DisplaySubmit(w, GL, "", "Create course", true)
+			w.AppendString(`</form>`)
+		}
+		DisplayPageEnd(w)
+		DisplayMainEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
 }
 
 func CoursePageHandler(w *http.Response, r *http.Request) error {

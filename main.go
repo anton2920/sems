@@ -48,6 +48,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/course"):] {
 		default:
 			return CoursePageHandler(w, r)
+		case "s":
+			return CoursesPageHandler(w, r)
 		case "/create", "/edit":
 			return CourseCreateEditPageHandler(w, r)
 		}
