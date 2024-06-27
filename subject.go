@@ -271,7 +271,6 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 
 					for i := 0; i < n; i++ {
 						subject := &subjects[i]
-
 						who, err := WhoIsUserInSubject(session.ID, subject)
 						if err != nil {
 							return http.ServerError(err)
@@ -347,7 +346,6 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		}
 		return http.ServerError(err)
 	}
-
 	who, err := WhoIsUserInSubject(session.ID, &subject)
 	if err != nil {
 		return http.ServerError(err)
@@ -445,7 +443,6 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 			}
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -583,7 +580,6 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -693,7 +689,6 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
 		DisplayFormPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -789,9 +784,6 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
-			if err == database.NotFound {
-				return http.NotFound(Ls(GL, "course with this ID does not exist"))
-			}
 			return http.ServerError(err)
 		}
 		if course.Flags != CourseActive {
@@ -810,9 +802,6 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
-			if err == database.NotFound {
-				return http.NotFound(Ls(GL, "course with this ID does not exist"))
-			}
 			return http.ServerError(err)
 		}
 		if course.Flags != CourseActive {

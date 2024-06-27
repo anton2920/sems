@@ -574,7 +574,6 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`</form>`)
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -702,7 +701,6 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 			}
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -839,7 +837,6 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 			}
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -1431,7 +1428,6 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 			DisplayFormEnd(w)
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)

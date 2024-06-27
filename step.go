@@ -55,7 +55,6 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 				}
 				for i := 0; i < n; i++ {
 					subject := &subjects[i]
-
 					who, err := WhoIsUserInSubject(session.ID, subject)
 					if err != nil {
 						return http.ServerError(err)
@@ -130,7 +129,6 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 					}
 					for i := 0; i < n; i++ {
 						submission := &submissions[i]
-
 						if (submission.UserID != session.ID) || (submission.Flags != SubmissionActive) {
 							continue
 						}

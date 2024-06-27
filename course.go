@@ -284,7 +284,6 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`</div>`)
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -362,7 +361,6 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}
 		DisplayFormPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)

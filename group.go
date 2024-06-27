@@ -360,7 +360,6 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 			DisplayGroupSubjects(w, GL, &group)
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
@@ -457,7 +456,6 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 			DisplaySubmit(w, GL, "", action, true)
 		}
 		DisplayFormPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)

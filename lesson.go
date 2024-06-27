@@ -93,6 +93,7 @@ const (
 
 const (
 	LessonActive int32 = iota
+	_
 	LessonDraft
 )
 
@@ -542,7 +543,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayCrumbsStart(w, width)
 		{
-			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, container.Name)
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, strings.Or(container.Name, LessonContainerName(GL, lesson.ContainerType)))
 			DisplayCrumbsItemRaw(w, lesson.Name)
 		}
 		DisplayCrumbsEnd(w)
@@ -598,7 +599,6 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			DisplayLessonSubmissions(w, GL, &lesson, session.ID, who)
 		}
 		DisplayPageEnd(w)
-
 		DisplayMainEnd(w)
 	}
 	DisplayBodyEnd(w)
