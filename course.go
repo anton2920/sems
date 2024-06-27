@@ -250,7 +250,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, course.Lessons)
 
 		DisplayMainStart(w)
 

@@ -463,7 +463,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, subject.Lessons)
 
 		DisplayMainStart(w)
 
@@ -605,7 +605,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, subject.Lessons)
 
 		DisplayMainStart(w)
 
@@ -782,7 +782,7 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, subject.Lessons)
 
 		DisplayMainStart(w)
 

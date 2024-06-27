@@ -2,7 +2,6 @@ package main
 
 import (
 	"strconv"
-	"unicode/utf8"
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
@@ -10,20 +9,6 @@ import (
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/strings"
 )
-
-func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
-	if utf8.RuneCountInString(s) < maxVisibleLen {
-		w.WriteHTMLString(s)
-	} else {
-		space := strings.FindCharReverse(s[:maxVisibleLen], ' ')
-		if space == -1 {
-			w.WriteHTMLString(s[:maxVisibleLen])
-		} else {
-			w.WriteHTMLString(s[:space])
-		}
-		w.AppendString(`...`)
-	}
-}
 
 func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
 	if !strings.StartsWith(u.Path, prefix) {

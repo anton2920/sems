@@ -2,10 +2,12 @@ package main
 
 import (
 	"time"
+	"unicode/utf8"
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/html"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/strings"
 )
 
 const (
@@ -79,6 +81,20 @@ func DisplaySidebarLink(w *http.Response, l Language, href string, text string) 
 	w.AppendString(`</a>`)
 }
 
+func DisplaySidebarLinkID(w *http.Response, l Language, prefix string, id database.ID, text string, i int, name string) {
+	w.AppendString(`<a class="nav-link" href="`)
+	w.AppendString(prefix)
+	w.AppendString(`/`)
+	w.WriteID(id)
+	w.AppendString(`">`)
+	w.AppendString(Ls(l, text))
+	w.AppendString(` #`)
+	w.WriteInt(i + 1)
+	w.AppendString(`: `)
+	DisplayShortenedString(w, name, 25)
+	w.AppendString(`</a>`)
+}
+
 func DisplaySidebarUser(w *http.Response, l Language, user *User) {
 	w.AppendString(`<div><div class="text-center"><p class="nav-link link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">`)
 	w.AppendString(`<a class="nav-link" href="/user/`)
@@ -112,6 +128,43 @@ func DisplaySidebar(w *http.Response, l Language, session *Session) {
 				DisplaySidebarLink(w, l, "/subjects", "Subjects")
 				if session.ID != AdminID {
 					DisplaySidebarLink(w, l, "/steps", "Steps")
+				}
+				w.AppendString(`<hr>`)
+				DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
+			}
+			DisplaySidebarListEnd(w)
+		}
+		DisplaySidebarEnd(w)
+	}
+}
+
+func DisplaySidebarWithLessons(w *http.Response, l Language, session *Session, lessons []database.ID) {
+	if CSSEnabled {
+		DisplaySidebarStart(w)
+		{
+			session.Lock()
+			DisplaySidebarUser(w, l, &session.User)
+			session.Unlock()
+
+			w.AppendString(`<hr>`)
+			DisplaySidebarListStart(w)
+			{
+				if session.ID == AdminID {
+					DisplaySidebarLink(w, l, "/users", "Users")
+				}
+				DisplaySidebarLink(w, l, "/groups", "Groups")
+				DisplaySidebarLink(w, l, "/courses", "Courses")
+				DisplaySidebarLink(w, l, "/subjects", "Subjects")
+				if session.ID != AdminID {
+					DisplaySidebarLink(w, l, "/steps", "Steps")
+				}
+				w.AppendString(`<hr>`)
+				for i := 0; i < len(lessons); i++ {
+					var lesson Lesson
+					if err := GetLessonByID(lessons[i], &lesson); err != nil {
+						/* TODO(anton2920): report error. */
+					}
+					DisplaySidebarLinkID(w, l, "/lesson", lessons[i], "Lesson", i, lesson.Name)
 				}
 				w.AppendString(`<hr>`)
 				DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
@@ -552,4 +605,18 @@ func DisplaySubmit(w *http.Response, l Language, name string, value string, veri
 		w.AppendString(` formnovalidate`)
 	}
 	w.AppendString(`>`)
+}
+
+func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
+	if utf8.RuneCountInString(s) < maxVisibleLen {
+		w.WriteHTMLString(s)
+	} else {
+		space := strings.FindCharReverse(s[:maxVisibleLen], ' ')
+		if space == -1 {
+			w.WriteHTMLString(s[:maxVisibleLen])
+		} else {
+			w.WriteHTMLString(s[:space])
+		}
+		w.AppendString(`...`)
+	}
 }

@@ -98,7 +98,7 @@ const (
 
 const (
 	MinTheoryLen = 1
-	MaxTheoryLen = 1024
+	MaxTheoryLen = 2048
 
 	MinStepNameLen = 1
 	MaxStepNameLen = 128
@@ -470,7 +470,7 @@ func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 func LessonPageHandler(w *http.Response, r *http.Request) error {
 	const width = WidthLarge
 
-	var prefix, container string
+	var container *LessonContainer
 	var who SubjectUserType
 	var lesson Lesson
 
@@ -506,8 +506,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		if err := GetCourseByID(lesson.ContainerID, &course); err != nil {
 			return http.ServerError(err)
 		}
-		prefix = "/course"
-		container = course.Name
+		container = &course.LessonContainer
 	case LessonContainerSubject:
 		var subject Subject
 
@@ -521,8 +520,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		if who == SubjectUserNone {
 			return http.ForbiddenError
 		}
-		prefix = "/subject"
-		container = subject.Name
+		container = &subject.LessonContainer
 	}
 
 	DisplayHTMLStart(w)
@@ -530,7 +528,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	DisplayHeadStart(w)
 	{
 		w.AppendString(`<title>`)
-		DisplayLessonTitle(w, GL, container, &lesson)
+		DisplayLessonTitle(w, GL, container.Name, &lesson)
 		w.AppendString(`</title>`)
 	}
 	DisplayHeadEnd(w)
@@ -538,13 +536,13 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, container.Lessons)
 
 		DisplayMainStart(w)
 
 		DisplayCrumbsStart(w, width)
 		{
-			DisplayCrumbsLinkID(w, prefix, lesson.ContainerID, container)
+			DisplayCrumbsLinkID(w, LessonContainerLink(lesson.ContainerType), lesson.ContainerID, container.Name)
 			DisplayCrumbsItemRaw(w, lesson.Name)
 		}
 		DisplayCrumbsEnd(w)
@@ -552,7 +550,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 		DisplayPageStart(w, width)
 		{
 			w.AppendString(`<h2>`)
-			DisplayLessonTitle(w, GL, container, &lesson)
+			DisplayLessonTitle(w, GL, container.Name, &lesson)
 			w.AppendString(`</h2>`)
 			w.AppendString(`<br>`)
 

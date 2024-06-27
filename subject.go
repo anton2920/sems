@@ -379,7 +379,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	DisplayBodyStart(w)
 	{
 		DisplayHeader(w, GL)
-		DisplaySidebar(w, GL, session)
+		DisplaySidebarWithLessons(w, GL, session, subject.Lessons)
 
 		DisplayMainStart(w)
 
