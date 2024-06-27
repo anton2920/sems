@@ -122,13 +122,12 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 func CoursesPageHandler(w *http.Response, r *http.Request) error {
 	const width = WidthLarge
 
-	var user User
-
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
 	}
 
+	var user User
 	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
 	}
@@ -179,10 +178,10 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 
 					for i := 0; i < n; i++ {
 						course := &courses[i]
-
 						if !UserOwnsCourse(&user, course.ID) {
 							continue
 						}
+
 						DisplayTableRowLinkIDStart(w, "/course", course.ID)
 
 						DisplayTableItemString(w, strings.Or(course.Name, Ls(GL, "Unnamed")))
@@ -194,8 +193,8 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 				}
 			}
 			DisplayTableEnd(w)
-			w.AppendString(`<br>`)
 
+			w.AppendString(`<br>`)
 			w.AppendString(`<form method="POST" action="/course/create">`)
 			DisplaySubmit(w, GL, "", "Create course", true)
 			w.AppendString(`</form>`)
@@ -451,15 +450,11 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 			return http.ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
-			if err == database.NotFound {
-				return http.NotFound("course with this ID does not exist")
-			}
 			return http.ServerError(err)
 		}
 	}
-	defer SaveCourse(&course)
-
 	course.Flags = CourseDraft
+	defer SaveCourse(&course)
 
 	for i := 0; i < len(r.Form); i++ {
 		k := r.Form[i].Key

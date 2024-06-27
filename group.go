@@ -239,7 +239,6 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 
 					for i := 0; i < n; i++ {
 						group := &groups[i]
-
 						if !UserInGroup(session.ID, group) {
 							continue
 						}
