@@ -620,3 +620,84 @@ func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 		w.AppendString(`...`)
 	}
 }
+
+func DisplayMarkdown(w *http.Response, md string) {
+	type Token struct {
+		Type   int
+		Start  string
+		End    string
+		RStart string
+		REnd   string
+	}
+
+	const (
+		None = iota
+		H1
+		H2
+		H3
+		Code
+		Mono
+		Bold
+		Italics
+		List
+		Break
+	)
+
+	tokens := [...]Token{
+		{H1, "#", "\r\n", "<h4>", "</h4>"},
+		{H2, "##", "\r\n", "<h5>", "</h5>"},
+		{H3, "###", "\r\n", "<h6>", "</h6>"},
+		{Code, "```\r\n", "\r\n```", "<pre><code>", "</code></pre>"},
+		{Mono, "`", "`", "<tt>", "</tt>"},
+		{Bold, "**", "**", "<b>", "</b>"},
+		{Bold, "__", "__", "<b>", "</b>"},
+		{Italics, "*", "*", "<i>", "</i>"},
+		{Italics, "_", "_", "<i>", "</i>"},
+		{List, "\n-", "\r", `<li class="ms-4">`, "</li>"},
+		{Break, "\r", "\n", "<br>", ""},
+	}
+
+	for len(md) > 0 {
+		var replaced bool
+
+		for i := 0; i < len(tokens); i++ {
+			tok := &tokens[i]
+
+			start := strings.FindSubstring(md, tok.Start)
+			if start == -1 {
+				continue
+			}
+
+			end := strings.FindSubstring(md[start+len(tok.Start):], tok.End)
+			if end == -1 {
+				continue
+			}
+			end += start + len(tok.Start)
+
+			if end-start == 0 {
+				continue
+			}
+			inside := md[start+len(tok.Start) : end]
+
+			DisplayMarkdown(w, md[:start])
+
+			w.AppendString(tok.RStart)
+			switch tok.Type {
+			default:
+				DisplayMarkdown(w, inside)
+			case Code, Mono:
+				w.WriteHTMLString(inside)
+			}
+			w.AppendString(tok.REnd)
+
+			md = md[end+len(tok.End):]
+			replaced = true
+			break
+		}
+
+		if !replaced {
+			w.WriteHTMLString(md)
+			break
+		}
+	}
+}

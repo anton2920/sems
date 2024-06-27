@@ -557,10 +557,10 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`<h3>`)
 			w.AppendString(Ls(GL, "Theory"))
 			w.AppendString(`</h3>`)
-			w.AppendString(`<p>`)
-			w.WriteHTMLString(lesson.Theory)
-			w.AppendString(`</p>`)
-			w.AppendString(`<br>`)
+
+			DisplayFrameStart(w)
+			DisplayMarkdown(w, lesson.Theory)
+			DisplayFrameEnd(w)
 
 			if len(lesson.Steps) > 0 {
 				w.AppendString(`<h3>`)
