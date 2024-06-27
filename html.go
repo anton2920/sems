@@ -111,7 +111,7 @@ func DisplaySidebar(w *http.Response, l Language, session *Session) {
 				DisplaySidebarLink(w, l, "/courses", "Courses")
 				DisplaySidebarLink(w, l, "/subjects", "Subjects")
 				if session.ID != AdminID {
-					DisplaySidebarLink(w, l, "/tasks", "Tasks")
+					DisplaySidebarLink(w, l, "/steps", "Steps")
 				}
 				w.AppendString(`<hr>`)
 				DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")

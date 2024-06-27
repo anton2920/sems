@@ -69,6 +69,11 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		default:
 			return LessonPageHandler(w, r)
 		}
+	case strings.StartsWith(path, "/step"):
+		switch path[len("/step"):] {
+		case "s":
+			return StepsPageHandler(w, r)
+		}
 	case strings.StartsWith(path, "/subject"):
 		switch path[len("/subject"):] {
 		default:

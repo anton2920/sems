@@ -80,7 +80,7 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 				DisplayIndexButton(w, GL, "/groups", "Groups", "Display information about groups you are a part of")
 				DisplayIndexButton(w, GL, "/courses", "Courses", "Display information about your courses, as well as create, edit and delete them")
 				DisplayIndexButton(w, GL, "/subjects", "Subjects", "Display information about subjects, that your groups are studying")
-				DisplayIndexButton(w, GL, "/tasks", "Tasks", "Display information about assigned and completed tasks")
+				DisplayIndexButton(w, GL, "/steps", "Steps", "Display information about pending and completed steps")
 			}
 		}
 		DisplayIndexButtonsEnd(w)

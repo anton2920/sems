@@ -90,6 +90,7 @@ const (
 
 const (
 	SubmissionActive int32 = iota
+	_
 	SubmissionDraft
 )
 

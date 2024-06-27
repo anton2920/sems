@@ -99,7 +99,7 @@ var Localizations = map[string]*[XX]string{
 		RU: "Отменить",
 		FR: "",
 	},
-	"Display information about assigned and completed tasks": {
+	"Display information about pending and completed steps": {
 		RU: "Просмотр информации о выданных и решённых заданиях",
 	},
 	"Display information about courses, as well as create, edit and delete them": {
@@ -280,6 +280,10 @@ var Localizations = map[string]*[XX]string{
 		RU: "Задание",
 		FR: "",
 	},
+	"Steps": {
+		RU: "Задания",
+		FR: "",
+	},
 	"Students": {
 		RU: "Студенты",
 		FR: "",
@@ -305,9 +309,6 @@ var Localizations = map[string]*[XX]string{
 	"Submitted test": {
 		RU: "Решённый тест",
 		FR: "",
-	},
-	"Tasks": {
-		RU: "Задания",
 	},
 	"Teacher": {
 		RU: "Преподаватель",
@@ -354,6 +355,9 @@ var Localizations = map[string]*[XX]string{
 	"Verification": {
 		RU: "Проверка",
 		FR: "",
+	},
+	"You don't have any unfinished steps": {
+		RU: "У вас нет невыполненных заданий",
 	},
 
 	"add at least one student": {
