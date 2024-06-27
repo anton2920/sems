@@ -172,7 +172,7 @@ func TestUserCreateHandler(t *testing.T) {
 func TestUserEditHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/user/edit"
 
-	CreateInitialDBs()
+	testCreateInitialDBs()
 
 	expectedOK := [...]url.Values{
 		{{"ID", []string{"2"}}, {"FirstName", []string{"Test"}}, {"LastName", []string{"Testovich"}}, {"Email", []string{"test@masters.com"}}, {"Password", []string{"testtest"}}, {"RepeatPassword", []string{"testtest"}}},
@@ -234,7 +234,7 @@ func TestUserEditHandler(t *testing.T) {
 func TestUserSigninHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/user/signin"
 
-	CreateInitialDBs()
+	testCreateInitialDBs()
 
 	expectedOK := [...]url.Values{
 		{{"Email", []string{"admin@masters.com"}}, {"Password", []string{"admin"}}},

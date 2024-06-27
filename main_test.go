@@ -146,7 +146,7 @@ func TestMain(m *testing.M) {
 	}
 	defer CloseDBs()
 
-	CreateInitialDBs()
+	testCreateInitialDBs()
 
 	jail.JailsRootDir = "./jails_test"
 	os.MkdirAll(jail.JailsRootDir+"/containers", 0755)

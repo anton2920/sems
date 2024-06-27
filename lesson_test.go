@@ -9,7 +9,7 @@ import (
 func TestLessonPageHandler(t *testing.T) {
 	const endpoint = "/lesson/"
 
-	CreateInitialDBs()
+	testCreateInitialDBs()
 
 	expectedOK := [...]string{"0", "1", "2"}
 
