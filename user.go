@@ -707,7 +707,7 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/users", http.StatusSeeOther)
 	return nil
 
 }
@@ -750,7 +750,7 @@ func UserDeleteHandler(w *http.Response, r *http.Request) error {
 		_ = DeleteCourseByID(user.Courses[i])
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/users", http.StatusSeeOther)
 	return nil
 }
 

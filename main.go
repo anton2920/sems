@@ -1,7 +1,6 @@
 /* TODO(anton2920):
  * - Rename DisplayInputLabel -> DisplayLabel.
  * - Check Write/Append.
- * - Fix redirects.
  */
 package main
 

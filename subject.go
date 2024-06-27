@@ -1013,7 +1013,7 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/subjects", http.StatusSeeOther)
 	return nil
 }
 
@@ -1047,7 +1047,7 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/subjects", http.StatusSeeOther)
 	return nil
 }
 

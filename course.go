@@ -634,6 +634,6 @@ func CourseDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/courses", http.StatusSeeOther)
 	return nil
 }

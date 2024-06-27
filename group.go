@@ -557,7 +557,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/groups", http.StatusSeeOther)
 	return nil
 }
 
@@ -591,7 +591,7 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.Redirect("/", http.StatusSeeOther)
+	w.Redirect("/groups", http.StatusSeeOther)
 	return nil
 }
 
