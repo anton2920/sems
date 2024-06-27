@@ -99,6 +99,12 @@ var Localizations = map[string]*[XX]string{
 		RU: "Отменить",
 		FR: "",
 	},
+	"Display information about groups, as well as create, edit and delete them": {
+		RU: "Просмотр информации о группах студентов, а также их создание, редактирование и удаление",
+	},
+	"Display information about groups you are a part of": {
+		RU: "Просмотр информации о группах, в которых вы состоите",
+	},
 	"Display information about users, as well as create, edit and delete them": {
 		RU: "Просмотр информации о пользователях, а также их создание, редактирование и удаление",
 	},
@@ -155,6 +161,9 @@ var Localizations = map[string]*[XX]string{
 	},
 	"Groups": {
 		RU: "Группы",
+	},
+	"Home page": {
+		RU: "Домашняя страница",
 	},
 	"ID out of range": {
 		RU: "ID вне допустимого диапазона",

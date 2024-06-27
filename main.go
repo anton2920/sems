@@ -55,6 +55,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/group"):] {
 		default:
 			return GroupPageHandler(w, r)
+		case "s":
+			return GroupsPageHandler(w, r)
 		case "/create":
 			return GroupCreatePageHandler(w, r, nil)
 		case "/edit":

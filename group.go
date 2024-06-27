@@ -185,6 +185,93 @@ func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 	w.AppendString(`</a>`)
 }
 
+func GroupsPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthMedium
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Groups"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
+
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItem(w, GL, "Groups")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
+		{
+			w.AppendString(`<h2 class="text-center">`)
+			w.AppendString(Ls(GL, "Groups"))
+			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
+
+			DisplayTableStart(w, GL, []string{"ID", "Name", "Created on", "Status"})
+			{
+				groups := make([]Group, 32)
+				var pos int64
+
+				for {
+					n, err := GetGroups(&pos, groups)
+					if err != nil {
+						return http.ServerError(err)
+					}
+					if n == 0 {
+						break
+					}
+
+					for i := 0; i < n; i++ {
+						group := &groups[i]
+
+						if !UserInGroup(session.ID, group) {
+							continue
+						}
+
+						DisplayTableRowLinkIDStart(w, "/group", group.ID)
+
+						DisplayTableItemString(w, group.Name)
+						DisplayTableItemTime(w, group.CreatedOn)
+						DisplayTableItemFlags(w, GL, group.Flags)
+
+						DisplayTableRowEnd(w)
+					}
+				}
+			}
+			DisplayTableEnd(w)
+
+			if session.ID == AdminID {
+				w.AppendString(`<br>`)
+				w.AppendString(`<form method="POST" action="/group/create">`)
+				DisplaySubmit(w, GL, "", "Create group", true)
+				w.AppendString(`</form>`)
+			}
+		}
+		DisplayPageEnd(w)
+		DisplayMainEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
+}
+
 func GroupPageHandler(w *http.Response, r *http.Request) error {
 	const width = WidthLarge
 

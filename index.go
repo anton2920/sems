@@ -3,6 +3,9 @@ package main
 import "github.com/anton2920/gofa/net/http"
 
 func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
+	w.AppendString(`<div class="container-fluid">`)
+	w.AppendString(`<div class="row">`)
+
 	w.AppendString(`<div aria-live="polite" class="position-relative">`)
 	w.AppendString(`<div class="top-0 end-0 p-3">`)
 	w.AppendString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">`)
@@ -40,6 +43,8 @@ func DisplayIndexButton(w *http.Response, l Language, href string, h2 string, p 
 
 func DisplayIndexButtonsEnd(w *http.Response) {
 	w.AppendString(`</div></div></main></div></div>`)
+	w.AppendString(`</div>`)
+	w.AppendString(`</div>`)
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
@@ -64,22 +69,20 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		DisplayHeader(w, GL)
 		DisplaySidebar(w, GL, session)
 
-		w.AppendString(`<div class="container-fluid">`)
-		w.AppendString(`<div class="row">`)
-
-		DisplayIndexButtonsStart(w, GL, "Administration")
+		DisplayIndexButtonsStart(w, GL, "Home page")
 		{
 			if session.ID == AdminID {
 				DisplayIndexButton(w, GL, "/users", "Users", "Display information about users, as well as create, edit and delete them")
+				DisplayIndexButton(w, GL, "/groups", "Groups", "Display information about groups, as well as create, edit and delete them")
+				DisplayIndexButton(w, GL, "/courses", "Courses", "Create, edit and delete courses")
+				DisplayIndexButton(w, GL, "/subjects", "Subjects", "Create, edit and delete subjects")
+			} else {
+				DisplayIndexButton(w, GL, "/groups", "Groups", "Display information about groups you are a part of")
+				DisplayIndexButton(w, GL, "/courses", "Courses", "Create, edit and delete courses")
+				DisplayIndexButton(w, GL, "/subjects", "Subjects", "Create, edit and delete subjects")
 			}
-			DisplayIndexButton(w, GL, "/groups", "Groups", "Create, edit and delete groups")
-			DisplayIndexButton(w, GL, "/courses", "Courses", "Create, edit and delete courses")
-			DisplayIndexButton(w, GL, "/subjects", "Subjects", "Create, edit and delete subjects")
 		}
 		DisplayIndexButtonsEnd(w)
-
-		w.AppendString(`</div>`)
-		w.AppendString(`</div>`)
 	}
 	DisplayBodyEnd(w)
 
