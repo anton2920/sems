@@ -822,7 +822,7 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 			w.AppendString(Ls(GL, "Solution"))
 			w.AppendString(`</h3>`)
 
-			DisplayInputLabel(w, GL, "Programming language")
+			DisplayLabel(w, GL, "Programming language")
 			DisplaySubmissionLanguageSelect(w, submittedTask, false)
 			w.AppendString(`<br>`)
 
@@ -1279,7 +1279,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 			w.AppendString(Ls(GL, "Solution"))
 			w.AppendString(`</h4>`)
 
-			DisplayInputLabel(w, GL, "Programming language")
+			DisplayLabel(w, GL, "Programming language")
 			DisplaySubmissionLanguageSelect(w, submittedTask, true)
 			w.AppendString(`</label>`)
 			w.AppendString(`<br>`)

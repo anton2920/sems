@@ -530,23 +530,23 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 
 		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
-			DisplayInputLabel(w, GL, "First name")
+			DisplayLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Last name")
+			DisplayLabel(w, GL, "Last name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Email")
+			DisplayLabel(w, GL, "Email")
 			DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Password")
+			DisplayLabel(w, GL, "Password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Repeat password")
+			DisplayLabel(w, GL, "Repeat password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
 			w.AppendString(`<br>`)
 
@@ -635,11 +635,11 @@ func UserSigninPageHandler(w *http.Response, r *http.Request, err error) error {
 
 		w.AppendString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
 
-		DisplayInputLabel(w, GL, "Email")
+		DisplayLabel(w, GL, "Email")
 		DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
 		w.AppendString(`<br>`)
 
-		DisplayInputLabel(w, GL, "Password")
+		DisplayLabel(w, GL, "Password")
 		DisplayInput(w, "password", "Password", r.Form.Get("Password"), true)
 		w.AppendString(`<br>`)
 

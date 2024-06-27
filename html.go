@@ -443,7 +443,7 @@ func DisplayTableEnd(w *http.Response) {
 	w.AppendString(`</table>`)
 }
 
-func DisplayInputLabel(w *http.Response, l Language, text string) {
+func DisplayLabel(w *http.Response, l Language, text string) {
 	w.AppendString(`<label class="form-label">`)
 	w.AppendString(Ls(l, text))
 	w.AppendString(`:<br>`)

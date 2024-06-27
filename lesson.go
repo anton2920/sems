@@ -869,7 +869,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 		{
 			DisplayFormTitle(w, GL, "Test", err)
 
-			DisplayInputLabel(w, GL, "Title")
+			DisplayLabel(w, GL, "Title")
 			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", test.Name, true)
 			w.AppendString(`<br>`)
 
@@ -887,7 +887,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 				w.WriteInt(i + 1)
 				w.AppendString(`</b></p>`)
 
-				DisplayInputLabel(w, GL, "Title")
+				DisplayLabel(w, GL, "Title")
 				DisplayConstraintInput(w, "text", MinQuestionLen, MaxQuestionLen, "Question", question.Name, true)
 				w.AppendString(`<br>`)
 
@@ -1094,11 +1094,11 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 		{
 			DisplayFormTitle(w, GL, "Programming task", err)
 
-			DisplayInputLabel(w, GL, "Name")
+			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinStepNameLen, MaxStepNameLen, "Name", task.Name, true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Description")
+			DisplayLabel(w, GL, "Description")
 			DisplayConstraintTextarea(w, MinDescriptionLen, MaxDescriptionLen, "Description", task.Description, true)
 			w.AppendString(`<br>`)
 
@@ -1190,11 +1190,11 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 		{
 			DisplayFormTitle(w, GL, "Lesson", err)
 
-			DisplayInputLabel(w, GL, "Name")
+			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", lesson.Name, true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Theory")
+			DisplayLabel(w, GL, "Theory")
 			DisplayConstraintTextarea(w, MinTheoryLen, MaxTheoryLen, "Theory", lesson.Theory, true)
 			w.AppendString(`<br>`)
 

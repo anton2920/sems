@@ -351,7 +351,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 		{
 			DisplayHiddenString(w, "CurrentPage", "Course")
 
-			DisplayInputLabel(w, GL, "Name")
+			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)
 			w.AppendString(`<br>`)
 

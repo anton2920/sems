@@ -568,15 +568,15 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 
 		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
-			DisplayInputLabel(w, GL, "Name")
+			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Teacher")
+			DisplayLabel(w, GL, "Teacher")
 			DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Group")
+			DisplayLabel(w, GL, "Group")
 			DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
 			w.AppendString(`<br>`)
 

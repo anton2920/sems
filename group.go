@@ -447,11 +447,11 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 
 		DisplayFormPageStart(w, r, GL, width, title, endpoint, err)
 		{
-			DisplayInputLabel(w, GL, "Name")
+			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinGroupNameLen, MaxGroupNameLen, "Name", r.Form.Get("Name"), true)
 			w.AppendString(`<br>`)
 
-			DisplayInputLabel(w, GL, "Students")
+			DisplayLabel(w, GL, "Students")
 			DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
 			w.AppendString(`<br>`)
 

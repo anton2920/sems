@@ -1,5 +1,4 @@
 /* TODO(anton2920):
- * - Rename DisplayInputLabel -> DisplayLabel.
  * - Check Write/Append.
  */
 package main
