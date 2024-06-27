@@ -644,11 +644,11 @@ func DisplayMarkdown(w *http.Response, md string) {
 	)
 
 	tokens := [...]Token{
+		{Code, "```\r\n", "\r\n```", "<pre><code>", "</code></pre>"},
+		{Mono, "`", "`", "<tt>", "</tt>"},
 		{H1, "#", "\r\n", "<h4>", "</h4>"},
 		{H2, "##", "\r\n", "<h5>", "</h5>"},
 		{H3, "###", "\r\n", "<h6>", "</h6>"},
-		{Code, "```\r\n", "\r\n```", "<pre><code>", "</code></pre>"},
-		{Mono, "`", "`", "<tt>", "</tt>"},
 		{Bold, "**", "**", "<b>", "</b>"},
 		{Bold, "__", "__", "<b>", "</b>"},
 		{Italics, "*", "*", "<i>", "</i>"},
