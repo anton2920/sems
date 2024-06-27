@@ -39,25 +39,44 @@ func DisplayError(w *http.Response, l Language, err error) {
 	DisplayErrorMessage(w, l, message)
 }
 
-func ErrorPageHandler(w *http.Response, l Language, err error) {
+func ErrorPageHandler(w *http.Response, r *http.Request, l Language, err error) {
+	const width = WidthMedium
+
 	w.Bodies = w.Bodies[:0]
 
-	w.AppendString(`<!DOCTYPE html>`)
-	w.AppendString(`<head><title>`)
-	w.AppendString(Ls(l, "Error"))
-	w.AppendString(`</title></head>`)
+	session, _ := GetSessionFromRequest(r)
 
-	w.AppendString(`<body>`)
+	DisplayHTMLStart(w)
 
-	w.AppendString(`<h1>`)
-	w.AppendString(Ls(l, "Master's degree"))
-	w.AppendString(`</h1>`)
-	w.AppendString(`<h2>`)
-	w.AppendString(Ls(l, "Error"))
-	w.AppendString(`</h2>`)
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(l, "Error"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
 
-	DisplayError(w, l, err)
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, l)
+		if session != nil {
+			DisplaySidebar(w, l, session)
+		}
 
-	w.AppendString(`</body>`)
-	w.AppendString(`</html>`)
+		DisplayMainStart(w)
+
+		DisplayPageStart(w, width)
+		{
+			w.AppendString(`<h2>`)
+			w.AppendString(Ls(l, "Error"))
+			w.AppendString(`</h2>`)
+
+			DisplayError(w, l, err)
+		}
+		DisplayPageEnd(w)
+		DisplayMainEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
 }

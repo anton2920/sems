@@ -195,7 +195,7 @@ func Router(ws []http.Response, rs []http.Request) {
 
 		err := RouterFunc(w, r)
 		if err != nil {
-			ErrorPageHandler(w, GL, err)
+			ErrorPageHandler(w, r, GL, err)
 			if (w.StatusCode >= http.StatusBadRequest) && (w.StatusCode < http.StatusInternalServerError) {
 				level = log.LevelWarn
 			} else {
