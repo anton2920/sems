@@ -364,7 +364,7 @@ func main() {
 		default:
 			log.Panicf("Unhandled event: %#v", e)
 		case event.Read:
-			ctx, err := http.Accept(l, PageSize)
+			ctx, err := http.Accept(l, PageSize*20)
 			if err != nil {
 				log.Errorf("Failed to accept new HTTP connection: %v", err)
 				continue

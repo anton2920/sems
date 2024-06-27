@@ -632,28 +632,28 @@ func DisplayMarkdown(w *http.Response, md string) {
 
 	const (
 		None = iota
-		H1
-		H2
-		H3
 		Code
+		H3
+		H2
+		H1
+		List
 		Mono
 		Bold
 		Italics
-		List
 		Break
 	)
 
 	tokens := [...]Token{
-		{Code, "```\r\n", "\r\n```", "<pre><code>", "</code></pre>"},
-		{Mono, "`", "`", "<tt>", "</tt>"},
-		{H1, "#", "\r\n", "<h4>", "</h4>"},
-		{H2, "##", "\r\n", "<h5>", "</h5>"},
+		{Code, "```\r\n", "\r\n```\r\n", "<pre><code>", "</code></pre>"},
 		{H3, "###", "\r\n", "<h6>", "</h6>"},
+		{H2, "##", "\r\n", "<h5>", "</h5>"},
+		{H1, "#", "\r\n", "<h4>", "</h4>"},
+		{List, "\n-", "\r", `<li class="ms-4">`, "</li>"},
+		{Mono, "`", "`", "<tt>", "</tt>"},
 		{Bold, "**", "**", "<b>", "</b>"},
 		{Bold, "__", "__", "<b>", "</b>"},
 		{Italics, "*", "*", "<i>", "</i>"},
 		{Italics, "_", "_", "<i>", "</i>"},
-		{List, "\n-", "\r", `<li class="ms-4">`, "</li>"},
 		{Break, "\r", "\n", "<br>", ""},
 	}
 

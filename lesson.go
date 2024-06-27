@@ -99,7 +99,7 @@ const (
 
 const (
 	MinTheoryLen = 1
-	MaxTheoryLen = 2048
+	MaxTheoryLen = 4096
 
 	MinStepNameLen = 1
 	MaxStepNameLen = 128
