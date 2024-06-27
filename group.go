@@ -197,7 +197,7 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 	id, err := GetIDFromURL(GL, r.URL, "/group/")
 	if err != nil {
-		return http.ClientError(err)
+		return err
 	}
 	if err := GetGroupByID(id, &group); err != nil {
 		if err == database.NotFound {

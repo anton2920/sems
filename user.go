@@ -304,6 +304,92 @@ func DisplayUserLink(w *http.Response, l Language, user *User) {
 	w.AppendString(`</a>`)
 }
 
+func UsersPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+	if session.ID != AdminID {
+		return http.ForbiddenError
+	}
+
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Users"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
+
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItem(w, GL, "Users")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
+		{
+			w.AppendString(`<h2 class="text-center">`)
+			w.AppendString(Ls(GL, "Users"))
+			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
+
+			DisplayTableStart(w, GL, []string{"ID", "First name", "Last name", "Email", "Created on", "Status"})
+			{
+				users := make([]User, 32)
+				var pos int64
+
+				for {
+					n, err := GetUsers(&pos, users)
+					if err != nil {
+						return http.ServerError(err)
+					}
+					if n == 0 {
+						break
+					}
+
+					for i := 0; i < n; i++ {
+						user := &users[i]
+
+						DisplayTableRowLinkIDStart(w, "/user", user.ID)
+
+						DisplayTableItemString(w, user.FirstName)
+						DisplayTableItemString(w, user.LastName)
+						DisplayTableItemString(w, user.Email)
+						DisplayTableItemTime(w, user.CreatedOn)
+						DisplayTableItemFlags(w, GL, user.Flags)
+
+						DisplayTableRowEnd(w)
+					}
+				}
+			}
+			DisplayTableEnd(w)
+			w.AppendString(`<br>`)
+
+			w.AppendString(`<form method="POST" action="/user/create">`)
+			DisplaySubmit(w, GL, "", "Create user", true)
+			w.AppendString(`</form>`)
+		}
+		DisplayPageEnd(w)
+		DisplayMainEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
+}
+
 func UserPageHandler(w *http.Response, r *http.Request) error {
 	const width = WidthLarge
 

@@ -293,6 +293,94 @@ func DisplayFrameEnd(w *http.Response) {
 	w.AppendString(`<br>`)
 }
 
+func DisplayTableStart(w *http.Response, l Language, cols []string) {
+	w.AppendString(`<table class="table table-bordered table-stripped table-hover">`)
+
+	w.AppendString(`<thead>`)
+	w.AppendString(`<tr>`)
+	for i := 0; i < len(cols); i++ {
+		w.AppendString(`<th class="text-center" scope="col">`)
+		w.AppendString(Ls(l, cols[i]))
+		w.AppendString(`</th>`)
+	}
+	w.AppendString(`</tr>`)
+	w.AppendString(`</thead>`)
+
+	w.AppendString(`<tbody>`)
+}
+
+func DisplayTableRowStart(w *http.Response) {
+	w.AppendString(`<tr>`)
+}
+
+func DisplayTableRowLinkIDStart(w *http.Response, prefix string, id database.ID) {
+	DisplayTableRowStart(w)
+
+	w.AppendString(`<th class="text-center align-middle" scope="row">`)
+	w.AppendString(`<a href="`)
+	w.AppendString(prefix)
+	w.AppendString(`/`)
+	w.WriteID(id)
+	w.AppendString(`">`)
+	w.WriteID(id)
+	w.AppendString(`</a>`)
+	w.AppendString(`</th>`)
+}
+
+func DisplayTableItemStart(w *http.Response) {
+	w.AppendString(`<td class="text-center align-middle">`)
+}
+
+func DisplayTableItemID(w *http.Response, id database.ID) {
+	DisplayTableItemStart(w)
+	w.WriteID(id)
+	DisplayTableItemEnd(w)
+}
+
+func DisplayTableItemString(w *http.Response, s string) {
+	DisplayTableItemStart(w)
+	w.WriteHTMLString(s)
+	DisplayTableItemEnd(w)
+}
+
+func DisplayTableItemTime(w *http.Response, t int64) {
+	DisplayTableItemStart(w)
+	DisplayFormattedTime(w, t)
+	DisplayTableItemEnd(w)
+}
+
+func DisplayTableItemFlags(w *http.Response, l Language, flags int32) {
+	DisplayTableItemStart(w)
+	switch flags {
+	case 0: /* active */
+		w.AppendString(`<small class="d-inline-flex px-2 py-1 fw-semibold text-success-emphasis bg-success-subtle border border-success-subtle rounded-2">`)
+		w.AppendString(Ls(l, "Active"))
+		w.AppendString(`</small>`)
+	case 1: /* deleted */
+		w.AppendString(`<small class="d-inline-flex px-2 py-1 fw-semibold text-danger-emphasis bg-danger-subtle border border-danger-subtle rounded-2">`)
+		w.AppendString(Ls(l, "Deleted"))
+		w.AppendString(`</small>`)
+	case 2: /* draft */
+		w.AppendString(`<small class="d-inline-flex px-2 py-1 fw-semibold text-primary-emphasis bg-primary-subtle border border-primary-subtle rounded-2">`)
+		w.AppendString(Ls(l, "Deleted"))
+		w.AppendString(`</small>`)
+	}
+	DisplayTableItemEnd(w)
+}
+
+func DisplayTableItemEnd(w *http.Response) {
+	w.AppendString(`</td>`)
+}
+
+func DisplayTableRowEnd(w *http.Response) {
+	w.AppendString(`</tr>`)
+}
+
+func DisplayTableEnd(w *http.Response) {
+	w.AppendString(`</tbody>`)
+	w.AppendString(`</table>`)
+}
+
 func DisplayInputLabel(w *http.Response, l Language, text string) {
 	w.AppendString(`<label class="form-label">`)
 	w.AppendString(Ls(l, text))

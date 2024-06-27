@@ -17,6 +17,9 @@ var Language2String = [...]string{
 
 /* TODO(anton2920): remove '([A-Z]|[a-z])[a-z]+' duplicates. */
 var Localizations = map[string]*[XX]string{
+	"Active": {
+		RU: "Активнен",
+	},
 	"Administration": {
 		RU: "Управление",
 	},
@@ -85,6 +88,9 @@ var Localizations = map[string]*[XX]string{
 	"Delete": {
 		RU: "Удалить",
 	},
+	"Deleted": {
+		RU: "Удалён",
+	},
 	"Description": {
 		RU: "Описание",
 		FR: "",
@@ -92,6 +98,12 @@ var Localizations = map[string]*[XX]string{
 	"Discard": {
 		RU: "Отменить",
 		FR: "",
+	},
+	"Display information about users, as well as create, edit and delete them": {
+		RU: "Просмотр информации о пользователях, а также их создание, редактирование и удаление",
+	},
+	"Draft": {
+		RU: "Черновик",
 	},
 	"Edit": {
 		RU: "Редактировать",
@@ -236,6 +248,9 @@ var Localizations = map[string]*[XX]string{
 	"Solution": {
 		RU: "Решение",
 		FR: "",
+	},
+	"Status": {
+		RU: "Статус",
 	},
 	"Step": {
 		RU: "Задание",

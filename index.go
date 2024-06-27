@@ -70,7 +70,7 @@ func IndexPageHandler(w *http.Response, r *http.Request) error {
 		DisplayIndexButtonsStart(w, GL, "Administration")
 		{
 			if session.ID == AdminID {
-				DisplayIndexButton(w, GL, "/users", "Users", "Create, edit and delete users")
+				DisplayIndexButton(w, GL, "/users", "Users", "Display information about users, as well as create, edit and delete them")
 			}
 			DisplayIndexButton(w, GL, "/groups", "Groups", "Create, edit and delete groups")
 			DisplayIndexButton(w, GL, "/courses", "Courses", "Create, edit and delete courses")

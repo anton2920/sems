@@ -1,3 +1,7 @@
+/* TODO(anton2920):
+ * - Rename DisplayInputLabel -> DisplayLabel.
+ * - Check Write/Append.
+ */
 package main
 
 import (
@@ -85,6 +89,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/user"):] {
 		default:
 			return UserPageHandler(w, r)
+		case "s":
+			return UsersPageHandler(w, r)
 		case "/create":
 			return UserCreatePageHandler(w, r, nil)
 		case "/edit":
