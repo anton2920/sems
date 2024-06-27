@@ -75,15 +75,15 @@ func DisplaySidebarListEnd(w *http.Response) {
 
 func DisplaySidebarLink(w *http.Response, l Language, href string, text string) {
 	w.AppendString(`<a class="nav-link" href="`)
-	w.AppendString(href)
+	w.WriteString(href)
 	w.AppendString(`">`)
 	w.AppendString(Ls(l, text))
 	w.AppendString(`</a>`)
 }
 
-func DisplaySidebarLinkID(w *http.Response, l Language, prefix string, id database.ID, text string, i int, name string) {
+func DisplaySidebarLinkIDName(w *http.Response, l Language, prefix string, id database.ID, text string, i int, name string) {
 	w.AppendString(`<a class="nav-link" href="`)
-	w.AppendString(prefix)
+	w.WriteString(prefix)
 	w.AppendString(`/`)
 	w.WriteID(id)
 	w.AppendString(`">`)
@@ -164,7 +164,7 @@ func DisplaySidebarWithLessons(w *http.Response, l Language, session *Session, l
 					if err := GetLessonByID(lessons[i], &lesson); err != nil {
 						/* TODO(anton2920): report error. */
 					}
-					DisplaySidebarLinkID(w, l, "/lesson", lessons[i], "Lesson", i, lesson.Name)
+					DisplaySidebarLinkIDName(w, l, "/lesson", lessons[i], "Lesson", i, lesson.Name)
 				}
 				w.AppendString(`<hr>`)
 				DisplaySidebarLink(w, l, APIPrefix+"/user/signout", "Sign out")
@@ -374,7 +374,7 @@ func DisplayTableRowLinkIDStart(w *http.Response, prefix string, id database.ID)
 
 	w.AppendString(`<th class="text-center align-middle" scope="row">`)
 	w.AppendString(`<a href="`)
-	w.AppendString(prefix)
+	w.WriteString(prefix)
 	w.AppendString(`/`)
 	w.WriteID(id)
 	w.AppendString(`">`)

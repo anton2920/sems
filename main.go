@@ -1,6 +1,3 @@
-/* TODO(anton2920):
- * - Check Write/Append.
- */
 package main
 
 import (
