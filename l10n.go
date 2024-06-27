@@ -99,6 +99,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "Отменить",
 		FR: "",
 	},
+	"Display information about assigned and completed tasks": {
+		RU: "Просмотр информации о выданных и решённых заданиях",
+	},
 	"Display information about courses, as well as create, edit and delete them": {
 		RU: "Просмотр информации о курсах, а также их создание, редактирование и удаление",
 	},
@@ -110,6 +113,12 @@ var Localizations = map[string]*[XX]string{
 	},
 	"Display information about groups you are a part of": {
 		RU: "Просмотр информации о группах, в которых вы состоите",
+	},
+	"Display information about subjects, as well as create, edit and delete them": {
+		RU: "Просмотр информации о предметах, а также их создание, редактирование и удаление",
+	},
+	"Display information about subjects, that your groups are studying": {
+		RU: "Просмотр информации о предметах, изучаемых в ваших группах",
 	},
 	"Display information about users, as well as create, edit and delete them": {
 		RU: "Просмотр информации о пользователях, а также их создание, редактирование и удаление",
@@ -296,6 +305,9 @@ var Localizations = map[string]*[XX]string{
 	"Submitted test": {
 		RU: "Решённый тест",
 		FR: "",
+	},
+	"Tasks": {
+		RU: "Задания",
 	},
 	"Teacher": {
 		RU: "Преподаватель",

@@ -217,6 +217,116 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 	w.AppendString(`</a>`)
 }
 
+func SubjectsPageHandler(w *http.Response, r *http.Request) error {
+	const width = WidthLarge
+
+	session, err := GetSessionFromRequest(r)
+	if err != nil {
+		return http.UnauthorizedError
+	}
+
+	DisplayHTMLStart(w)
+
+	DisplayHeadStart(w)
+	{
+		w.AppendString(`<title>`)
+		w.AppendString(Ls(GL, "Subjects"))
+		w.AppendString(`</title>`)
+	}
+	DisplayHeadEnd(w)
+
+	DisplayBodyStart(w)
+	{
+		DisplayHeader(w, GL)
+		DisplaySidebar(w, GL, session)
+
+		DisplayMainStart(w)
+
+		DisplayCrumbsStart(w, width)
+		{
+			DisplayCrumbsItem(w, GL, "Subjects")
+		}
+		DisplayCrumbsEnd(w)
+
+		DisplayPageStart(w, width)
+		{
+			w.AppendString(`<h2 class="text-center">`)
+			w.AppendString(Ls(GL, "Subjects"))
+			w.AppendString(`</h2>`)
+			w.AppendString(`<br>`)
+
+			DisplayTableStart(w, GL, []string{"ID", "Name", "Teacher", "Group", "Lessons", "Status"})
+			{
+				subjects := make([]Subject, 32)
+				var pos int64
+
+				for {
+					n, err := GetSubjects(&pos, subjects)
+					if err != nil {
+						return http.ServerError(err)
+					}
+					if n == 0 {
+						break
+					}
+
+					for i := 0; i < n; i++ {
+						subject := &subjects[i]
+
+						who, err := WhoIsUserInSubject(session.ID, subject)
+						if err != nil {
+							return http.ServerError(err)
+						}
+						if who == SubjectUserNone {
+							continue
+						}
+
+						var teacher User
+						if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
+							return http.ServerError(err)
+						}
+
+						var group Group
+						if err := GetGroupByID(subject.GroupID, &group); err != nil {
+							return http.ServerError(err)
+						}
+
+						DisplayTableRowLinkIDStart(w, "/subject", subject.ID)
+
+						DisplayTableItemString(w, subject.Name)
+
+						DisplayTableItemStart(w)
+						DisplayUserTitle(w, GL, &teacher)
+						DisplayTableItemEnd(w)
+
+						DisplayTableItemStart(w)
+						DisplayGroupTitle(w, GL, &group)
+						DisplayTableItemEnd(w)
+
+						DisplayTableItemInt(w, len(subject.Lessons))
+						DisplayTableItemFlags(w, GL, subject.Flags)
+
+						DisplayTableRowEnd(w)
+					}
+				}
+			}
+			DisplayTableEnd(w)
+
+			if session.ID == AdminID {
+				w.AppendString(`<br>`)
+				w.AppendString(`<form method="POST" action="/subject/create">`)
+				DisplaySubmit(w, GL, "", "Create subject", true)
+				w.AppendString(`</form>`)
+			}
+		}
+		DisplayPageEnd(w)
+		DisplayMainEnd(w)
+	}
+	DisplayBodyEnd(w)
+
+	DisplayHTMLEnd(w)
+	return nil
+}
+
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	const width = WidthLarge
 

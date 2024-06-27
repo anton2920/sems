@@ -73,6 +73,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		switch path[len("/subject"):] {
 		default:
 			return SubjectPageHandler(w, r)
+		case "s":
+			return SubjectsPageHandler(w, r)
 		case "/create":
 			return SubjectCreatePageHandler(w, r, nil)
 		case "/edit":
