@@ -167,6 +167,9 @@ var Localizations = map[string]*[XX]string{
 		RU: "Отправить",
 		FR: "",
 	},
+	"Finished at": {
+		RU: "Закончил выполнение",
+	},
 	"First name": {
 		RU: "Имя",
 		FR: "",
@@ -272,6 +275,9 @@ var Localizations = map[string]*[XX]string{
 	"Solution": {
 		RU: "Решение",
 		FR: "",
+	},
+	"Started at": {
+		RU: "Приступил к выполнению",
 	},
 	"Status": {
 		RU: "Статус",

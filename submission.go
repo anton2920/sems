@@ -482,6 +482,18 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 			w.AppendString(`</h2>`)
 			w.AppendString(`<br>`)
 
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Started at"))
+			w.AppendString(`: `)
+			DisplayFormattedTime(w, submission.StartedAt)
+			w.AppendString(`</p>`)
+
+			w.AppendString(`<p>`)
+			w.AppendString(Ls(GL, "Finished at"))
+			w.AppendString(`: `)
+			DisplayFormattedTime(w, submission.FinishedAt)
+			w.AppendString(`</p>`)
+
 			w.AppendString(`<form method="POST" action="/submission/results">`)
 
 			DisplayHiddenID(w, "ID", id)
