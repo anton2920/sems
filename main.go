@@ -204,8 +204,8 @@ func Router(ws []http.Response, rs []http.Request) {
 		}
 
 		level := log.LevelDebug
-		start := time.UnixNs()
 
+		start := time.RDTSC()
 		err := RouterFunc(w, r)
 		if err != nil {
 			ErrorPageHandler(w, r, GL, err)
@@ -224,7 +224,10 @@ func Router(ws []http.Response, rs []http.Request) {
 				break
 			}
 		}
-		log.Logf(level, "[%21s] %7s %s -> %v (%v), %4dµs", addr, r.Method, r.URL.Path, w.StatusCode, err, (time.UnixNs()-start)/1000)
+		end := time.RDTSC()
+		elapsed := end - start
+
+		log.Logf(level, "[%21s] %7s %s -> %v (%v), %4dµs", addr, r.Method, r.URL.Path, w.StatusCode, err, elapsed.ToUsec())
 	}
 }
 
