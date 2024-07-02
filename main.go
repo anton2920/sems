@@ -229,40 +229,49 @@ func Router(ws []http.Response, rs []http.Request) {
 }
 
 func ServerWorker(q *event.Queue) {
+	events := make([]event.Event, 64)
+
 	const batchSize = 32
 	ws := make([]http.Response, batchSize)
 	rs := make([]http.Request, batchSize)
 
 	for {
-		var e event.Event
-		if err := q.GetEvent(&e); err != nil {
-			log.Errorf("Failed to get event from client queue: %v", err)
-			continue
-		}
-
-		ctx, ok := http.GetContextFromEvent(&e)
-		if !ok {
-			continue
-		}
-		if e.EndOfFile {
-			http.Close(ctx)
-			continue
-		}
-
-		n, err := http.ReadRequests(ctx, rs)
+		n, err := q.GetEvents(events)
 		if err != nil {
-			log.Errorf("Failed to read HTTP requests: %v", err)
-			http.Close(ctx)
+			log.Errorf("Failed to get events from client queue: %v", err)
 			continue
 		}
 
-		Router(ws[:n], rs[:n])
+		for i := 0; i < n; i++ {
+			event := &events[i]
+			if errno := event.Error(); errno != 0 {
+				log.Errorf("Event for %v returned code %d (%s)", event.Identifier, errno, errno)
+			}
 
-		_, err = http.WriteResponses(ctx, ws[:n], DateBuffer)
-		if err != nil {
-			log.Errorf("Failed to write HTTP responses: %v", err)
-			http.Close(ctx)
-			continue
+			ctx, ok := http.GetContextFromEvent(event)
+			if !ok {
+				continue
+			}
+			if event.EndOfFile() {
+				http.Close(ctx)
+				continue
+			}
+
+			n, err := http.ReadRequests(ctx, rs)
+			if err != nil {
+				log.Errorf("Failed to read HTTP requests: %v", err)
+				http.Close(ctx)
+				continue
+			}
+
+			Router(ws[:n], rs[:n])
+
+			_, err = http.WriteResponses(ctx, ws[:n], DateBuffer)
+			if err != nil {
+				log.Errorf("Failed to write HTTP responses: %v", err)
+				http.Close(ctx)
+				continue
+			}
 		}
 	}
 }
@@ -349,35 +358,40 @@ func main() {
 		go ServerWorker(qs[i])
 	}
 
+	events := make([]event.Event, 64)
 	now := time.Unix()
 	var counter int
 
 	var quit bool
 	for !quit {
-		var e event.Event
-		if err := q.GetEvent(&e); err != nil {
-			log.Errorf("Failed to get event: %v", err)
+		n, err := q.GetEvents(events)
+		if err != nil {
+			log.Errorf("Failed to get events: %v", err)
 			continue
 		}
 
-		switch e.Type {
-		default:
-			log.Panicf("Unhandled event: %#v", e)
-		case event.Read:
-			ctx, err := http.Accept(l, PageSize*20)
-			if err != nil {
-				log.Errorf("Failed to accept new HTTP connection: %v", err)
-				continue
+		for i := 0; i < n; i++ {
+			e := &events[i]
+
+			switch e.Type {
+			default:
+				log.Panicf("Unhandled event: %#v", e)
+			case event.Read:
+				ctx, err := http.Accept(l, PageSize*20)
+				if err != nil {
+					log.Errorf("Failed to accept new HTTP connection: %v", err)
+					continue
+				}
+				_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
+				counter++
+			case event.Timer:
+				now += e.Data
+				time.PutTmRFC822(DateBuffer, time.ToTm(now))
+			case event.Signal:
+				log.Infof("Received signal %d, exitting...", e.Identifier)
+				quit = true
+				break
 			}
-			_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
-			counter++
-		case event.Timer:
-			now += e.Available
-			time.PutTmRFC822(DateBuffer, time.ToTm(now))
-		case event.Signal:
-			log.Infof("Received signal %d, exitting...", e.Identifier)
-			quit = true
-			break
 		}
 	}
 
