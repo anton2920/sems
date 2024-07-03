@@ -11,6 +11,7 @@ import (
 	"github.com/anton2920/gofa/event"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/net/http/http1"
 	"github.com/anton2920/gofa/net/tcp"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
@@ -193,7 +194,7 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	}
 }
 
-func Router(ws []http.Response, rs []http.Request) {
+func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 	for i := 0; i < len(rs); i++ {
 		w := &ws[i]
 		r := &rs[i]
@@ -216,7 +217,7 @@ func Router(ws []http.Response, rs []http.Request) {
 			}
 		}
 
-		addr := r.RemoteAddr
+		addr := ctx.ClientAddress
 		for i := 0; i < len(r.Headers); i++ {
 			header := r.Headers[i]
 			if strings.StartsWith(header, "X-Forwarded-For: ") {
@@ -251,7 +252,7 @@ func ServerWorker(q *event.Queue) {
 				log.Errorf("Event for %v returned code %d (%s)", event.Identifier, errno, errno)
 			}
 
-			ctx, ok := http.GetContextFromEvent(event)
+			ctx, ok := http.GetContextFromPointer(event.UserData)
 			if !ok {
 				continue
 			}
@@ -260,18 +261,39 @@ func ServerWorker(q *event.Queue) {
 				continue
 			}
 
-			n, err := http.ReadRequests(ctx, rs)
-			if err != nil {
-				log.Errorf("Failed to read HTTP requests: %v", err)
-				http.Close(ctx)
-				continue
+			var read int
+			for read < event.Data {
+				n, err := http.Read(ctx)
+				if err != nil {
+					if err == http.NoSpaceLeft {
+						/* TODO(anton2920): http.Error(ctx, err). */
+						break
+					}
+					log.Errorf("Failed to read data from client: %v")
+					http.Close(ctx)
+					break
+				}
+				read += n
+
+				for {
+					n, err = http1.ParseRequests(ctx, rs)
+					if err != nil {
+						/* TODO(anton2920): http.Error(ctx, err). */
+						break
+					}
+					if n == 0 {
+						break
+					}
+
+					Router(ctx, ws[:n], rs[:n])
+
+					http1.FillResponses(ctx, ws[:n], DateBuffer)
+				}
 			}
 
-			Router(ws[:n], rs[:n])
-
-			_, err = http.WriteResponses(ctx, ws[:n], DateBuffer)
+			_, err = http.Write(ctx)
 			if err != nil {
-				log.Errorf("Failed to write HTTP responses: %v", err)
+				log.Errorf("Failed to write data to client: %v", err)
 				http.Close(ctx)
 				continue
 			}
@@ -380,7 +402,7 @@ func main() {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
 			case event.Read:
-				ctx, err := http.Accept(l, PageSize*20)
+				ctx, err := http.Accept(l, PageSize)
 				if err != nil {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
