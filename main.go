@@ -215,9 +215,10 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 			} else {
 				level = log.LevelError
 			}
+			http.CloseAfterWrite(ctx)
 		}
 
-		addr := ctx.ClientAddress
+		addr := r.RemoteAddr
 		for i := 0; i < len(r.Headers); i++ {
 			header := r.Headers[i]
 			if strings.StartsWith(header, "X-Forwarded-For: ") {
@@ -247,55 +248,57 @@ func ServerWorker(q *event.Queue) {
 		}
 
 		for i := 0; i < n; i++ {
-			event := &events[i]
-			if errno := event.Error(); errno != 0 {
-				log.Errorf("Event for %v returned code %d (%s)", event.Identifier, errno, errno)
+			e := &events[i]
+			if errno := e.Error(); errno != 0 {
+				log.Errorf("Event for %v returned code %d (%s)", e.Identifier, errno, errno)
+				continue
 			}
 
-			ctx, ok := http.GetContextFromPointer(event.UserData)
+			ctx, ok := http.GetContextFromPointer(e.UserData)
 			if !ok {
 				continue
 			}
-			if event.EndOfFile() {
+			if e.EndOfFile() {
 				http.Close(ctx)
 				continue
 			}
 
-			var read int
-			for read < event.Data {
-				n, err := http.Read(ctx)
-				if err != nil {
-					if err == http.NoSpaceLeft {
-						/* TODO(anton2920): http.Error(ctx, err). */
-						break
-					}
-					log.Errorf("Failed to read data from client: %v")
-					http.Close(ctx)
-					break
-				}
-				read += n
-
-				for {
-					n, err = http1.ParseRequests(ctx, rs)
+			switch e.Type {
+			case event.Read:
+				var read int
+				for read < e.Data {
+					n, err := http.Read(ctx)
 					if err != nil {
-						/* TODO(anton2920): http.Error(ctx, err). */
+						if err == http.NoSpaceLeft {
+							http1.FillError(ctx, err, DateBuffer)
+							http.CloseAfterWrite(ctx)
+							break
+						}
+						log.Errorf("Failed to read data from client: %v")
+						http.Close(ctx)
 						break
 					}
-					if n == 0 {
-						break
+					read += n
+
+					for n > 0 {
+						n, err = http1.ParseRequestsUnsafe(ctx, rs)
+						if err != nil {
+							http1.FillError(ctx, err, DateBuffer)
+							http.CloseAfterWrite(ctx)
+							break
+						}
+						Router(ctx, ws[:n], rs[:n])
+						http1.FillResponses(ctx, ws[:n], DateBuffer)
 					}
-
-					Router(ctx, ws[:n], rs[:n])
-
-					http1.FillResponses(ctx, ws[:n], DateBuffer)
 				}
-			}
-
-			_, err = http.Write(ctx)
-			if err != nil {
-				log.Errorf("Failed to write data to client: %v", err)
-				http.Close(ctx)
-				continue
+				fallthrough
+			case event.Write:
+				_, err = http.Write(ctx)
+				if err != nil {
+					log.Errorf("Failed to write data to client: %v", err)
+					http.Close(ctx)
+					continue
+				}
 			}
 		}
 	}
