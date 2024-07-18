@@ -43,7 +43,7 @@ func ErrorPageHandler(w *http.Response, r *http.Request, l Language, err error) 
 	const width = WidthMedium
 
 	w.Headers.Set("Connection", "close")
-	w.Bodies = w.Bodies[:0]
+	w.Body = w.Body[:0]
 
 	session, _ := GetSessionFromRequest(r)
 

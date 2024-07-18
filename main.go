@@ -155,6 +155,7 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 	return http.NotFound(Ls(GL, "requested API endpoint does not exist"))
 }
 
+/* TODO(anton2920): maybe switch to sendfile(2)? */
 func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 	switch path {
 	case "/bootstrap.min.css":
@@ -204,6 +205,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 			w.AppendString("Hello, world!\n")
 			continue
 		}
+		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
 
 		level := log.LevelDebug
 
