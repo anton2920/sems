@@ -271,7 +271,7 @@ func ServerWorker(q *event.Queue) {
 							http.CloseAfterWrite(ctx)
 							break
 						}
-						log.Errorf("Failed to read data from client: %v")
+						log.Errorf("Failed to read data from client: %v", err)
 						http.Close(ctx)
 						break
 					}

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/net/url"
 )
 
 func TestGroupPageHandler(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGroupPageHandler(t *testing.T) {
 }
 
 func testGroupCreateEditPageHandler(t *testing.T, endpoint string) {
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}}, http.StatusOK)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{"ID": {"0"}, "Name": {"Test group"}, "StudentID": {"a"}}, http.StatusOK)
 
 	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
@@ -60,15 +60,15 @@ func TestGroupCreateHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/group/create"
 
 	expectedOK := [...]url.Values{
-		{{"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{"Name": {"Test group"}, "StudentID": {"1", "2", "3"}},
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"Name", []string{testString(MinGroupNameLen - 1)}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"Name", []string{testString(MaxGroupNameLen + 1)}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"Name", []string{"Test group"}}},
-		{{"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
-		{{"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},
+		{"Name": {testString(MinGroupNameLen - 1)}, "StudentID": {"1", "2", "3"}},
+		{"Name": {testString(MaxGroupNameLen + 1)}, "StudentID": {"1", "2", "3"}},
+		{"Name": {"Test group"}},
+		{"Name": {"Test group"}, "StudentID": {"0"}},
+		{"Name": {"Test group"}, "StudentID": {"a"}},
 	}
 
 	expectedForbidden := expectedOK[0]
@@ -98,22 +98,22 @@ func TestGroupEditHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/group/edit"
 
 	expectedOK := [...]url.Values{
-		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{"ID": {"1"}, "Name": {"Test group"}, "StudentID": {"1", "2", "3"}},
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"ID", []string{"a"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{testString(MinGroupNameLen - 1)}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{testString(MaxGroupNameLen + 1)}}, {"StudentID", []string{"1", "2", "3"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"0"}}},
-		{{"ID", []string{"1"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"a"}}},
+		{"ID": {"a"}, "Name": {"Test group"}, "StudentID": {"1", "2", "3"}},
+		{"ID": {"1"}, "Name": {testString(MinGroupNameLen - 1)}, "StudentID": {"1", "2", "3"}},
+		{"ID": {"1"}, "Name": {testString(MaxGroupNameLen + 1)}, "StudentID": {"1", "2", "3"}},
+		{"ID": {"1"}, "Name": {"Test group"}},
+		{"ID": {"1"}, "Name": {"Test group"}, "StudentID": {"0"}},
+		{"ID": {"1"}, "Name": {"Test group"}, "StudentID": {"a"}},
 	}
 
 	expectedForbidden := expectedOK[0]
 
 	expectedNotFound := [...]url.Values{
-		{{"ID", []string{"2"}}, {"Name", []string{"Test group"}}, {"StudentID", []string{"1", "2", "3"}}},
+		{"ID": {"2"}, "Name": {"Test group"}, "StudentID": {"1", "2", "3"}},
 	}
 
 	for _, test := range expectedOK {

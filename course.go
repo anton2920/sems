@@ -448,11 +448,29 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 			return http.ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
+			if err == database.NotFound {
+				return http.NotFound("course with this ID does not exist")
+			}
 			return http.ServerError(err)
 		}
 	}
 	course.Flags = CourseDraft
 	defer SaveCourse(&course)
+
+	for i := 0; i < len(r.Form.Keys); i++ {
+		k := r.Form.Keys[i]
+
+		/* 'command' is button, which modifies content of a current page. */
+		if strings.StartsWith(k, "Command") {
+			if len(r.Form.Values[i]) == 0 {
+				continue
+			}
+			v := r.Form.Values[i][0]
+
+			/* NOTE(anton2920): after command is executed, function must return. */
+			return CourseCreateEditHandleCommand(w, r, GL, session, &course, currentPage, k, v)
+		}
+	}
 
 	/* 'currentPage' is the page to save before leaving it. */
 	switch currentPage {
@@ -510,21 +528,6 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 		if err := LessonProgrammingFillFromRequest(r.Form, task); err != nil {
 			return LessonAddProgrammingPageHandler(w, r, session, &course.LessonContainer, &lesson, task, err)
-		}
-	}
-
-	for i := 0; i < len(r.Form.Keys); i++ {
-		k := r.Form.Keys[i]
-
-		/* 'command' is button, which modifies content of a current page. */
-		if strings.StartsWith(k, "Command") {
-			if len(r.Form.Values[i]) == 0 {
-				continue
-			}
-			v := r.Form.Values[i][0]
-
-			/* NOTE(anton2920): after command is executed, function must return. */
-			return CourseCreateEditHandleCommand(w, r, GL, session, &course, currentPage, k, v)
 		}
 	}
 

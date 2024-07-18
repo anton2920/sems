@@ -1,11 +1,11 @@
 package main
 
 import (
+	"net/url"
 	"strconv"
 	"testing"
 
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/net/url"
 )
 
 func TestSubjectPageHandler(t *testing.T) {
@@ -44,7 +44,7 @@ func TestSubjectCreatePageHandler(t *testing.T) {
 
 	expectedOK := [...]url.Values{
 		{},
-		{{"GroupID", []string{"0", "a"}}, {"TeacherID", []string{"0", "a"}}},
+		{"GroupID": {"0", "a"}, "TeacherID": {"0", "a"}},
 	}
 
 	for _, test := range expectedOK {
@@ -63,8 +63,8 @@ func TestSubjectEditPageHandler(t *testing.T) {
 	const endpoint = "/subject/edit"
 
 	expectedOK := [...]url.Values{
-		{{"ID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"GroupID", []string{"0", "a"}}, {"TeacherID", []string{"0", "a"}}},
+		{"ID": {"0"}},
+		{"ID": {"0"}, "GroupID": {"0", "a"}, "TeacherID": {"0", "a"}},
 	}
 
 	for _, test := range expectedOK {
@@ -86,163 +86,163 @@ func TestSubjectLessonsPageHandler(t *testing.T) {
 		{},
 
 		/* Create two lessons, move them around and then delete. */
-		{{"CurrentPage", []string{"Main"}}, {"NextPage", []string{Ls(GL, "Add lesson")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Name", []string{"Test lesson #1"}}, {"Theory", []string{"This is test lesson #1's theory."}}, {"NextPage", []string{Ls(GL, "Next")}}},
-		{{"CurrentPage", []string{"Main"}}, {"NextPage", []string{Ls(GL, "Add lesson")}}},
-		{{"LessonIndex", []string{"1"}}, {"CurrentPage", []string{"Lesson"}}, {"Name", []string{"Test lesson #2"}}, {"Theory", []string{"This is test lesson #2's theory."}}, {"NextPage", []string{Ls(GL, "Next")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command1", []string{Ls(GL, "^|")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command0", []string{Ls(GL, "|v")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command2", []string{Ls(GL, "^|")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command2", []string{Ls(GL, "|v")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command2", []string{Ls(GL, "Delete")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command0", []string{Ls(GL, "Delete")}}},
-		{{"CurrentPage", []string{"Main"}}, {"Command0", []string{Ls(GL, "Delete")}}},
+		{"CurrentPage": {"Main"}, "NextPage": {Ls(GL, "Add lesson")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Name": {"Test lesson #1"}, "Theory": {"This is test lesson #1's theory."}, "NextPage": {Ls(GL, "Next")}},
+		{"CurrentPage": {"Main"}, "NextPage": {Ls(GL, "Add lesson")}},
+		{"LessonIndex": {"1"}, "CurrentPage": {"Lesson"}, "Name": {"Test lesson #2"}, "Theory": {"This is test lesson #2's theory."}, "NextPage": {Ls(GL, "Next")}},
+		{"CurrentPage": {"Main"}, "Command1": {Ls(GL, "^|")}},
+		{"CurrentPage": {"Main"}, "Command0": {Ls(GL, "|v")}},
+		{"CurrentPage": {"Main"}, "Command2": {Ls(GL, "^|")}},
+		{"CurrentPage": {"Main"}, "Command2": {Ls(GL, "|v")}},
+		{"CurrentPage": {"Main"}, "Command2": {Ls(GL, "Delete")}},
+		{"CurrentPage": {"Main"}, "Command0": {Ls(GL, "Delete")}},
+		{"CurrentPage": {"Main"}, "Command0": {Ls(GL, "Delete")}},
 
 		/* Create lesson, create test and programming task. */
-		{{"CurrentPage", []string{"Main"}}, {"NextPage", []string{Ls(GL, "Add lesson")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Add test")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command0", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command0", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command0", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command", []string{Ls(GL, "Add another question")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Command1", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Command", []string{Ls(GL, "Add another question")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", "", ""}}, {"Command2", []string{Ls(GL, "Delete")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", "", ""}}, {"Command2", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", "", ""}}, {"Command2", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", "", ""}}, {"Command2", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Add programming task")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Add example")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{""}}, {"ExampleOutput", []string{""}}, {"Command", []string{Ls(GL, "Add example")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{"", ""}}, {"ExampleOutput", []string{"", ""}}, {"Command1.0", []string{Ls(GL, "-")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{"", ""}}, {"ExampleOutput", []string{"", ""}}, {"Command", []string{Ls(GL, "Add test")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command1", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command0", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}, {"NextPage", []string{Ls(GL, "Next")}}},
+		{"CurrentPage": {"Main"}, "NextPage": {Ls(GL, "Add lesson")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Add test")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {""}, "Command0": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {""}, "Command0": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {""}, "Command0": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {""}, "Command": {Ls(GL, "Add another question")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Command1": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Command": {Ls(GL, "Add another question")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", "", ""}, "Command2": {Ls(GL, "Delete")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", "", ""}, "Command2": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", "", ""}, "Command2": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"", "", ""}, "Command2": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Add programming task")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Add example")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {""}, "ExampleOutput": {""}, "Command": {Ls(GL, "Add example")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {"", ""}, "ExampleOutput": {"", ""}, "Command1.0": {Ls(GL, "-")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {"", ""}, "ExampleOutput": {"", ""}, "Command": {Ls(GL, "Add test")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command1": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command0": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Name": {"Introduction"}, "Theory": {"This is an introduction."}, "NextPage": {Ls(GL, "Next")}},
 
 		/* Edit lesson, add/remove another test and/move/remove another check to programming task. */
-		{{"CurrentPage", []string{"Main"}}, {"Command0", []string{Ls(GL, "Edit")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Add test")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command0", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Answer0", []string{"", ""}}, {"Command0.1", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Answer0", []string{"", ""}}, {"Command0.0", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0", "1"}}, {"Command0.0", []string{Ls(GL, "-")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0"}}, {"Command0.1", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"1"}}, {"Command0.1", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0"}}, {"Command0.0", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"1"}}, {"Command0.0", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0", "1"}}, {"Command1", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"", ""}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0", "1"}}, {"Command1", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{""}}, {"Command0", []string{Ls(GL, "Add another answer")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Simple test"}}, {"Question", []string{"Yes?"}}, {"Answer0", []string{"No", "Yes"}}, {"CorrectAnswer0", []string{"1"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command2", []string{Ls(GL, "Delete")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command0", []string{Ls(GL, "Edit")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command1", []string{Ls(GL, "Edit")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Add example")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{"aaa", "ccc", ""}}, {"ExampleOutput", []string{"bbb", "ddd", ""}}, {"Command2.0", []string{Ls(GL, "^|")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{"aaa", "", "ccc"}}, {"ExampleOutput", []string{"bbb", "", "ddd"}}, {"Command1.0", []string{Ls(GL, "|v")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"ExampleInput", []string{"aaa", "ccc", ""}}, {"ExampleOutput", []string{"bbb", "ddd", ""}}, {"Command2.0", []string{Ls(GL, "-")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}, {"NextPage", []string{Ls(GL, "Next")}}},
+		{"CurrentPage": {"Main"}, "Command0": {Ls(GL, "Edit")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Add test")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {""}, "Command0": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {""}, "Answer0": {"", ""}, "Command0.1": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {""}, "Answer0": {"", ""}, "Command0.0": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {""}, "Answer0": {"", ""}, "CorrectAnswer0": {"0", "1"}, "Command0.0": {Ls(GL, "-")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"0"}, "Command0.1": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"1"}, "Command0.1": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"0"}, "Command0.0": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"1"}, "Command0.0": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"0", "1"}, "Command1": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {"", ""}, "Answer0": {"", ""}, "CorrectAnswer0": {"0", "1"}, "Command1": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Question": {""}, "Command0": {Ls(GL, "Add another answer")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Name": {"Simple test"}, "Question": {"Yes?"}, "Answer0": {"No", "Yes"}, "CorrectAnswer0": {"1"}, "NextPage": {Ls(GL, "Continue")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command2": {Ls(GL, "Delete")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command0": {Ls(GL, "Edit")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command1": {Ls(GL, "Edit")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Add example")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {"aaa", "ccc", ""}, "ExampleOutput": {"bbb", "ddd", ""}, "Command2.0": {Ls(GL, "^|")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {"aaa", "", "ccc"}, "ExampleOutput": {"bbb", "", "ddd"}, "Command1.0": {Ls(GL, "|v")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "ExampleInput": {"aaa", "ccc", ""}, "ExampleOutput": {"bbb", "ddd", ""}, "Command2.0": {Ls(GL, "-")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Name": {"Introduction"}, "Theory": {"This is an introduction."}, "NextPage": {Ls(GL, "Next")}},
 	}
 
 	expectedBadRequest := [...]url.Values{
 		/* Misc. */
-		{{"ID", []string{"0"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"Commanda", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"Command0.a", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"StepIndex", []string{"0"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"a"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"CourseID", []string{"a"}}, {"Action", []string{Ls(GL, "create from")}}},
-		{{"ID", []string{"0"}}, {"CourseID", []string{"a"}}, {"Action", []string{Ls(GL, "give as is")}}},
+		{"ID": {"0"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "Commanda": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "Command0.a": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "StepIndex": {"0"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"a"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "CourseID": {"a"}, "Action": {Ls(GL, "create from")}},
+		{"ID": {"0"}, "CourseID": {"a"}, "Action": {Ls(GL, "give as is")}},
 
 		/* Test page. */
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"a"}}, {"CurrentPage", []string{"Test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Test"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Test"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Test"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Command", []string{Ls(GL, "Command")}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"4"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Command1", []string{Ls(GL, "Add another answer")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Command1.0", []string{Ls(GL, "-")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"Test question"}}, {"Command0.1", []string{Ls(GL, "-")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"Test question"}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0", "1"}}, {"Command1.1", []string{Ls(GL, "^|")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Question", []string{"Test question"}}, {"Answer0", []string{"", ""}}, {"CorrectAnswer0", []string{"0", "1"}}, {"Command1.0", []string{Ls(GL, "|v")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{testString(MinStepNameLen - 1)}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{testString(MaxStepNameLen + 1)}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{testString(MinQuestionLen - 1), "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{testString(MaxQuestionLen + 1), "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{testString(MinAnswerLen - 1), "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{testString(MaxAnswerLen + 1), "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"2"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", []string{"4"}}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Test"}}, {"Name", []string{"Back-end development basics"}}, {"Question", []string{"What is an API?", "To be or not to be?", "Third question"}}, {"Answer0", []string{"One", "Two", "Three", "Four"}}, {"CorrectAnswer0", nil}, {"Answer1", []string{"To be", "Not to be"}}, {"CorrectAnswer1", []string{"0", "1"}}, {"Answer2", []string{"What?", "When?", "Where?", "Correct"}}, {"CorrectAnswer2", []string{"3"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"a"}, "CurrentPage": {"Test"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Test"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Test"}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Test"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Test"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Command": {Ls(GL, "Command")}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"4"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Command1": {Ls(GL, "Add another answer")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Command1.0": {Ls(GL, "-")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"Test question"}, "Command0.1": {Ls(GL, "-")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"Test question"}, "Answer0": {"", ""}, "CorrectAnswer0": {"0", "1"}, "Command1.1": {Ls(GL, "^|")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Question": {"Test question"}, "Answer0": {"", ""}, "CorrectAnswer0": {"0", "1"}, "Command1.0": {Ls(GL, "|v")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {testString(MinStepNameLen - 1)}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {testString(MaxStepNameLen + 1)}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {testString(MinQuestionLen - 1), "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {testString(MaxQuestionLen + 1), "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {testString(MinAnswerLen - 1), "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {testString(MaxAnswerLen + 1), "Two", "Three", "Four"}, "CorrectAnswer0": {"2"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": {"4"}, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Test"}, "Name": {"Back-end development basics"}, "Question": {"What is an API?", "To be or not to be?", "Third question"}, "Answer0": {"One", "Two", "Three", "Four"}, "CorrectAnswer0": nil, "Answer1": {"To be", "Not to be"}, "CorrectAnswer1": {"0", "1"}, "Answer2": {"What?", "When?", "Where?", "Correct"}, "CorrectAnswer2": {"3"}, "NextPage": {Ls(GL, "Continue")}},
 
 		/* Programming page. */
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"a"}}, {"CurrentPage", []string{"Programming"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Programming"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"0"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"2"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Command")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command", []string{Ls(GL, "Command")}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command0.2", []string{Ls(GL, "-")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command0.2", []string{Ls(GL, "^|")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Command0.2", []string{Ls(GL, "|v")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{testString(MinStepNameLen - 1)}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{testString(MaxStepNameLen + 1)}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{testString(MinDescriptionLen - 1)}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{testString(MaxDescriptionLen + 1)}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{testString(MinCheckLen - 1), "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{testString(MaxCheckLen + 1), "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{testString(MinCheckLen - 1), "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{testString(MaxCheckLen + 1), "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{testString(MinCheckLen - 1)}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{testString(MaxCheckLen + 1)}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{testString(MinCheckLen - 1)}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb", "ddd"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{testString(MaxCheckLen + 1)}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"StepIndex", []string{"1"}}, {"CurrentPage", []string{"Programming"}}, {"Name", []string{"Introduction"}}, {"ExampleInput", []string{"aaa", "ccc"}}, {"ExampleOutput", []string{"bbb"}}, {"TestInput", []string{"fff"}}, {"TestOutput", []string{"eee"}}, {"Description", []string{"Print 'hello, world' in your favourite language"}}, {"NextPage", []string{Ls(GL, "Continue")}}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"a"}, "CurrentPage": {"Programming"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Programming"}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "StepIndex": {"0"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"0"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"2"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Command")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command": {Ls(GL, "Command")}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command0.2": {Ls(GL, "-")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command0.2": {Ls(GL, "^|")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Command0.2": {Ls(GL, "|v")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {testString(MinStepNameLen - 1)}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {testString(MaxStepNameLen + 1)}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {testString(MinDescriptionLen - 1)}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {testString(MaxDescriptionLen + 1)}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {testString(MinCheckLen - 1), "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {testString(MaxCheckLen + 1), "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {testString(MinCheckLen - 1), "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {testString(MaxCheckLen + 1), "ddd"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {testString(MinCheckLen - 1)}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {testString(MaxCheckLen + 1)}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {testString(MinCheckLen - 1)}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb", "ddd"}, "TestInput": {"fff"}, "TestOutput": {testString(MaxCheckLen + 1)}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "StepIndex": {"1"}, "CurrentPage": {"Programming"}, "Name": {"Introduction"}, "ExampleInput": {"aaa", "ccc"}, "ExampleOutput": {"bbb"}, "TestInput": {"fff"}, "TestOutput": {"eee"}, "Description": {"Print 'hello, world' in your favourite language"}, "NextPage": {Ls(GL, "Continue")}},
 
 		/* Lesson page. */
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"Command0", []string{Ls(GL, "Edit")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"Command2", []string{Ls(GL, "Edit")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Add test")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Add programming task")}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"a"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"1"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{"Introduction"}}, {"Theory", []string{"This is an introduction."}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{testString(MinNameLen - 1)}}, {"Theory", []string{"This is an introduction"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{testString(MaxNameLen + 1)}}, {"Theory", []string{"This is an introduction"}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{"Introduction"}}, {"Theory", []string{testString(MinTheoryLen - 1)}}},
-		{{"ID", []string{"0"}}, {"LessonIndex", []string{"0"}}, {"CurrentPage", []string{"Lesson"}}, {"NextPage", []string{Ls(GL, "Next")}}, {"Name", []string{"Introduction"}}, {"Theory", []string{testString(MaxTheoryLen + 1)}}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "CurrentPage": {"Lesson"}, "Command0": {Ls(GL, "Edit")}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "Command2": {Ls(GL, "Edit")}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Add test")}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Add programming task")}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {"Introduction"}, "Theory": {"This is an introduction."}},
+		{"ID": {"0"}, "LessonIndex": {"a"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {"Introduction"}, "Theory": {"This is an introduction."}},
+		{"ID": {"0"}, "LessonIndex": {"1"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {"Introduction"}, "Theory": {"This is an introduction."}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {testString(MinNameLen - 1)}, "Theory": {"This is an introduction"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {testString(MaxNameLen + 1)}, "Theory": {"This is an introduction"}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {"Introduction"}, "Theory": {testString(MinTheoryLen - 1)}},
+		{"ID": {"0"}, "LessonIndex": {"0"}, "CurrentPage": {"Lesson"}, "NextPage": {Ls(GL, "Next")}, "Name": {"Introduction"}, "Theory": {testString(MaxTheoryLen + 1)}},
 
 		/* Main page. */
-		{{"ID", []string{"a"}}},
-		{{"ID", []string{"0"}}, {"CurrentPage", []string{"Main"}}, {"Command1", []string{Ls(GL, "Edit")}}},
+		{"ID": {"a"}},
+		{"ID": {"0"}, "CurrentPage": {"Main"}, "Command1": {Ls(GL, "Edit")}},
 	}
 
 	expectedForbidden := [...]url.Values{
-		{{"ID", []string{"1"}}, {"CourseID", []string{"0"}}, {"Action", []string{Ls(GL, "create from")}}},
-		{{"ID", []string{"1"}}, {"CourseID", []string{"0"}}, {"Action", []string{Ls(GL, "give as is")}}},
+		{"ID": {"1"}, "CourseID": {"0"}, "Action": {Ls(GL, "create from")}},
+		{"ID": {"1"}, "CourseID": {"0"}, "Action": {Ls(GL, "give as is")}},
 	}
 
 	expectedNotFound := [...]url.Values{
-		{{"ID", []string{"4"}}},
-		{{"ID", []string{"0"}}, {"CourseID", []string{"10"}}, {"Action", []string{Ls(GL, "create from")}}},
-		{{"ID", []string{"0"}}, {"CourseID", []string{"10"}}, {"Action", []string{Ls(GL, "give as is")}}},
+		{"ID": {"4"}},
+		{"ID": {"0"}, "CourseID": {"10"}, "Action": {Ls(GL, "create from")}},
+		{"ID": {"0"}, "CourseID": {"10"}, "Action": {Ls(GL, "give as is")}},
 	}
 
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{Ls(GL, "create from")}}}, http.StatusOK)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{"ID": {"0"}, "CourseID": {"0"}, "Action": {Ls(GL, "create from")}}, http.StatusOK)
 	for i, token := range testTokens[:2] {
 		for _, test := range expectedOK {
-			test.SetInt("ID", i)
+			test.Set("ID", strconv.Itoa(i))
 			testPostAuth(t, endpoint, token, test, http.StatusOK)
 		}
-		testPostAuth(t, endpoint, token, url.Values{{"ID", []string{strconv.Itoa(i)}}, {"NextPage", []string{Ls(GL, "Save")}}}, http.StatusSeeOther)
+		testPostAuth(t, endpoint, token, url.Values{"ID": {strconv.Itoa(i)}, "NextPage": {Ls(GL, "Save")}}, http.StatusSeeOther)
 	}
 
 	var subject Subject
@@ -253,7 +253,7 @@ func TestSubjectLessonsPageHandler(t *testing.T) {
 	if err := SaveSubject(&subject); err != nil {
 		t.Fatalf("Failed to save subject: %v", err)
 	}
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"0"}}, {"CourseID", []string{"0"}}, {"Action", []string{Ls(GL, "give as is")}}}, http.StatusSeeOther)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{"ID": {"0"}, "CourseID": {"0"}, "Action": {Ls(GL, "give as is")}}, http.StatusSeeOther)
 
 	for _, test := range expectedBadRequest {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusBadRequest)
@@ -270,12 +270,12 @@ func TestSubjectLessonsPageHandler(t *testing.T) {
 	if err := SaveLesson(&lesson); err != nil {
 		t.Fatalf("Failed to save lesson: %v", err)
 	}
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{Ls(GL, "Save")}}}, http.StatusBadRequest)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{"ID": {"1"}, "NextPage": {Ls(GL, "Save")}}, http.StatusBadRequest)
 	subject.Lessons = nil
 	if err := SaveSubject(&subject); err != nil {
 		t.Fatalf("Failed to save subject: %v", err)
 	}
-	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{{"ID", []string{"1"}}, {"NextPage", []string{Ls(GL, "Save")}}}, http.StatusBadRequest)
+	testPostAuth(t, endpoint, testTokens[AdminID], url.Values{"ID": {"1"}, "NextPage": {Ls(GL, "Save")}}, http.StatusBadRequest)
 	testPostInvalidFormAuth(t, endpoint, testTokens[AdminID])
 
 	testPost(t, endpoint, nil, http.StatusUnauthorized)
@@ -284,7 +284,7 @@ func TestSubjectLessonsPageHandler(t *testing.T) {
 	for _, test := range expectedForbidden {
 		testPostAuth(t, endpoint, testTokens[1], test, http.StatusForbidden)
 	}
-	testPostAuth(t, endpoint, testTokens[2], url.Values{{"ID", []string{"0"}}}, http.StatusForbidden)
+	testPostAuth(t, endpoint, testTokens[2], url.Values{"ID": {"0"}}, http.StatusForbidden)
 
 	for _, test := range expectedNotFound {
 		testPostAuth(t, endpoint, testTokens[AdminID], test, http.StatusNotFound)
@@ -295,16 +295,16 @@ func TestSubjectCreateHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/subject/create"
 
 	expectedOK := [...]url.Values{
-		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{"Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"0"}},
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
-		{{"Name", []string{testString(MaxNameLen + 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
-		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"a"}}, {"GroupID", []string{"0"}}},
-		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"10"}}, {"GroupID", []string{"0"}}},
-		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"a"}}},
-		{{"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"10"}}},
+		{"Name": {testString(MinNameLen - 1)}, "TeacherID": {"1"}, "GroupID": {"0"}},
+		{"Name": {testString(MaxNameLen + 1)}, "TeacherID": {"1"}, "GroupID": {"0"}},
+		{"Name": {"Chemistry"}, "TeacherID": {"a"}, "GroupID": {"0"}},
+		{"Name": {"Chemistry"}, "TeacherID": {"10"}, "GroupID": {"0"}},
+		{"Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"a"}},
+		{"Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"10"}},
 	}
 
 	expectedForbidden := expectedOK
@@ -331,23 +331,23 @@ func TestSubjectEditHandler(t *testing.T) {
 	const endpoint = APIPrefix + "/subject/edit"
 
 	expectedOK := [...]url.Values{
-		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{"ID": {"0"}, "Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"0"}},
 	}
 
 	expectedBadRequest := [...]url.Values{
-		{{"ID", []string{"a"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{testString(MinNameLen - 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{testString(MaxNameLen + 1)}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"a"}}, {"GroupID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"10"}}, {"GroupID", []string{"0"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"a"}}},
-		{{"ID", []string{"0"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"10"}}},
+		{"ID": {"a"}, "Name": {testString(MinNameLen - 1)}, "TeacherID": {"1"}, "GroupID": {"0"}},
+		{"ID": {"0"}, "Name": {testString(MinNameLen - 1)}, "TeacherID": {"1"}, "GroupID": {"0"}},
+		{"ID": {"0"}, "Name": {testString(MaxNameLen + 1)}, "TeacherID": {"1"}, "GroupID": {"0"}},
+		{"ID": {"0"}, "Name": {"Chemistry"}, "TeacherID": {"a"}, "GroupID": {"0"}},
+		{"ID": {"0"}, "Name": {"Chemistry"}, "TeacherID": {"10"}, "GroupID": {"0"}},
+		{"ID": {"0"}, "Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"a"}},
+		{"ID": {"0"}, "Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"10"}},
 	}
 
 	expectedForbidden := expectedOK
 
 	expectedNotFound := [...]url.Values{
-		{{"ID", []string{"3"}}, {"Name", []string{"Chemistry"}}, {"TeacherID", []string{"1"}}, {"GroupID", []string{"0"}}},
+		{"ID": {"3"}, "Name": {"Chemistry"}, "TeacherID": {"1"}, "GroupID": {"0"}},
 	}
 
 	for _, test := range expectedOK {
