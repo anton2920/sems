@@ -915,15 +915,16 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 		r.Form.Set("Teacher", "")
 	}
 
-	for i := 0; i < len(r.Form); i++ {
-		k := r.Form[i].Key
-		if len(r.Form[i].Values) == 0 {
-			continue
-		}
-		v := r.Form[i].Values[0]
+	for i := 0; i < len(r.Form.Keys); i++ {
+		k := r.Form.Keys[i]
 
 		/* 'command' is button, which modifies content of a current page. */
 		if strings.StartsWith(k, "Command") {
+			if len(r.Form.Values[i]) == 0 {
+				continue
+			}
+			v := r.Form.Values[i][0]
+
 			pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 			if err != nil {
 				return http.ClientError(err)
@@ -1544,20 +1545,6 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 	}
 	defer SaveSubmission(&submission)
 
-	for i := 0; i < len(r.Form); i++ {
-		k := r.Form[i].Key
-		if len(r.Form[i].Values) == 0 {
-			continue
-		}
-		v := r.Form[i].Values[0]
-
-		/* 'command' is button, which modifies content of a current page. */
-		if strings.StartsWith(k, "Command") {
-			/* NOTE(anton2920): after command is executed, function must return. */
-			return SubmissionNewHandleCommand(w, r, GL, session, &subject, &lesson, &submission, currentPage, k, v)
-		}
-	}
-
 	/* 'currentPage' is the page to save before leaving it. */
 	switch currentPage {
 	case "Test":
@@ -1587,6 +1574,21 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		}
 		if err := SubmissionNewProgrammingFillFromRequest(r.Form, submittedTask); err != nil {
 			return SubmissionNewProgrammingPageHandler(w, r, session, &subject, &lesson, submittedTask, err)
+		}
+	}
+
+	for i := 0; i < len(r.Form.Keys); i++ {
+		k := r.Form.Keys[i]
+
+		/* 'command' is button, which modifies content of a current page. */
+		if strings.StartsWith(k, "Command") {
+			if len(r.Form.Values[i]) == 0 {
+				continue
+			}
+			v := r.Form.Values[i][0]
+
+			/* NOTE(anton2920): after command is executed, function must return. */
+			return SubmissionNewHandleCommand(w, r, GL, session, &subject, &lesson, &submission, currentPage, k, v)
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
+	"github.com/anton2920/gofa/intel"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/http/http1"
@@ -157,13 +158,13 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 	switch path {
 	case "/bootstrap.min.css":
-		w.SetHeaderUnsafe("Content-Type", "text/css")
-		w.SetHeaderUnsafe("Cache-Control", "max-age=604800")
+		w.Headers.Set("Content-Type", "text/css")
+		w.Headers.Set("Cache-Control", "max-age=604800")
 		w.Append(BootstrapCSS)
 		return nil
 	case "/bootstrap.min.js":
-		w.SetHeaderUnsafe("Content-Type", "application/js")
-		w.SetHeaderUnsafe("Cache-Control", "max-age=604800")
+		w.Headers.Set("Content-Type", "application/js")
+		w.Headers.Set("Cache-Control", "max-age=604800")
 		w.Append(BootstrapJS)
 		return nil
 	}
@@ -206,7 +207,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 
 		level := log.LevelDebug
 
-		start := time.RDTSC()
+		start := intel.RDTSC()
 		err := RouterFunc(w, r)
 		if err != nil {
 			ErrorPageHandler(w, r, GL, err)
@@ -219,14 +220,10 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 		}
 
 		addr := r.RemoteAddr
-		for i := 0; i < len(r.Headers); i++ {
-			header := r.Headers[i]
-			if strings.StartsWith(header, "X-Forwarded-For: ") {
-				addr = header[len("X-Forwarded-For: "):]
-				break
-			}
+		if r.Form.Has("X-Forwarded-From") {
+			addr = r.Form.Get("X-Forwarded-From")
 		}
-		end := time.RDTSC()
+		end := intel.RDTSC()
 		elapsed := end - start
 
 		log.Logf(level, "[%21s] %7s %s -> %v (%v), %4dµs", addr, r.Method, r.URL.Path, w.StatusCode, err, elapsed.ToUsec())
