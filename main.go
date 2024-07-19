@@ -221,9 +221,14 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 			http.CloseAfterWrite(ctx)
 		}
 
+		if r.Headers.Get("Connection") == "close" {
+			w.Headers.Set("Connection", "close")
+			http.CloseAfterWrite(ctx)
+		}
+
 		addr := r.RemoteAddr
-		if r.Form.Has("X-Forwarded-From") {
-			addr = r.Form.Get("X-Forwarded-From")
+		if r.Headers.Has("X-Forwarded-From") {
+			addr = r.Headers.Get("X-Forwarded-From")
 		}
 		end := intel.RDTSC()
 		elapsed := end - start
