@@ -227,8 +227,8 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 		}
 
 		addr := ctx.ClientAddress
-		if r.Headers.Has("X-Forwarded-From") {
-			addr = r.Headers.Get("X-Forwarded-From")
+		if r.Headers.Has("X-Forwarded-For") {
+			addr = r.Headers.Get("X-Forwarded-For")
 		}
 		end := intel.RDTSC()
 		elapsed := end - start
