@@ -226,7 +226,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 			http.CloseAfterWrite(ctx)
 		}
 
-		addr := r.RemoteAddr
+		addr := ctx.ClientAddress
 		if r.Headers.Has("X-Forwarded-From") {
 			addr = r.Headers.Get("X-Forwarded-From")
 		}
