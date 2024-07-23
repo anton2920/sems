@@ -380,6 +380,9 @@ func main() {
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
+	/* TODO(anton2920): fix data race and restore Date update logic. */
+	time.PutTmRFC822(DateBuffer, time.ToTm(time.Unix()))
+
 	nworkers := runtime.GOMAXPROCS(0) / 2
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
@@ -418,7 +421,7 @@ func main() {
 				counter++
 			case event.Timer:
 				now += e.Data
-				time.PutTmRFC822(DateBuffer, time.ToTm(now))
+				// time.PutTmRFC822(DateBuffer, time.ToTm(now))
 			case event.Signal:
 				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
