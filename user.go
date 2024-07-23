@@ -197,31 +197,31 @@ func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
 			}
 
 			if !displayed {
-				w.AppendString(`<h3>`)
-				w.AppendString(Ls(l, "Groups"))
-				w.AppendString(`</h3>`)
-				w.AppendString(`<ul>`)
+				w.WriteString(`<h3>`)
+				w.WriteString(Ls(l, "Groups"))
+				w.WriteString(`</h3>`)
+				w.WriteString(`<ul>`)
 				displayed = true
 			}
 
-			w.AppendString(`<li>`)
+			w.WriteString(`<li>`)
 			DisplayGroupLink(w, l, group)
-			w.AppendString(`</li>`)
+			w.WriteString(`</li>`)
 		}
 	}
 	if displayed {
-		w.AppendString(`</ul>`)
-		w.AppendString(`<br>`)
+		w.WriteString(`</ul>`)
+		w.WriteString(`<br>`)
 	}
 }
 
 func DisplayUserCourses(w *http.Response, l Language, user *User) {
 	var course Course
 
-	w.AppendString(`<h3>`)
-	w.AppendString(Ls(l, "Courses"))
-	w.AppendString(`</h3>`)
-	w.AppendString(`<ul>`)
+	w.WriteString(`<h3>`)
+	w.WriteString(Ls(l, "Courses"))
+	w.WriteString(`</h3>`)
+	w.WriteString(`<ul>`)
 	for i := 0; i < len(user.Courses); i++ {
 		if err := GetCourseByID(user.Courses[i], &course); err != nil {
 			/* TODO(anton2920): report error. */
@@ -230,15 +230,15 @@ func DisplayUserCourses(w *http.Response, l Language, user *User) {
 			continue
 		}
 
-		w.AppendString(`<li>`)
+		w.WriteString(`<li>`)
 		DisplayCourseLink(w, l, &course)
-		w.AppendString(`</li>`)
+		w.WriteString(`</li>`)
 	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<form method="POST" action="/course/create">`)
+	w.WriteString(`</ul>`)
+	w.WriteString(`<form method="POST" action="/course/create">`)
 	DisplayButton(w, l, "", "Create course")
-	w.AppendString(`</form>`)
-	w.AppendString(`<br>`)
+	w.WriteString(`</form>`)
+	w.WriteString(`<br>`)
 }
 
 func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
@@ -269,39 +269,39 @@ func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 			}
 
 			if !displayed {
-				w.AppendString(`<h3>`)
-				w.AppendString(Ls(l, "Subjects"))
-				w.AppendString(`</h3>`)
-				w.AppendString(`<ul>`)
+				w.WriteString(`<h3>`)
+				w.WriteString(Ls(l, "Subjects"))
+				w.WriteString(`</h3>`)
+				w.WriteString(`<ul>`)
 				displayed = true
 			}
 
-			w.AppendString(`<li>`)
+			w.WriteString(`<li>`)
 			DisplaySubjectLink(w, l, subject)
-			w.AppendString(`</li>`)
+			w.WriteString(`</li>`)
 		}
 	}
 	if displayed {
-		w.AppendString(`</ul>`)
+		w.WriteString(`</ul>`)
 	}
 }
 
 func DisplayUserTitle(w *http.Response, l Language, user *User) {
 	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
+	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
-	w.AppendString(` (ID: `)
+	w.WriteString(` (ID: `)
 	w.WriteID(user.ID)
-	w.AppendString(`)`)
+	w.WriteString(`)`)
 	DisplayDeleted(w, l, user.Flags == UserDeleted)
 }
 
 func DisplayUserLink(w *http.Response, l Language, user *User) {
-	w.AppendString(`<a href="/user/`)
+	w.WriteString(`<a href="/user/`)
 	w.WriteID(user.ID)
-	w.AppendString(`">`)
+	w.WriteString(`">`)
 	DisplayUserTitle(w, l, user)
-	w.AppendString(`</a>`)
+	w.WriteString(`</a>`)
 }
 
 func UsersPageHandler(w *http.Response, r *http.Request) error {
@@ -319,9 +319,9 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Users"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Users"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -340,10 +340,10 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Users"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Users"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			DisplayTableStart(w, GL, []string{"ID", "First name", "Last name", "Email", "Created on", "Status"})
 			{
@@ -375,11 +375,11 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 				}
 			}
 			DisplayTableEnd(w)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<form method="POST" action="/user/create">`)
+			w.WriteString(`<form method="POST" action="/user/create">`)
 			DisplaySubmit(w, GL, "", "Create user", true)
-			w.AppendString(`</form>`)
+			w.WriteString(`</form>`)
 		}
 		DisplayPageEnd(w)
 		DisplayMainEnd(w)
@@ -418,9 +418,9 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
+		w.WriteString(`<title>`)
 		DisplayUserTitle(w, GL, &user)
-		w.AppendString(`</title>`)
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -441,44 +441,44 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
+			w.WriteString(`<h2>`)
 			DisplayUserTitle(w, GL, &user)
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Info"))
-			w.AppendString(`</h3>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Info"))
+			w.WriteString(`</h3>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Email"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Email"))
+			w.WriteString(`: `)
 			w.WriteHTMLString(user.Email)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Created on"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Created on"))
+			w.WriteString(`: `)
 			DisplayFormattedTime(w, user.CreatedOn)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<div>`)
-			w.AppendString(`<form style="display:inline" method="POST" action="/user/edit">`)
+			w.WriteString(`<div>`)
+			w.WriteString(`<form style="display:inline" method="POST" action="/user/edit">`)
 			DisplayHiddenID(w, "ID", user.ID)
 			DisplayHiddenString(w, "FirstName", user.FirstName)
 			DisplayHiddenString(w, "LastName", user.LastName)
 			DisplayHiddenString(w, "Email", user.Email)
 			DisplayButton(w, GL, "", "Edit")
-			w.AppendString(`</form>`)
+			w.WriteString(`</form>`)
 
 			if (session.ID == AdminID) && (id != AdminID) {
-				w.AppendString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
+				w.WriteString(` <form style="display:inline" method="POST" action="/api/user/delete">`)
 				DisplayHiddenID(w, "ID", user.ID)
 				DisplayButton(w, GL, "", "Delete")
-				w.AppendString(`</form>`)
+				w.WriteString(`</form>`)
 			}
-			w.AppendString(`</div>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</div>`)
+			w.WriteString(`<br>`)
 
 			DisplayUserGroups(w, GL, user.ID)
 			DisplayUserCourses(w, GL, &user)
@@ -501,9 +501,9 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, title))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, title))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -532,23 +532,23 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 		{
 			DisplayLabel(w, GL, "First name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "FirstName", r.Form.Get("FirstName"), true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Last name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "LastName", r.Form.Get("LastName"), true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Email")
 			DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "Password", "", true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Repeat password")
 			DisplayConstraintInput(w, "password", MinPasswordLen, MaxPasswordLen, "RepeatPassword", "", true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplaySubmit(w, GL, "", action, true)
 		}
@@ -613,40 +613,40 @@ func UserSigninPageHandler(w *http.Response, r *http.Request, err error) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Sign in"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Sign in"))
+		w.WriteString(`</title>`)
 
 		if CSSEnabled {
-			w.AppendString(`<style> html, body { height: 100%; } body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; }  .form-signin { max-width: 330px; padding: 15px; } </style>`)
+			w.WriteString(`<style> html, body { height: 100%; } body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; }  .form-signin { max-width: 330px; padding: 15px; } </style>`)
 		}
 	}
 	DisplayHeadEnd(w)
 
 	DisplayBodyStart(w)
 	{
-		w.AppendString(`<main class="form-signin w-100 m-auto rounded-4 shadow bg-body-tertiary">`)
+		w.WriteString(`<main class="form-signin w-100 m-auto rounded-4 shadow bg-body-tertiary">`)
 
-		w.AppendString(`<h2 class="text-center fw-normal"><b>`)
-		w.AppendString(Ls(GL, "Sign in"))
-		w.AppendString(`</b></h2>`)
+		w.WriteString(`<h2 class="text-center fw-normal"><b>`)
+		w.WriteString(Ls(GL, "Sign in"))
+		w.WriteString(`</b></h2>`)
 
 		DisplayError(w, GL, err)
 
-		w.AppendString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
+		w.WriteString(`<form class="form-signin" method="POST" action="/api/user/signin">`)
 
 		DisplayLabel(w, GL, "Email")
 		DisplayInput(w, "email", "Email", r.Form.Get("Email"), true)
-		w.AppendString(`<br>`)
+		w.WriteString(`<br>`)
 
 		DisplayLabel(w, GL, "Password")
 		DisplayInput(w, "password", "Password", r.Form.Get("Password"), true)
-		w.AppendString(`<br>`)
+		w.WriteString(`<br>`)
 
 		DisplaySubmit(w, GL, "", "Sign in", true)
-		w.AppendString(`</form>`)
+		w.WriteString(`</form>`)
 
-		w.AppendString(`</main>`)
+		w.WriteString(`</main>`)
 	}
 	DisplayBodyEnd(w)
 

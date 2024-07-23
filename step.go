@@ -14,9 +14,9 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Steps"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Steps"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -35,10 +35,10 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Steps"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Steps"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			/* TODO(anton2920): this is very slow!!! */
 			subjects := make([]Subject, 32)
@@ -103,16 +103,16 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 			if displayed {
 				DisplayTableEnd(w)
 			} else {
-				w.AppendString(`<h4>`)
-				w.AppendString(Ls(GL, "You don't have any unfinished steps"))
-				w.AppendString(`</h4>`)
+				w.WriteString(`<h4>`)
+				w.WriteString(Ls(GL, "You don't have any unfinished steps"))
+				w.WriteString(`</h4>`)
 			}
 
-			w.AppendString(`<br>`)
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Submissions"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Submissions"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			DisplayTableStart(w, GL, []string{"ID", "Subject", "Lesson", "Score"})
 			{

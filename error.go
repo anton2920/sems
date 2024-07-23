@@ -8,12 +8,12 @@ import (
 
 func DisplayErrorMessage(w *http.Response, l Language, message string) {
 	if message != "" {
-		w.AppendString(`<div><p>`)
-		w.AppendString(Ls(l, "Error"))
-		w.AppendString(`: `)
+		w.WriteString(`<div><p>`)
+		w.WriteString(Ls(l, "Error"))
+		w.WriteString(`: `)
 		//w.WriteHTMLString(message)
 		w.WriteHTMLString(Ls(l, message))
-		w.AppendString(`.</p></div>`)
+		w.WriteString(`.</p></div>`)
 	}
 }
 
@@ -51,9 +51,9 @@ func ErrorPageHandler(w *http.Response, r *http.Request, l Language, err error) 
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(l, "Error"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(l, "Error"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -68,9 +68,9 @@ func ErrorPageHandler(w *http.Response, r *http.Request, l Language, err error) 
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
-			w.AppendString(Ls(l, "Error"))
-			w.AppendString(`</h2>`)
+			w.WriteString(`<h2>`)
+			w.WriteString(Ls(l, "Error"))
+			w.WriteString(`</h2>`)
 
 			DisplayError(w, l, err)
 		}

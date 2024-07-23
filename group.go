@@ -114,22 +114,22 @@ func SaveGroup(group *Group) error {
 }
 
 func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
-	w.AppendString(`<h3>`)
-	w.AppendString(Ls(GL, "Students"))
-	w.AppendString(`</h3>`)
-	w.AppendString(`<ul>`)
+	w.WriteString(`<h3>`)
+	w.WriteString(Ls(GL, "Students"))
+	w.WriteString(`</h3>`)
+	w.WriteString(`<ul>`)
 	for i := 0; i < len(group.Students); i++ {
 		var user User
 		if err := GetUserByID(group.Students[i], &user); err != nil {
 			/* TODO(anton2920): report error. */
 		}
 
-		w.AppendString(`<li>`)
+		w.WriteString(`<li>`)
 		DisplayUserLink(w, GL, &user)
-		w.AppendString(`</li>`)
+		w.WriteString(`</li>`)
 	}
-	w.AppendString(`</ul>`)
-	w.AppendString(`<br>`)
+	w.WriteString(`</ul>`)
+	w.WriteString(`<br>`)
 }
 
 func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
@@ -152,37 +152,37 @@ func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
 			}
 
 			if !displayed {
-				w.AppendString(`<h3>`)
-				w.AppendString(Ls(l, "Subjects"))
-				w.AppendString(`</h3>`)
-				w.AppendString(`<ul>`)
+				w.WriteString(`<h3>`)
+				w.WriteString(Ls(l, "Subjects"))
+				w.WriteString(`</h3>`)
+				w.WriteString(`<ul>`)
 				displayed = true
 			}
 
-			w.AppendString(`<li>`)
+			w.WriteString(`<li>`)
 			DisplaySubjectLink(w, l, subject)
-			w.AppendString(`</li>`)
+			w.WriteString(`</li>`)
 		}
 	}
 	if displayed {
-		w.AppendString(`</ul>`)
+		w.WriteString(`</ul>`)
 	}
 }
 
 func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 	w.WriteHTMLString(group.Name)
-	w.AppendString(` (ID: `)
+	w.WriteString(` (ID: `)
 	w.WriteID(group.ID)
-	w.AppendString(`)`)
+	w.WriteString(`)`)
 	DisplayDeleted(w, l, group.Flags == GroupDeleted)
 }
 
 func DisplayGroupLink(w *http.Response, l Language, group *Group) {
-	w.AppendString(`<a href="/group/`)
+	w.WriteString(`<a href="/group/`)
 	w.WriteID(group.ID)
-	w.AppendString(`">`)
+	w.WriteString(`">`)
 	DisplayGroupTitle(w, l, group)
-	w.AppendString(`</a>`)
+	w.WriteString(`</a>`)
 }
 
 func GroupsPageHandler(w *http.Response, r *http.Request) error {
@@ -197,9 +197,9 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Groups"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Groups"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -218,10 +218,10 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Groups"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Groups"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			DisplayTableStart(w, GL, []string{"ID", "Name", "Created on", "Status"})
 			{
@@ -256,10 +256,10 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 			DisplayTableEnd(w)
 
 			if session.ID == AdminID {
-				w.AppendString(`<br>`)
-				w.AppendString(`<form method="POST" action="/group/create">`)
+				w.WriteString(`<br>`)
+				w.WriteString(`<form method="POST" action="/group/create">`)
 				DisplaySubmit(w, GL, "", "Create group", true)
-				w.AppendString(`</form>`)
+				w.WriteString(`</form>`)
 			}
 		}
 		DisplayPageEnd(w)
@@ -299,9 +299,9 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
+		w.WriteString(`<title>`)
 		DisplayGroupTitle(w, GL, &group)
-		w.AppendString(`</title>`)
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -322,38 +322,38 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
+			w.WriteString(`<h2>`)
 			DisplayGroupTitle(w, GL, &group)
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Info"))
-			w.AppendString(`</h3>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Info"))
+			w.WriteString(`</h3>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Created on"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Created on"))
+			w.WriteString(`: `)
 			DisplayFormattedTime(w, group.CreatedOn)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
 			if session.ID == AdminID {
-				w.AppendString(`<div>`)
-				w.AppendString(`<form style="display:inline" method="POST" action="/group/edit">`)
+				w.WriteString(`<div>`)
+				w.WriteString(`<form style="display:inline" method="POST" action="/group/edit">`)
 				DisplayHiddenID(w, "ID", group.ID)
 				DisplayHiddenString(w, "Name", group.Name)
 				for i := 0; i < len(group.Students); i++ {
 					DisplayHiddenID(w, "StudentID", group.Students[i])
 				}
 				DisplayButton(w, GL, "", "Edit")
-				w.AppendString(`</form>`)
+				w.WriteString(`</form>`)
 
-				w.AppendString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
+				w.WriteString(` <form style="display:inline" method="POST" action="/api/group/delete">`)
 				DisplayHiddenID(w, "ID", group.ID)
 				DisplayButton(w, GL, "", "Delete")
-				w.AppendString(`</form>`)
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				w.WriteString(`</form>`)
+				w.WriteString(`</div>`)
+				w.WriteString(`<br>`)
 			}
 
 			DisplayGroupStudents(w, GL, &group)
@@ -372,7 +372,7 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 	users := make([]User, 32)
 	var pos int64
 
-	w.AppendString(`<select class="form-select" name="StudentID" multiple>`)
+	w.WriteString(`<select class="form-select" name="StudentID" multiple>`)
 	for {
 		n, err := GetUsers(&pos, users)
 		if err != nil {
@@ -387,26 +387,26 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 				continue
 			}
 
-			w.AppendString(`<option value="`)
+			w.WriteString(`<option value="`)
 			w.WriteID(user.ID)
-			w.AppendString(`"`)
+			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
 				if id == user.ID {
-					w.AppendString(` selected`)
+					w.WriteString(` selected`)
 				}
 			}
-			w.AppendString(`>`)
+			w.WriteString(`>`)
 			w.WriteHTMLString(user.LastName)
-			w.AppendString(` `)
+			w.WriteString(` `)
 			w.WriteHTMLString(user.FirstName)
-			w.AppendString(`</option>`)
+			w.WriteString(`</option>`)
 		}
 	}
-	w.AppendString(`</select>`)
+	w.WriteString(`</select>`)
 }
 
 func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, group *Group, endpoint string, title string, action string, err error) error {
@@ -416,9 +416,9 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, title))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, title))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -447,11 +447,11 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 		{
 			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinGroupNameLen, MaxGroupNameLen, "Name", r.Form.Get("Name"), true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Students")
 			DisplayStudentsSelect(w, r.Form.GetMany("StudentID"))
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplaySubmit(w, GL, "", action, true)
 		}

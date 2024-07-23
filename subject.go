@@ -132,7 +132,7 @@ func SaveSubject(subject *Subject) error {
 }
 
 func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
-	w.AppendString(`<form method="POST" action="/subject/lessons">`)
+	w.WriteString(`<form method="POST" action="/subject/lessons">`)
 	DisplayHiddenID(w, "ID", subject.ID)
 
 	if len(subject.Lessons) == 0 {
@@ -155,51 +155,51 @@ func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject,
 				}
 
 				if !displayed {
-					w.AppendString(`<label>`)
-					w.AppendString(Ls(l, "Courses"))
-					w.AppendString(`: `)
-					w.AppendString(`<select name="CourseID">`)
+					w.WriteString(`<label>`)
+					w.WriteString(Ls(l, "Courses"))
+					w.WriteString(`: `)
+					w.WriteString(`<select name="CourseID">`)
 					displayed = true
 				}
-				w.AppendString(`<option value="`)
+				w.WriteString(`<option value="`)
 				w.WriteInt(i)
-				w.AppendString(`">`)
+				w.WriteString(`">`)
 				w.WriteHTMLString(course.Name)
-				w.AppendString(`</option>`)
+				w.WriteString(`</option>`)
 			}
 		}
 		if displayed {
-			w.AppendString(`</select>`)
-			w.AppendString(`</label> `)
+			w.WriteString(`</select>`)
+			w.WriteString(`</label> `)
 
 			DisplayButton(w, l, "Action", "create from")
-			w.AppendString(`, `)
+			w.WriteString(`, `)
 			DisplayButton(w, l, "Action", "give as is")
-			w.AppendString(` `)
-			w.AppendString(Ls(l, "or"))
-			w.AppendString(` `)
+			w.WriteString(` `)
+			w.WriteString(Ls(l, "or"))
+			w.WriteString(` `)
 		}
 		DisplayButton(w, l, "Action", "create new from scratch")
 	} else {
 		DisplayButton(w, l, "", "Edit")
 	}
 
-	w.AppendString(`</form>`)
+	w.WriteString(`</form>`)
 }
 
 func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher *User) {
 	w.WriteHTMLString(subject.Name)
-	w.AppendString(` `)
-	w.AppendString(Ls(l, "with"))
-	w.AppendString(` `)
+	w.WriteString(` `)
+	w.WriteString(Ls(l, "with"))
+	w.WriteString(` `)
 	w.WriteHTMLString(teacher.LastName)
-	w.AppendString(` `)
+	w.WriteString(` `)
 	w.WriteHTMLString(teacher.FirstName)
-	w.AppendString(` (ID: `)
+	w.WriteString(` (ID: `)
 	w.WriteID(subject.ID)
-	w.AppendString(`)`)
+	w.WriteString(`)`)
 	if subject.Flags == SubjectDeleted {
-		w.AppendString(` [deleted]`)
+		w.WriteString(` [deleted]`)
 	}
 }
 
@@ -210,11 +210,11 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 		return
 	}
 
-	w.AppendString(`<a href="/subject/`)
+	w.WriteString(`<a href="/subject/`)
 	w.WriteID(subject.ID)
-	w.AppendString(`">`)
+	w.WriteString(`">`)
 	DisplaySubjectTitle(w, l, subject, &teacher)
-	w.AppendString(`</a>`)
+	w.WriteString(`</a>`)
 }
 
 func SubjectsPageHandler(w *http.Response, r *http.Request) error {
@@ -229,9 +229,9 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Subjects"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Subjects"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -250,10 +250,10 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Subjects"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Subjects"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			DisplayTableStart(w, GL, []string{"ID", "Name", "Teacher", "Group", "Lessons", "Status"})
 			{
@@ -311,10 +311,10 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 			DisplayTableEnd(w)
 
 			if session.ID == AdminID {
-				w.AppendString(`<br>`)
-				w.AppendString(`<form method="POST" action="/subject/create">`)
+				w.WriteString(`<br>`)
+				w.WriteString(`<form method="POST" action="/subject/create">`)
 				DisplaySubmit(w, GL, "", "Create subject", true)
-				w.AppendString(`</form>`)
+				w.WriteString(`</form>`)
 			}
 		}
 		DisplayPageEnd(w)
@@ -368,9 +368,9 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
+		w.WriteString(`<title>`)
 		DisplaySubjectTitle(w, GL, &subject, &teacher)
-		w.AppendString(`</title>`)
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -389,52 +389,52 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
+			w.WriteString(`<h2>`)
 			DisplaySubjectTitle(w, GL, &subject, &teacher)
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Teacher"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Teacher"))
+			w.WriteString(`: `)
 			DisplayUserLink(w, GL, &teacher)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Group"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Group"))
+			w.WriteString(`: `)
 			DisplayGroupLink(w, GL, &group)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Created on"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Created on"))
+			w.WriteString(`: `)
 			DisplayFormattedTime(w, subject.CreatedOn)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
 			if session.ID == AdminID {
-				w.AppendString(`<div>`)
-				w.AppendString(`<form style="display:inline" method="POST" action="/subject/edit">`)
+				w.WriteString(`<div>`)
+				w.WriteString(`<form style="display:inline" method="POST" action="/subject/edit">`)
 				DisplayHiddenID(w, "ID", subject.ID)
 				DisplayHiddenID(w, "TeacherID", subject.TeacherID)
 				DisplayHiddenID(w, "GroupID", subject.GroupID)
 				DisplayHiddenString(w, "Name", subject.Name)
 				DisplayButton(w, GL, "", "Edit")
-				w.AppendString(`</form>`)
+				w.WriteString(`</form>`)
 
-				w.AppendString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
+				w.WriteString(` <form style="display:inline" method="POST" action="/api/subject/delete">`)
 				DisplayHiddenID(w, "ID", subject.ID)
 				DisplayButton(w, GL, "", "Delete")
-				w.AppendString(`</form>`)
-				w.AppendString(`</div>`)
-				w.AppendString(`<br>`)
+				w.WriteString(`</form>`)
+				w.WriteString(`</div>`)
+				w.WriteString(`<br>`)
 			}
 
 			if (len(subject.Lessons) != 0) || (who != SubjectUserStudent) {
-				w.AppendString(`<br>`)
-				w.AppendString(`<h3>`)
-				w.AppendString(Ls(GL, "Lessons"))
-				w.AppendString(`</h3>`)
+				w.WriteString(`<br>`)
+				w.WriteString(`<h3>`)
+				w.WriteString(Ls(GL, "Lessons"))
+				w.WriteString(`</h3>`)
 				DisplayLessons(w, GL, subject.Lessons)
 			}
 
@@ -455,7 +455,7 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 	users := make([]User, 32)
 	var pos int64
 
-	w.AppendString(`<select class="form-select" name="TeacherID">`)
+	w.WriteString(`<select class="form-select" name="TeacherID">`)
 	for {
 		n, err := GetUsers(&pos, users)
 		if err != nil {
@@ -470,33 +470,33 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 				continue
 			}
 
-			w.AppendString(`<option value="`)
+			w.WriteString(`<option value="`)
 			w.WriteID(user.ID)
-			w.AppendString(`"`)
+			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
 				if id == user.ID {
-					w.AppendString(` selected`)
+					w.WriteString(` selected`)
 				}
 			}
-			w.AppendString(`>`)
+			w.WriteString(`>`)
 			w.WriteHTMLString(user.LastName)
-			w.AppendString(` `)
+			w.WriteString(` `)
 			w.WriteHTMLString(user.FirstName)
-			w.AppendString(`</option>`)
+			w.WriteString(`</option>`)
 		}
 	}
-	w.AppendString(`</select>`)
+	w.WriteString(`</select>`)
 }
 
 func DisplayGroupSelect(w *http.Response, ids []string) {
 	groups := make([]Group, 32)
 	var pos int64
 
-	w.AppendString(`<select class="form-select" name="GroupID">`)
+	w.WriteString(`<select class="form-select" name="GroupID">`)
 	for {
 		n, err := GetGroups(&pos, groups)
 		if err != nil {
@@ -511,24 +511,24 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 				continue
 			}
 
-			w.AppendString(`<option value="`)
+			w.WriteString(`<option value="`)
 			w.WriteID(group.ID)
-			w.AppendString(`"`)
+			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
 				if err != nil {
 					continue
 				}
 				if id == group.ID {
-					w.AppendString(` selected`)
+					w.WriteString(` selected`)
 				}
 			}
-			w.AppendString(`>`)
+			w.WriteString(`>`)
 			w.WriteHTMLString(group.Name)
-			w.AppendString(`</option>`)
+			w.WriteString(`</option>`)
 		}
 	}
-	w.AppendString(`</select>`)
+	w.WriteString(`</select>`)
 }
 
 func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, endpoint string, title string, action string, err error) error {
@@ -538,9 +538,9 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, title))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, title))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -567,15 +567,15 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 		{
 			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", r.Form.Get("Name"), true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Teacher")
 			DisplayTeacherSelect(w, r.Form.GetMany("TeacherID"))
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLabel(w, GL, "Group")
 			DisplayGroupSelect(w, r.Form.GetMany("GroupID"))
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplaySubmit(w, GL, "", action, true)
 		}
@@ -657,9 +657,9 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Edit lessons"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Edit lessons"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -684,7 +684,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 			DisplayLessonsEditableList(w, GL, subject.Lessons)
 
 			DisplayNextPage(w, GL, "Add lesson")
-			w.AppendString(`<br><br>`)
+			w.WriteString(`<br><br>`)
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}

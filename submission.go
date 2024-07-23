@@ -313,13 +313,13 @@ func GetStepMaximumScore(step *Step) int {
 }
 
 func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *SubmittedStep) {
-	w.AppendString(`<p>`)
-	w.AppendString(Ls(l, "Score"))
-	w.AppendString(`: `)
+	w.WriteString(`<p>`)
+	w.WriteString(Ls(l, "Score"))
+	w.WriteString(`: `)
 	w.WriteInt(GetSubmittedStepScore(submittedStep))
-	w.AppendString(`/`)
+	w.WriteString(`/`)
 	w.WriteInt(GetStepMaximumScore(&submittedStep.Step))
-	w.AppendString(`</p>`)
+	w.WriteString(`</p>`)
 }
 
 func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
@@ -330,45 +330,45 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 	}
 
 	w.WriteInt(score)
-	w.AppendString(`/`)
+	w.WriteString(`/`)
 	w.WriteInt(maximum)
 }
 
 func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
-	w.AppendString(` <select name="LanguageID"`)
+	w.WriteString(` <select name="LanguageID"`)
 	if !enabled {
-		w.AppendString(` disabled`)
+		w.WriteString(` disabled`)
 	}
-	w.AppendString(`>`)
+	w.WriteString(`>`)
 	for i := database.ID(0); i < database.ID(len(ProgrammingLanguages)); i++ {
 		lang := &ProgrammingLanguages[i]
 
-		w.AppendString(`<option value="`)
+		w.WriteString(`<option value="`)
 		w.WriteID(i)
-		w.AppendString(`"`)
+		w.WriteString(`"`)
 		if i == submittedTask.LanguageID {
-			w.AppendString(` selected`)
+			w.WriteString(` selected`)
 		}
-		w.AppendString(`>`)
-		w.AppendString(lang.Name)
-		w.AppendString(`</option>`)
+		w.WriteString(`>`)
+		w.WriteString(lang.Name)
+		w.WriteString(`</option>`)
 	}
-	w.AppendString(`</select>`)
+	w.WriteString(`</select>`)
 }
 
 func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
-	w.AppendString(Ls(l, "Submission"))
-	w.AppendString(` `)
-	w.AppendString(Ls(GL, "for"))
-	w.AppendString(` «`)
+	w.WriteString(Ls(l, "Submission"))
+	w.WriteString(` `)
+	w.WriteString(Ls(GL, "for"))
+	w.WriteString(` «`)
 	w.WriteHTMLString(subject.Name)
-	w.AppendString(`: `)
+	w.WriteString(`: `)
 	w.WriteHTMLString(lesson.Name)
-	w.AppendString(`» `)
-	w.AppendString(Ls(GL, "by"))
-	w.AppendString(` `)
+	w.WriteString(`» `)
+	w.WriteString(Ls(GL, "by"))
+	w.WriteString(` `)
 	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
+	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
 }
 
@@ -379,31 +379,31 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 		/* TODO(anton2920): report error. */
 	}
 
-	w.AppendString(`<a href="/submission/`)
+	w.WriteString(`<a href="/submission/`)
 	w.WriteID(submission.ID)
-	w.AppendString(`">`)
+	w.WriteString(`">`)
 	w.WriteHTMLString(user.LastName)
-	w.AppendString(` `)
+	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
-	w.AppendString(` (`)
+	w.WriteString(` (`)
 	switch submission.Status {
 	case SubmissionCheckPending:
-		w.AppendString(`<i>`)
-		w.AppendString(Ls(l, "pending"))
-		w.AppendString(` `)
-		w.AppendString(Ls(l, "verification"))
-		w.AppendString(`</i>`)
+		w.WriteString(`<i>`)
+		w.WriteString(Ls(l, "pending"))
+		w.WriteString(` `)
+		w.WriteString(Ls(l, "verification"))
+		w.WriteString(`</i>`)
 	case SubmissionCheckInProgress:
-		w.AppendString(`<i>`)
-		w.AppendString(Ls(l, "verification"))
-		w.AppendString(` `)
-		w.AppendString(Ls(l, "in progress"))
-		w.AppendString(`</i>`)
+		w.WriteString(`<i>`)
+		w.WriteString(Ls(l, "verification"))
+		w.WriteString(` `)
+		w.WriteString(Ls(l, "in progress"))
+		w.WriteString(`</i>`)
 	case SubmissionCheckDone:
 		DisplaySubmissionTotalScore(w, submission)
 	}
-	w.AppendString(`)`)
-	w.AppendString(`</a>`)
+	w.WriteString(`)`)
+	w.WriteString(`</a>`)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
@@ -454,9 +454,9 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
+		w.WriteString(`<title>`)
 		DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
-		w.AppendString(`</title>`)
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -477,24 +477,24 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
+			w.WriteString(`<h2>`)
 			DisplaySubmissionTitle(w, GL, &subject, &lesson, &user)
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Started at"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Started at"))
+			w.WriteString(`: `)
 			DisplayFormattedTime(w, submission.StartedAt)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<p>`)
-			w.AppendString(Ls(GL, "Finished at"))
-			w.AppendString(`: `)
+			w.WriteString(`<p>`)
+			w.WriteString(Ls(GL, "Finished at"))
+			w.WriteString(`: `)
 			DisplayFormattedTime(w, submission.FinishedAt)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<form method="POST" action="/submission/results">`)
+			w.WriteString(`<form method="POST" action="/submission/results">`)
 
 			DisplayHiddenID(w, "ID", id)
 
@@ -503,46 +503,46 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 				DisplayFrameStart(w)
 
-				w.AppendString(`<p><b>`)
-				w.AppendString(Ls(GL, "Step"))
-				w.AppendString(` #`)
+				w.WriteString(`<p><b>`)
+				w.WriteString(Ls(GL, "Step"))
+				w.WriteString(` #`)
 				w.WriteInt(i + 1)
-				w.AppendString(`</b></p>`)
+				w.WriteString(`</b></p>`)
 
-				w.AppendString(`<p>`)
-				w.AppendString(Ls(GL, "Name"))
-				w.AppendString(`: `)
+				w.WriteString(`<p>`)
+				w.WriteString(Ls(GL, "Name"))
+				w.WriteString(`: `)
 				w.WriteHTMLString(submittedStep.Step.Name)
-				w.AppendString(`</p>`)
+				w.WriteString(`</p>`)
 
-				w.AppendString(`<p>`)
-				w.AppendString(Ls(GL, "Type"))
-				w.AppendString(`: `)
-				w.AppendString(StepStringType(GL, &submittedStep.Step))
-				w.AppendString(`</p>`)
+				w.WriteString(`<p>`)
+				w.WriteString(Ls(GL, "Type"))
+				w.WriteString(`: `)
+				w.WriteString(StepStringType(GL, &submittedStep.Step))
+				w.WriteString(`</p>`)
 
 				if submittedStep.Flags == SubmittedStepSkipped {
 					DisplaySubmittedStepScore(w, GL, submittedStep)
 
-					w.AppendString(`<p><i>`)
-					w.AppendString(Ls(GL, "This step has been skipped"))
-					w.AppendString(`.</i></p>`)
+					w.WriteString(`<p><i>`)
+					w.WriteString(Ls(GL, "This step has been skipped"))
+					w.WriteString(`.</i></p>`)
 				} else {
 					switch submittedStep.Status {
 					case SubmissionCheckPending:
-						w.AppendString(`<p><i>`)
-						w.AppendString(Ls(GL, "Pending"))
-						w.AppendString(` `)
-						w.AppendString(Ls(GL, "verification"))
-						w.AppendString(`...`)
-						w.AppendString(`</i></p>`)
+						w.WriteString(`<p><i>`)
+						w.WriteString(Ls(GL, "Pending"))
+						w.WriteString(` `)
+						w.WriteString(Ls(GL, "verification"))
+						w.WriteString(`...`)
+						w.WriteString(`</i></p>`)
 					case SubmissionCheckInProgress:
-						w.AppendString(`<p><i>`)
-						w.AppendString(Ls(GL, "Verification"))
-						w.AppendString(` `)
-						w.AppendString(Ls(GL, "in progress"))
-						w.AppendString(`...`)
-						w.AppendString(`</i></p>`)
+						w.WriteString(`<p><i>`)
+						w.WriteString(Ls(GL, "Verification"))
+						w.WriteString(` `)
+						w.WriteString(Ls(GL, "in progress"))
+						w.WriteString(`...`)
+						w.WriteString(`</i></p>`)
 					case SubmissionCheckDone:
 						DisplaySubmittedStepScore(w, GL, submittedStep)
 						DisplayErrorMessage(w, GL, submittedStep.Error)
@@ -559,31 +559,31 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 			switch submission.Status {
 			case SubmissionCheckPending:
-				w.AppendString(`<p><i>`)
-				w.AppendString(Ls(GL, "Pending"))
-				w.AppendString(` `)
-				w.AppendString(Ls(GL, "verification"))
-				w.AppendString(`...`)
-				w.AppendString(`</i></p>`)
+				w.WriteString(`<p><i>`)
+				w.WriteString(Ls(GL, "Pending"))
+				w.WriteString(` `)
+				w.WriteString(Ls(GL, "verification"))
+				w.WriteString(`...`)
+				w.WriteString(`</i></p>`)
 			case SubmissionCheckInProgress:
-				w.AppendString(`<p><i>`)
-				w.AppendString(Ls(GL, "Verification"))
-				w.AppendString(` `)
-				w.AppendString(Ls(GL, "in progress"))
-				w.AppendString(`...`)
-				w.AppendString(`</i></p>`)
+				w.WriteString(`<p><i>`)
+				w.WriteString(Ls(GL, "Verification"))
+				w.WriteString(` `)
+				w.WriteString(Ls(GL, "in progress"))
+				w.WriteString(`...`)
+				w.WriteString(`</i></p>`)
 			case SubmissionCheckDone:
-				w.AppendString(`<p>`)
-				w.AppendString(Ls(GL, "Total score"))
-				w.AppendString(`: `)
+				w.WriteString(`<p>`)
+				w.WriteString(Ls(GL, "Total score"))
+				w.WriteString(`: `)
 				DisplaySubmissionTotalScore(w, &submission)
-				w.AppendString(`</p>`)
+				w.WriteString(`</p>`)
 				if teacher {
 					DisplayCommand(w, GL, "Re-check")
 				}
 			}
 
-			w.AppendString(`</form>`)
+			w.WriteString(`</form>`)
 		}
 		DisplayPageEnd(w)
 		DisplayMainEnd(w)
@@ -605,11 +605,11 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Submitted test"))
-		w.AppendString(`: «`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Submitted test"))
+		w.WriteString(`: «`)
 		w.WriteHTMLString(test.Name)
-		w.AppendString(`»</title>`)
+		w.WriteString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -631,17 +631,17 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
-			w.AppendString(Ls(GL, "Submitted test"))
-			w.AppendString(`: «`)
+			w.WriteString(`<h2>`)
+			w.WriteString(Ls(GL, "Submitted test"))
+			w.WriteString(`: «`)
 			w.WriteHTMLString(test.Name)
-			w.AppendString(`»</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`»</h2>`)
+			w.WriteString(`<br>`)
 
 			if teacher {
-				w.AppendString(`<p><i>`)
-				w.AppendString(Ls(GL, "Note: answers marked with [x] are correct"))
-				w.AppendString(`.</i></p>`)
+				w.WriteString(`<p><i>`)
+				w.WriteString(Ls(GL, "Note: answers marked with [x] are correct"))
+				w.WriteString(`.</i></p>`)
 			}
 
 			for i := 0; i < len(test.Questions); i++ {
@@ -649,65 +649,65 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 
 				DisplayFrameStart(w)
 
-				w.AppendString(`<p><b>`)
+				w.WriteString(`<p><b>`)
 				w.WriteHTMLString(question.Name)
-				w.AppendString(`</b></p>`)
+				w.WriteString(`</b></p>`)
 
-				w.AppendString(`<ol>`)
+				w.WriteString(`<ol>`)
 				for j := 0; j < len(question.Answers); j++ {
 					answer := question.Answers[j]
 
 					if j > 0 {
-						w.AppendString(`<br>`)
+						w.WriteString(`<br>`)
 					}
 
-					w.AppendString(`<li>`)
+					w.WriteString(`<li>`)
 
-					w.AppendString(`<input type="`)
+					w.WriteString(`<input type="`)
 					if len(question.CorrectAnswers) > 1 {
-						w.AppendString(`checkbox`)
+						w.WriteString(`checkbox`)
 					} else {
-						w.AppendString(`radio`)
+						w.WriteString(`radio`)
 					}
-					w.AppendString(`" name="SelectedAnswer`)
+					w.WriteString(`" name="SelectedAnswer`)
 					w.WriteInt(i)
-					w.AppendString(`" value="`)
+					w.WriteString(`" value="`)
 					w.WriteInt(j)
-					w.AppendString(`"`)
+					w.WriteString(`"`)
 
 					for k := 0; k < len(submittedTest.SubmittedQuestions[i].SelectedAnswers); k++ {
 						selectedAnswer := submittedTest.SubmittedQuestions[i].SelectedAnswers[k]
 						if j == selectedAnswer {
-							w.AppendString(` checked`)
+							w.WriteString(` checked`)
 							break
 						}
 					}
 
-					w.AppendString(` disabled> `)
+					w.WriteString(` disabled> `)
 
-					w.AppendString(`<span>`)
+					w.WriteString(`<span>`)
 					w.WriteHTMLString(answer)
-					w.AppendString(`</span>`)
+					w.WriteString(`</span>`)
 
 					if teacher {
 						for k := 0; k < len(question.CorrectAnswers); k++ {
 							correctAnswer := question.CorrectAnswers[k]
 							if j == correctAnswer {
-								w.AppendString(` <span>[x]</span>`)
+								w.WriteString(` <span>[x]</span>`)
 								break
 							}
 						}
 					}
 
-					w.AppendString(`</li>`)
+					w.WriteString(`</li>`)
 				}
-				w.AppendString(`</ol>`)
+				w.WriteString(`</ol>`)
 
-				w.AppendString(`<span>`)
-				w.AppendString(Ls(GL, "Score"))
-				w.AppendString(`: `)
+				w.WriteString(`<span>`)
+				w.WriteString(Ls(GL, "Score"))
+				w.WriteString(`: `)
 				w.WriteInt(submittedTest.Scores[i])
-				w.AppendString(`/1</span>`)
+				w.WriteString(`/1</span>`)
 
 				DisplayFrameEnd(w)
 			}
@@ -726,49 +726,49 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 	scores := submittedTask.Scores[checkType]
 	messages := submittedTask.Messages[checkType]
 
-	w.AppendString(`<ol>`)
+	w.WriteString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
 		score := scores[i]
 		message := messages[i]
 
-		w.AppendString(`<li class="mt-3">`)
+		w.WriteString(`<li class="mt-3">`)
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(l, "Input"))
-		w.AppendString(`: `)
+		w.WriteString(`<label>`)
+		w.WriteString(Ls(l, "Input"))
+		w.WriteString(`: `)
 
-		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
+		w.WriteString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
-		w.AppendString(`</textarea>`)
+		w.WriteString(`</textarea>`)
 
-		w.AppendString(`</label> `)
+		w.WriteString(`</label> `)
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(l, "output"))
-		w.AppendString(`: `)
+		w.WriteString(`<label>`)
+		w.WriteString(Ls(l, "output"))
+		w.WriteString(`: `)
 
-		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
+		w.WriteString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
-		w.AppendString(`</textarea>`)
+		w.WriteString(`</textarea>`)
 
-		w.AppendString(`</label> `)
+		w.WriteString(`</label> `)
 
-		w.AppendString(`<span>`)
-		w.AppendString(Ls(GL, "score"))
-		w.AppendString(`: `)
+		w.WriteString(`<span>`)
+		w.WriteString(Ls(GL, "score"))
+		w.WriteString(`: `)
 		w.WriteInt(score)
-		w.AppendString(`/1</span>`)
+		w.WriteString(`/1</span>`)
 
 		if message != "" {
-			w.AppendString(` <span>`)
+			w.WriteString(` <span>`)
 			w.WriteHTMLString(message)
-			w.AppendString(`</span>`)
+			w.WriteString(`</span>`)
 		}
 
-		w.AppendString(`</li>`)
+		w.WriteString(`</li>`)
 	}
-	w.AppendString(`</ol>`)
+	w.WriteString(`</ol>`)
 }
 
 func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTask *SubmittedProgramming) error {
@@ -781,11 +781,11 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Submitted programming task"))
-		w.AppendString(`: «`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Submitted programming task"))
+		w.WriteString(`: «`)
 		w.WriteHTMLString(task.Name)
-		w.AppendString(`»</title>`)
+		w.WriteString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -807,44 +807,44 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
-			w.AppendString(Ls(GL, "Submitted programming task"))
-			w.AppendString(`: «`)
+			w.WriteString(`<h2>`)
+			w.WriteString(Ls(GL, "Submitted programming task"))
+			w.WriteString(`: «`)
 			w.WriteHTMLString(task.Name)
-			w.AppendString(`»</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`»</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Description"))
-			w.AppendString(`</h3>`)
-			w.AppendString(`<p>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Description"))
+			w.WriteString(`</h3>`)
+			w.WriteString(`<p>`)
 			w.WriteHTMLString(task.Description)
-			w.AppendString(`</p>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</p>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Examples"))
-			w.AppendString(`</h3>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Examples"))
+			w.WriteString(`</h3>`)
 			SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Solution"))
-			w.AppendString(`</h3>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Solution"))
+			w.WriteString(`</h3>`)
 
 			DisplayLabel(w, GL, "Programming language")
 			DisplaySubmissionLanguageSelect(w, submittedTask, false)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<textarea class="form-control" rows="10" readonly>`)
+			w.WriteString(`<textarea class="form-control" rows="10" readonly>`)
 			w.WriteHTMLString(submittedTask.Solution)
-			w.AppendString(`</textarea>`)
+			w.WriteString(`</textarea>`)
 
 			if teacher {
-				w.AppendString(`<br><br>`)
-				w.AppendString(`<h3>`)
-				w.AppendString(Ls(GL, "Tests"))
-				w.AppendString(`</h3>`)
+				w.WriteString(`<br><br>`)
+				w.WriteString(`<h3>`)
+				w.WriteString(Ls(GL, "Tests"))
+				w.WriteString(`</h3>`)
 				SubmissionResultsProgrammingDisplayChecks(w, GL, submittedTask, CheckTypeTest)
 			}
 		}
@@ -1062,11 +1062,11 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Test"))
-		w.AppendString(`: «`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Test"))
+		w.WriteString(`: «`)
 		w.WriteHTMLString(test.Name)
-		w.AppendString(`»</title>`)
+		w.WriteString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -1093,12 +1093,12 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h3 class="text-center">`)
-			w.AppendString(Ls(GL, "Test"))
-			w.AppendString(`: «`)
+			w.WriteString(`<h3 class="text-center">`)
+			w.WriteString(Ls(GL, "Test"))
+			w.WriteString(`: «`)
 			w.WriteHTMLString(test.Name)
-			w.AppendString(`»</h3>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`»</h3>`)
+			w.WriteString(`<br>`)
 
 			DisplayError(w, GL, err)
 
@@ -1111,48 +1111,48 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 
 				DisplayFrameStart(w)
 
-				w.AppendString(`<p><b>`)
+				w.WriteString(`<p><b>`)
 				w.WriteHTMLString(question.Name)
-				w.AppendString(`</b></p>`)
+				w.WriteString(`</b></p>`)
 
-				w.AppendString(`<ol>`)
+				w.WriteString(`<ol>`)
 				for j := 0; j < len(question.Answers); j++ {
 					answer := question.Answers[j]
 
 					if j > 0 {
-						w.AppendString(`<br>`)
+						w.WriteString(`<br>`)
 					}
 
-					w.AppendString(`<li>`)
+					w.WriteString(`<li>`)
 
-					w.AppendString(`<input type="`)
+					w.WriteString(`<input type="`)
 					if len(question.CorrectAnswers) > 1 {
-						w.AppendString(`checkbox`)
+						w.WriteString(`checkbox`)
 					} else {
-						w.AppendString(`radio`)
+						w.WriteString(`radio`)
 					}
-					w.AppendString(`" name="SelectedAnswer`)
+					w.WriteString(`" name="SelectedAnswer`)
 					w.WriteInt(i)
-					w.AppendString(`" value="`)
+					w.WriteString(`" value="`)
 					w.WriteInt(j)
-					w.AppendString(`"`)
+					w.WriteString(`"`)
 
 					for k := 0; k < len(submittedQuestion.SelectedAnswers); k++ {
 						if j == submittedQuestion.SelectedAnswers[k] {
-							w.AppendString(` checked`)
+							w.WriteString(` checked`)
 							break
 						}
 					}
 
-					w.AppendString(`> `)
+					w.WriteString(`> `)
 
-					w.AppendString(`<span>`)
+					w.WriteString(`<span>`)
 					w.WriteHTMLString(answer)
-					w.AppendString(`</span>`)
+					w.WriteString(`</span>`)
 
-					w.AppendString(`</li>`)
+					w.WriteString(`</li>`)
 				}
-				w.AppendString(`</ol>`)
+				w.WriteString(`</ol>`)
 
 				DisplayFrameEnd(w)
 			}
@@ -1193,35 +1193,35 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Langu
 }
 
 func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
-	w.AppendString(`<ol>`)
+	w.WriteString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
 
-		w.AppendString(`<li class="mt-3">`)
+		w.WriteString(`<li class="mt-3">`)
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(l, "Input"))
-		w.AppendString(`: `)
+		w.WriteString(`<label>`)
+		w.WriteString(Ls(l, "Input"))
+		w.WriteString(`: `)
 
-		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
+		w.WriteString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Input)
-		w.AppendString(`</textarea>`)
+		w.WriteString(`</textarea>`)
 
-		w.AppendString(`</label> `)
+		w.WriteString(`</label> `)
 
-		w.AppendString(`<label>`)
-		w.AppendString(Ls(l, "output"))
-		w.AppendString(`: `)
+		w.WriteString(`<label>`)
+		w.WriteString(Ls(l, "output"))
+		w.WriteString(`: `)
 
-		w.AppendString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
+		w.WriteString(`<textarea class="btn btn-outline-dark" rows="1" readonly>`)
 		w.WriteHTMLString(check.Output)
-		w.AppendString(`</textarea>`)
+		w.WriteString(`</textarea>`)
 
-		w.AppendString(`</label>`)
+		w.WriteString(`</label>`)
 
-		w.AppendString(`</li>`)
+		w.WriteString(`</li>`)
 	}
-	w.AppendString(`</ol>`)
+	w.WriteString(`</ol>`)
 }
 
 func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTask *SubmittedProgramming, err error) error {
@@ -1233,11 +1233,11 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Programming task"))
-		w.AppendString(`: «`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Programming task"))
+		w.WriteString(`: «`)
 		w.WriteHTMLString(task.Name)
-		w.AppendString(`»</title>`)
+		w.WriteString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -1264,41 +1264,41 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h3 class="text-center">`)
-			w.AppendString(Ls(GL, "Programming task"))
-			w.AppendString(`: «`)
+			w.WriteString(`<h3 class="text-center">`)
+			w.WriteString(Ls(GL, "Programming task"))
+			w.WriteString(`: «`)
 			w.WriteHTMLString(task.Name)
-			w.AppendString(`»</h3>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`»</h3>`)
+			w.WriteString(`<br>`)
 
 			DisplayError(w, GL, err)
 
-			w.AppendString(`<h4>`)
-			w.AppendString(Ls(GL, "Description"))
-			w.AppendString(`</h4>`)
-			w.AppendString(`<p>`)
+			w.WriteString(`<h4>`)
+			w.WriteString(Ls(GL, "Description"))
+			w.WriteString(`</h4>`)
+			w.WriteString(`<p>`)
 			w.WriteHTMLString(task.Description)
-			w.AppendString(`</p>`)
+			w.WriteString(`</p>`)
 
-			w.AppendString(`<h4>`)
-			w.AppendString(Ls(GL, "Examples"))
-			w.AppendString(`</h4>`)
+			w.WriteString(`<h4>`)
+			w.WriteString(Ls(GL, "Examples"))
+			w.WriteString(`</h4>`)
 			SubmissionNewDisplayProgrammingChecks(w, GL, task, CheckTypeExample)
 
-			w.AppendString(`<h4>`)
-			w.AppendString(Ls(GL, "Solution"))
-			w.AppendString(`</h4>`)
+			w.WriteString(`<h4>`)
+			w.WriteString(Ls(GL, "Solution"))
+			w.WriteString(`</h4>`)
 
 			DisplayLabel(w, GL, "Programming language")
 			DisplaySubmissionLanguageSelect(w, submittedTask, true)
-			w.AppendString(`</label>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</label>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<textarea class="form-control" rows="10" name="Solution">`)
+			w.WriteString(`<textarea class="form-control" rows="10" name="Solution">`)
 			w.WriteHTMLString(submittedTask.Solution)
-			w.AppendString(`</textarea>`)
+			w.WriteString(`</textarea>`)
 
-			w.AppendString(`<br><br>`)
+			w.WriteString(`<br><br>`)
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 			DisplaySubmit(w, GL, "NextPage", "Discard", true)
@@ -1361,13 +1361,13 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Evaluation"))
-		w.AppendString(` `)
-		w.AppendString(Ls(GL, "for"))
-		w.AppendString(` «`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Evaluation"))
+		w.WriteString(` `)
+		w.WriteString(Ls(GL, "for"))
+		w.WriteString(` «`)
 		w.WriteHTMLString(lesson.Name)
-		w.AppendString(`»</title>`)
+		w.WriteString(`»</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -1388,14 +1388,14 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h3 class="text-center">`)
-			w.AppendString(Ls(GL, "Evaluation"))
-			w.AppendString(` `)
-			w.AppendString(Ls(GL, "for"))
-			w.AppendString(` «`)
+			w.WriteString(`<h3 class="text-center">`)
+			w.WriteString(Ls(GL, "Evaluation"))
+			w.WriteString(` `)
+			w.WriteString(Ls(GL, "for"))
+			w.WriteString(` «`)
 			w.WriteHTMLString(lesson.Name)
-			w.AppendString(`»</h3>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`»</h3>`)
+			w.WriteString(`<br>`)
 
 			DisplayError(w, GL, err)
 
@@ -1408,24 +1408,24 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 
 				DisplayFrameStart(w)
 
-				w.AppendString(`<p><b>`)
-				w.AppendString(Ls(GL, "Step"))
-				w.AppendString(` #`)
+				w.WriteString(`<p><b>`)
+				w.WriteString(Ls(GL, "Step"))
+				w.WriteString(` #`)
 				w.WriteInt(i + 1)
 				DisplayDraft(w, GL, submittedStep.Flags == SubmittedStepDraft)
-				w.AppendString(`</b></p>`)
+				w.WriteString(`</b></p>`)
 
-				w.AppendString(`<p>`)
-				w.AppendString(Ls(GL, "Name"))
-				w.AppendString(`: `)
+				w.WriteString(`<p>`)
+				w.WriteString(Ls(GL, "Name"))
+				w.WriteString(`: `)
 				w.WriteHTMLString(submittedStep.Step.Name)
-				w.AppendString(`</p>`)
+				w.WriteString(`</p>`)
 
-				w.AppendString(`<p>`)
-				w.AppendString(Ls(GL, "Type"))
-				w.AppendString(`: `)
-				w.AppendString(StepStringType(GL, &submittedStep.Step))
-				w.AppendString(`</p>`)
+				w.WriteString(`<p>`)
+				w.WriteString(Ls(GL, "Type"))
+				w.WriteString(`: `)
+				w.WriteString(StepStringType(GL, &submittedStep.Step))
+				w.WriteString(`</p>`)
 
 				if submittedStep.Flags == SubmittedStepSkipped {
 					DisplayIndexedCommand(w, GL, i, "Pass")

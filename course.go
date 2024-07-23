@@ -98,11 +98,11 @@ func SaveCourse(course *Course) error {
 func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bool) {
 	if len(course.Name) == 0 {
 		if italics {
-			w.AppendString(`<i>`)
+			w.WriteString(`<i>`)
 		}
-		w.AppendString(Ls(l, "Unnamed"))
+		w.WriteString(Ls(l, "Unnamed"))
 		if italics {
-			w.AppendString(`</i>`)
+			w.WriteString(`</i>`)
 		}
 	} else {
 		w.WriteHTMLString(course.Name)
@@ -112,11 +112,11 @@ func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bo
 }
 
 func DisplayCourseLink(w *http.Response, l Language, course *Course) {
-	w.AppendString(`<a href="/course/`)
+	w.WriteString(`<a href="/course/`)
 	w.WriteID(course.ID)
-	w.AppendString(`">`)
+	w.WriteString(`">`)
 	DisplayCourseTitle(w, l, course, true)
-	w.AppendString(`</a>`)
+	w.WriteString(`</a>`)
 }
 
 func CoursesPageHandler(w *http.Response, r *http.Request) error {
@@ -136,9 +136,9 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Courses"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Courses"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -157,10 +157,10 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2 class="text-center">`)
-			w.AppendString(Ls(GL, "Courses"))
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`<h2 class="text-center">`)
+			w.WriteString(Ls(GL, "Courses"))
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
 			DisplayTableStart(w, GL, []string{"ID", "Name", "Lessons", "Status"})
 			{
@@ -194,10 +194,10 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 			}
 			DisplayTableEnd(w)
 
-			w.AppendString(`<br>`)
-			w.AppendString(`<form method="POST" action="/course/create">`)
+			w.WriteString(`<br>`)
+			w.WriteString(`<form method="POST" action="/course/create">`)
 			DisplaySubmit(w, GL, "", "Create course", true)
-			w.AppendString(`</form>`)
+			w.WriteString(`</form>`)
 		}
 		DisplayPageEnd(w)
 		DisplayMainEnd(w)
@@ -240,9 +240,9 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
+		w.WriteString(`<title>`)
 		DisplayCourseTitle(w, GL, &course, false)
-		w.AppendString(`</title>`)
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -261,27 +261,27 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayPageStart(w, width)
 		{
-			w.AppendString(`<h2>`)
+			w.WriteString(`<h2>`)
 			DisplayCourseTitle(w, GL, &course, true)
-			w.AppendString(`</h2>`)
-			w.AppendString(`<br>`)
+			w.WriteString(`</h2>`)
+			w.WriteString(`<br>`)
 
-			w.AppendString(`<h3>`)
-			w.AppendString(Ls(GL, "Lessons"))
-			w.AppendString(`</h3>`)
+			w.WriteString(`<h3>`)
+			w.WriteString(Ls(GL, "Lessons"))
+			w.WriteString(`</h3>`)
 			DisplayLessons(w, GL, course.Lessons)
 
-			w.AppendString(`<div>`)
-			w.AppendString(`<form style="display:inline" method="POST" action="/course/edit">`)
+			w.WriteString(`<div>`)
+			w.WriteString(`<form style="display:inline" method="POST" action="/course/edit">`)
 			DisplayHiddenID(w, "ID", course.ID)
 			DisplayButton(w, GL, "", "Edit")
-			w.AppendString(`</form> `)
+			w.WriteString(`</form> `)
 
-			w.AppendString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
+			w.WriteString(`<form style="display:inline" method="POST" action="/api/course/delete">`)
 			DisplayHiddenID(w, "ID", course.ID)
 			DisplayButton(w, GL, "", "Delete")
-			w.AppendString(`</form>`)
-			w.AppendString(`</div>`)
+			w.WriteString(`</form>`)
+			w.WriteString(`</div>`)
 		}
 		DisplayPageEnd(w)
 		DisplayMainEnd(w)
@@ -325,9 +325,9 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 
 	DisplayHeadStart(w)
 	{
-		w.AppendString(`<title>`)
-		w.AppendString(Ls(GL, "Course"))
-		w.AppendString(`</title>`)
+		w.WriteString(`<title>`)
+		w.WriteString(Ls(GL, "Course"))
+		w.WriteString(`</title>`)
 	}
 	DisplayHeadEnd(w)
 
@@ -351,12 +351,12 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 
 			DisplayLabel(w, GL, "Name")
 			DisplayConstraintInput(w, "text", MinNameLen, MaxNameLen, "Name", course.Name, true)
-			w.AppendString(`<br>`)
+			w.WriteString(`<br>`)
 
 			DisplayLessonsEditableList(w, GL, course.Lessons)
 
 			DisplayNextPage(w, GL, "Add lesson")
-			w.AppendString(`<br><br>`)
+			w.WriteString(`<br><br>`)
 
 			DisplaySubmit(w, GL, "NextPage", "Save", true)
 		}

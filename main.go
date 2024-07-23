@@ -161,12 +161,12 @@ func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 	case "/bootstrap.min.css":
 		w.Headers.Set("Content-Type", "text/css")
 		w.Headers.Set("Cache-Control", "max-age=604800")
-		w.Append(BootstrapCSS)
+		w.Write(BootstrapCSS)
 		return nil
 	case "/bootstrap.min.js":
 		w.Headers.Set("Content-Type", "application/js")
 		w.Headers.Set("Cache-Control", "max-age=604800")
-		w.Append(BootstrapJS)
+		w.Write(BootstrapJS)
 		return nil
 	}
 
@@ -202,7 +202,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 		r := &rs[i]
 
 		if r.URL.Path == "/plaintext" {
-			w.AppendString("Hello, world!\n")
+			w.WriteString("Hello, world!\n")
 			continue
 		}
 		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
