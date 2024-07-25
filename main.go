@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"sync/atomic"
 
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
@@ -22,8 +23,6 @@ import (
 const (
 	APIPrefix = "/api"
 	FSPrefix  = "/fs"
-
-	PageSize = 4096
 )
 
 var (
@@ -33,7 +32,7 @@ var (
 
 var WorkingDirectory string
 
-var DateBuffer = make([]byte, time.RFC822Len)
+var Now int64
 
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
@@ -201,15 +200,14 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 		w := &ws[i]
 		r := &rs[i]
 
+		start := intel.RDTSC()
 		if r.URL.Path == "/plaintext" {
 			w.WriteString("Hello, world!\n")
 			continue
 		}
+
 		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
-
-		level := log.LevelDebug
-
-		start := intel.RDTSC()
+		level := log.LevelInfo
 		err := RouterFunc(w, r)
 		if err != nil {
 			ErrorPageHandler(w, r, GL, err)
@@ -238,6 +236,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 }
 
 func ServerWorker(q *event.Queue) {
+	dateBuffer := make([]byte, time.RFC822Len)
 	events := make([]event.Event, 64)
 
 	const batchSize = 32
@@ -250,6 +249,7 @@ func ServerWorker(q *event.Queue) {
 			log.Errorf("Failed to get events from client queue: %v", err)
 			continue
 		}
+		time.PutTmRFC822(dateBuffer, time.ToTm(int(atomic.LoadInt64(&Now))))
 
 		for i := 0; i < n; i++ {
 			e := &events[i]
@@ -274,7 +274,7 @@ func ServerWorker(q *event.Queue) {
 					n, err := http.Read(ctx)
 					if err != nil {
 						if err == http.NoSpaceLeft {
-							http1.FillError(ctx, err, DateBuffer)
+							http1.FillError(ctx, err, dateBuffer)
 							http.CloseAfterWrite(ctx)
 							break
 						}
@@ -287,12 +287,12 @@ func ServerWorker(q *event.Queue) {
 					for n > 0 {
 						n, err = http1.ParseRequestsUnsafe(ctx, rs)
 						if err != nil {
-							http1.FillError(ctx, err, DateBuffer)
+							http1.FillError(ctx, err, dateBuffer)
 							http.CloseAfterWrite(ctx)
 							break
 						}
 						Router(ctx, ws[:n], rs[:n])
-						http1.FillResponses(ctx, ws[:n], DateBuffer)
+						http1.FillResponses(ctx, ws[:n], dateBuffer)
 					}
 				}
 				fallthrough
@@ -375,15 +375,14 @@ func main() {
 	defer q.Close()
 
 	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
+
+	atomic.StoreInt64(&Now, int64(time.Unix()))
 	_ = q.AddTimer(1, 1, event.Seconds, nil)
 
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	/* TODO(anton2920): fix data race and restore Date update logic. */
-	time.PutTmRFC822(DateBuffer, time.ToTm(time.Unix()))
-
-	nworkers := runtime.GOMAXPROCS(0) / 2
+	nworkers := min(runtime.GOMAXPROCS(0)/2, runtime.NumCPU())
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
 		qs[i], err = event.NewQueue()
@@ -394,10 +393,9 @@ func main() {
 	}
 
 	events := make([]event.Event, 64)
-	now := time.Unix()
 	var counter int
-
 	var quit bool
+
 	for !quit {
 		n, err := q.GetEvents(events)
 		if err != nil {
@@ -412,16 +410,15 @@ func main() {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
 			case event.Read:
-				ctx, err := http.Accept(l, PageSize)
+				ctx, err := http.Accept(l, 1024)
 				if err != nil {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
-				_ = http.AddClientToQueue(qs[counter%len(qs)], ctx, event.RequestRead, event.TriggerEdge)
+				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
 				counter++
 			case event.Timer:
-				now += e.Data
-				// time.PutTmRFC822(DateBuffer, time.ToTm(now))
+				atomic.AddInt64(&Now, int64(e.Data))
 			case event.Signal:
 				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
