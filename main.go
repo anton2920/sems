@@ -7,6 +7,7 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
@@ -32,7 +33,7 @@ var (
 
 var WorkingDirectory string
 
-var Now int64
+var DateBufferPtr unsafe.Pointer
 
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 	switch {
@@ -236,7 +237,6 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 }
 
 func ServerWorker(q *event.Queue) {
-	dateBuffer := make([]byte, time.RFC822Len)
 	events := make([]event.Event, 64)
 
 	const batchSize = 32
@@ -249,7 +249,7 @@ func ServerWorker(q *event.Queue) {
 			log.Errorf("Failed to get events from client queue: %v", err)
 			continue
 		}
-		time.PutTmRFC822(dateBuffer, time.ToTm(int(atomic.LoadInt64(&Now))))
+		dateBuffer := unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
 
 		for i := 0; i < n; i++ {
 			e := &events[i]
@@ -375,8 +375,6 @@ func main() {
 	defer q.Close()
 
 	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
-
-	atomic.StoreInt64(&Now, int64(time.Unix()))
 	_ = q.AddTimer(1, 1, event.Seconds, nil)
 
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
@@ -393,9 +391,10 @@ func main() {
 	}
 
 	events := make([]event.Event, 64)
+	now := time.Unix()
 	var counter int
-	var quit bool
 
+	var quit bool
 	for !quit {
 		n, err := q.GetEvents(events)
 		if err != nil {
@@ -418,7 +417,10 @@ func main() {
 				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
 				counter++
 			case event.Timer:
-				atomic.AddInt64(&Now, int64(e.Data))
+				now += e.Data
+				buffer := make([]byte, time.RFC822Len)
+				time.PutTmRFC822(buffer, time.ToTm(now))
+				atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
 			case event.Signal:
 				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
