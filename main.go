@@ -236,6 +236,16 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 	}
 }
 
+func GetDateHeader() []byte {
+	return unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
+}
+
+func UpdateDateHeader(now int) {
+	buffer := make([]byte, time.RFC822Len)
+	time.PutTmRFC822(buffer, time.ToTm(now))
+	atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
+}
+
 func ServerWorker(q *event.Queue) {
 	events := make([]event.Event, 64)
 
@@ -249,7 +259,7 @@ func ServerWorker(q *event.Queue) {
 			log.Errorf("Failed to get events from client queue: %v", err)
 			continue
 		}
-		dateBuffer := unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
+		dateBuffer := GetDateHeader()
 
 		for i := 0; i < n; i++ {
 			e := &events[i]
@@ -389,9 +399,10 @@ func main() {
 		}
 		go ServerWorker(qs[i])
 	}
+	now := time.Unix()
+	UpdateDateHeader(now)
 
 	events := make([]event.Event, 64)
-	now := time.Unix()
 	var counter int
 
 	var quit bool
@@ -418,9 +429,7 @@ func main() {
 				counter++
 			case event.Timer:
 				now += e.Data
-				buffer := make([]byte, time.RFC822Len)
-				time.PutTmRFC822(buffer, time.ToTm(now))
-				atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
+				UpdateDateHeader(now)
 			case event.Signal:
 				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
