@@ -5,7 +5,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"runtime/trace"
 	"sync/atomic"
 	"unsafe"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
+	"github.com/anton2920/gofa/trace"
 )
 
 const (
@@ -197,16 +197,18 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 }
 
 func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
+	defer trace.End(trace.Start(""))
+
 	for i := 0; i < len(rs); i++ {
 		w := &ws[i]
 		r := &rs[i]
 
-		start := intel.RDTSC()
 		if r.URL.Path == "/plaintext" {
 			w.WriteString("Hello, world!\n")
 			continue
 		}
 
+		start := intel.RDTSC()
 		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
 		level := log.LevelInfo
 		err := RouterFunc(w, r)
@@ -253,8 +255,13 @@ func ServerWorker(q *event.Queue) {
 	ws := make([]http.Response, batchSize)
 	rs := make([]http.Request, batchSize)
 
+	getEvents := func(q *event.Queue, events []event.Event) (int, error) {
+		defer trace.End(trace.Start("github.com/anton2920/gofa/event.(*Queue).GetEvents"))
+		return q.GetEvents(events)
+	}
+
 	for {
-		n, err := q.GetEvents(events)
+		n, err := getEvents(q, events)
 		if err != nil {
 			log.Errorf("Failed to get events from client queue: %v", err)
 			continue
@@ -274,6 +281,7 @@ func ServerWorker(q *event.Queue) {
 			}
 			if e.EndOfFile() {
 				http.Close(ctx)
+				trace.EndAndPrintProfile()
 				continue
 			}
 
@@ -321,10 +329,10 @@ func ServerWorker(q *event.Queue) {
 func main() {
 	var err error
 
+	nworkers := min(runtime.GOMAXPROCS(0)/2, runtime.NumCPU())
 	switch BuildMode {
 	default:
-		log.Fatalf("Build mode %q is not recognized", BuildMode)
-	case "Release":
+		BuildMode = "Release"
 	case "Debug":
 		Debug = true
 		log.SetLevel(log.LevelDebug)
@@ -338,16 +346,9 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	case "Tracing":
-		f, err := os.Create(fmt.Sprintf("masters-%d.trace", os.Getpid()))
-		if err != nil {
-			log.Fatalf("Failed to create a tracing file: %v", err)
-		}
-		defer f.Close()
-
-		trace.Start(f)
-		defer trace.Stop()
+		nworkers = 1
 	}
-	log.Infof("Starting SEMS in %s mode...", BuildMode)
+	log.Infof("Starting SEMS in %q mode...", BuildMode)
 
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
@@ -390,7 +391,6 @@ func main() {
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	nworkers := min(runtime.GOMAXPROCS(0)/2, runtime.NumCPU())
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
 		qs[i], err = event.NewQueue()
@@ -425,6 +425,7 @@ func main() {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
+				trace.BeginProfile()
 				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
 				counter++
 			case event.Timer:

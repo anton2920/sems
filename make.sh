@@ -79,14 +79,14 @@ case $1 in
 		;;
 	objdump)
 		go build -o $PROJECT
-		printvv go tool objdump -S -s ^main\. $PROJECT
+		printv go tool objdump -S -s ^main\. $PROJECT
 		go tool objdump -S -s ^main\. $PROJECT >$PROJECT.s
 		;;
 	profiling)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags='-X main.BuildMode=Profiling'
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Profiling"
 		;;
 	release)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags="-s -w" -ldflags='-X main.BuildMode=Release'
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w"
 		;;
 	test)
 		run $0 $VERBOSITYFLAGS vet
@@ -98,7 +98,7 @@ case $1 in
 		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l -d=checkptr=0'
 		;;
 	tracing)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w" -ldflags='-X main.BuildMode=Tracing'
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Tracing" -tags "trace"
 		;;
 	vet)
 		run go vet $VERBOSITYFLAGS
