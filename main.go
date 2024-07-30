@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"sync/atomic"
 	"unsafe"
 
@@ -15,10 +16,10 @@ import (
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/http/http1"
 	"github.com/anton2920/gofa/net/tcp"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
-	"github.com/anton2920/gofa/trace"
 )
 
 const (
@@ -197,7 +198,7 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 }
 
 func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
-	defer trace.End(trace.Start(""))
+	defer prof.End(prof.Begin(""))
 
 	for i := 0; i < len(rs); i++ {
 		w := &ws[i]
@@ -239,6 +240,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 }
 
 func GetDateHeader() []byte {
+	defer prof.End(prof.Begin(""))
 	return unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
 }
 
@@ -256,9 +258,12 @@ func ServerWorker(q *event.Queue) {
 	rs := make([]http.Request, batchSize)
 
 	getEvents := func(q *event.Queue, events []event.Event) (int, error) {
-		defer trace.End(trace.Start("github.com/anton2920/gofa/event.(*Queue).GetEvents"))
+		defer prof.End(prof.Begin("github.com/anton2920/gofa/event.(*Queue).GetEvents"))
 		return q.GetEvents(events)
 	}
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	for {
 		n, err := getEvents(q, events)
@@ -281,7 +286,7 @@ func ServerWorker(q *event.Queue) {
 			}
 			if e.EndOfFile() {
 				http.Close(ctx)
-				trace.EndAndPrintProfile()
+				prof.EndAndPrintProfile()
 				continue
 			}
 
@@ -337,7 +342,7 @@ func main() {
 		Debug = true
 		log.SetLevel(log.LevelDebug)
 	case "Profiling":
-		f, err := os.Create(fmt.Sprintf("masters-%d-cpu.pprof", os.Getpid()))
+		f, err := os.Create(fmt.Sprintf("masters-cpu.pprof"))
 		if err != nil {
 			log.Fatalf("Failed to create a profiling file: %v", err)
 		}
@@ -346,6 +351,15 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	case "Tracing":
+		f, err := os.Create(fmt.Sprintf("masters.trace"))
+		if err != nil {
+			log.Fatalf("Failed to create a tracing file: %v", err)
+		}
+		defer f.Close()
+
+		trace.Start(f)
+		defer trace.Stop()
+	case "gofa/prof":
 		nworkers = 1
 	}
 	log.Infof("Starting SEMS in %q mode...", BuildMode)
@@ -425,7 +439,7 @@ func main() {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
-				trace.BeginProfile()
+				prof.BeginProfile()
 				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
 				counter++
 			case event.Timer:

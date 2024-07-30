@@ -62,6 +62,9 @@ case $1 in
 		run go tool cover -html=c.out
 		run rm -f c.out
 		;;
+	gofa/prof)
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=gofa/prof" -tags gofaprof
+		;;
 	disas | disasm | disassembly)
 		printv go build -gcflags="-S"
 		go build -o $PROJECT -gcflags="-S" >$PROJECT.s 2>&1
@@ -80,7 +83,11 @@ case $1 in
 	objdump)
 		go build -o $PROJECT
 		printv go tool objdump -S -s ^main\. $PROJECT
-		go tool objdump -S -s ^main\. $PROJECT >$PROJECT.s
+		go tool objdump -S $PROJECT >$PROJECT.s
+		;;
+	png)
+		printv go tool pprof -png masters-cpu.pprof
+		go tool pprof -png masters-cpu.pprof >cpu.png
 		;;
 	profiling)
 		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Profiling"
@@ -98,7 +105,7 @@ case $1 in
 		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l -d=checkptr=0'
 		;;
 	tracing)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Tracing" -tags "trace"
+		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Tracing"
 		;;
 	vet)
 		run go vet $VERBOSITYFLAGS
