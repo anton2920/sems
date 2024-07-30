@@ -1,8 +1,13 @@
 package main
 
-import "github.com/anton2920/gofa/net/http"
+import (
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
+)
 
 func StepsPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	session, err := GetSessionFromRequest(r)

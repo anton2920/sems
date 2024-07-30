@@ -7,6 +7,7 @@ import (
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
@@ -29,6 +30,8 @@ const (
 )
 
 func CreateCourse(course *Course) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	course.ID, err = database.IncrementNextID(CoursesDB)
@@ -40,6 +43,8 @@ func CreateCourse(course *Course) error {
 }
 
 func DBCourse2Course(course *Course) {
+	defer prof.End(prof.Begin(""))
+
 	data := &course.Data[0]
 
 	course.Name = database.Offset2String(course.Name, data)
@@ -47,6 +52,8 @@ func DBCourse2Course(course *Course) {
 }
 
 func GetCourseByID(id database.ID, course *Course) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := database.Read(CoursesDB, id, course); err != nil {
 		return err
 	}
@@ -56,6 +63,8 @@ func GetCourseByID(id database.ID, course *Course) error {
 }
 
 func GetCourses(pos *int64, courses []Course) (int, error) {
+	defer prof.End(prof.Begin(""))
+
 	n, err := database.ReadMany(CoursesDB, pos, courses)
 	if err != nil {
 		return 0, err
@@ -68,6 +77,8 @@ func GetCourses(pos *int64, courses []Course) (int, error) {
 }
 
 func DeleteCourseByID(id database.ID) error {
+	defer prof.End(prof.Begin(""))
+
 	flags := CourseDeleted
 	var course Course
 
@@ -81,6 +92,8 @@ func DeleteCourseByID(id database.ID) error {
 }
 
 func SaveCourse(course *Course) error {
+	defer prof.End(prof.Begin(""))
+
 	var courseDB Course
 	var n int
 
@@ -96,6 +109,8 @@ func SaveCourse(course *Course) error {
 }
 
 func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bool) {
+	defer prof.End(prof.Begin(""))
+
 	if len(course.Name) == 0 {
 		if italics {
 			w.WriteString(`<i>`)
@@ -112,6 +127,8 @@ func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bo
 }
 
 func DisplayCourseLink(w *http.Response, l Language, course *Course) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<a href="/course/`)
 	w.WriteID(course.ID)
 	w.WriteString(`">`)
@@ -120,6 +137,8 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 }
 
 func CoursesPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	session, err := GetSessionFromRequest(r)
@@ -209,6 +228,8 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CoursePageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	var course Course
@@ -293,10 +314,14 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CourseFillFromRequest(vs url.Values, course *Course) {
+	defer prof.End(prof.Begin(""))
+
 	course.Name = vs.Get("Name")
 }
 
 func CourseVerify(l Language, course *Course) error {
+	defer prof.End(prof.Begin(""))
+
 	var lesson Lesson
 
 	if !strings.LengthInRange(course.Name, MinNameLen, MaxNameLen) {
@@ -319,6 +344,8 @@ func CourseVerify(l Language, course *Course) error {
 }
 
 func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, session *Session, course *Course, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -370,6 +397,8 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 }
 
 func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, course *Course, currentPage, k, command string) error {
+	defer prof.End(prof.Begin(""))
+
 	var lesson Lesson
 
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
@@ -409,6 +438,8 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 }
 
 func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var course Course
 	var lesson Lesson
 	var user User
@@ -604,6 +635,8 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CourseDeleteHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var user User
 
 	session, err := GetSessionFromRequest(r)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
@@ -33,6 +34,8 @@ const (
 )
 
 func UserInGroup(userID database.ID, group *Group) bool {
+	defer prof.End(prof.Begin(""))
+
 	if userID == AdminID {
 		return true
 	}
@@ -45,6 +48,8 @@ func UserInGroup(userID database.ID, group *Group) bool {
 }
 
 func CreateGroup(group *Group) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	group.ID, err = database.IncrementNextID(GroupsDB)
@@ -56,6 +61,8 @@ func CreateGroup(group *Group) error {
 }
 
 func DBGroup2Group(group *Group) {
+	defer prof.End(prof.Begin(""))
+
 	data := &group.Data[0]
 
 	group.Name = database.Offset2String(group.Name, data)
@@ -63,6 +70,8 @@ func DBGroup2Group(group *Group) {
 }
 
 func GetGroupByID(id database.ID, group *Group) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := database.Read(GroupsDB, id, group); err != nil {
 		return err
 	}
@@ -72,6 +81,8 @@ func GetGroupByID(id database.ID, group *Group) error {
 }
 
 func GetGroups(pos *int64, groups []Group) (int, error) {
+	defer prof.End(prof.Begin(""))
+
 	n, err := database.ReadMany(GroupsDB, pos, groups)
 	if err != nil {
 		return 0, err
@@ -84,6 +95,8 @@ func GetGroups(pos *int64, groups []Group) (int, error) {
 }
 
 func DeleteGroupByID(id database.ID) error {
+	defer prof.End(prof.Begin(""))
+
 	flags := GroupDeleted
 	var group Group
 
@@ -97,6 +110,8 @@ func DeleteGroupByID(id database.ID) error {
 }
 
 func SaveGroup(group *Group) error {
+	defer prof.End(prof.Begin(""))
+
 	var groupDB Group
 	var n int
 
@@ -114,6 +129,8 @@ func SaveGroup(group *Group) error {
 }
 
 func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<h3>`)
 	w.WriteString(Ls(GL, "Students"))
 	w.WriteString(`</h3>`)
@@ -133,6 +150,8 @@ func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
+	defer prof.End(prof.Begin(""))
+
 	subjects := make([]Subject, 32)
 	var displayed bool
 	var pos int64
@@ -170,6 +189,8 @@ func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteHTMLString(group.Name)
 	w.WriteString(` (ID: `)
 	w.WriteID(group.ID)
@@ -178,6 +199,8 @@ func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupLink(w *http.Response, l Language, group *Group) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<a href="/group/`)
 	w.WriteID(group.ID)
 	w.WriteString(`">`)
@@ -186,6 +209,8 @@ func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 }
 
 func GroupsPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthMedium
 
 	session, err := GetSessionFromRequest(r)
@@ -272,6 +297,8 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	var group Group
@@ -369,6 +396,8 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayStudentsSelect(w *http.Response, ids []string) {
+	defer prof.End(prof.Begin(""))
+
 	users := make([]User, 32)
 	var pos int64
 
@@ -410,6 +439,8 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 }
 
 func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, group *Group, endpoint string, title string, action string, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -465,6 +496,8 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 }
 
 func GroupCreatePageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -481,6 +514,8 @@ func GroupCreatePageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func GroupEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	var group Group
 
 	session, err := GetSessionFromRequest(r)
@@ -510,6 +545,8 @@ func GroupEditPageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func GroupCreateHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -559,6 +596,8 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupDeleteHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var group Group
 
 	session, err := GetSessionFromRequest(r)
@@ -593,6 +632,8 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupEditHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var group Group
 
 	session, err := GetSessionFromRequest(r)

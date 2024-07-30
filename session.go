@@ -11,6 +11,7 @@ import (
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
 )
 
@@ -31,6 +32,8 @@ var (
 )
 
 func GetSessionFromToken(token string) (*Session, error) {
+	defer prof.End(prof.Begin(""))
+
 	SessionsLock.RLock()
 	session, ok := Sessions[token]
 	SessionsLock.RUnlock()
@@ -54,10 +57,14 @@ func GetSessionFromToken(token string) (*Session, error) {
 }
 
 func GetSessionFromRequest(r *http.Request) (*Session, error) {
+	defer prof.End(prof.Begin(""))
+
 	return GetSessionFromToken(r.Cookie("Token"))
 }
 
 func GenerateSessionToken() (string, error) {
+	defer prof.End(prof.Begin(""))
+
 	const n = 64
 	buffer := make([]byte, n)
 
@@ -74,6 +81,8 @@ func GenerateSessionToken() (string, error) {
 }
 
 func UpdateAllUserSessions(user *User) {
+	defer prof.End(prof.Begin(""))
+
 	SessionsLock.RLock()
 	for _, session := range Sessions {
 		if session.ID == user.ID {
@@ -88,6 +97,8 @@ func UpdateAllUserSessions(user *User) {
 }
 
 func RemoveAllUserSessions(userID database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	SessionsLock.RLock()
 	for token, session := range Sessions {
 		if session.ID == userID {
@@ -102,6 +113,8 @@ func RemoveAllUserSessions(userID database.ID) {
 }
 
 func StoreSessionsToFile(filename string) error {
+	defer prof.End(prof.Begin(""))
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -120,6 +133,8 @@ func StoreSessionsToFile(filename string) error {
 }
 
 func RestoreSessionsFromFile(filename string) error {
+	defer prof.End(prof.Begin(""))
+
 	f, err := os.Open(filename)
 	if err != nil {
 		return err

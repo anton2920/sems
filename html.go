@@ -7,6 +7,7 @@ import (
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/html"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 )
 
@@ -22,11 +23,15 @@ const (
 )
 
 func DisplayHTMLStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(html.Header)
 	w.WriteString(`<html lang="en" data-bs-theme="light">`)
 }
 
 func DisplayHeadStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<head>`)
 	w.WriteString(`<meta charset="utf-8"/>`)
 	w.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1"/>`)
@@ -41,14 +46,20 @@ func DisplayHeadStart(w *http.Response) {
 }
 
 func DisplayHeadEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</head>`)
 }
 
 func DisplayBodyStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<body class="bg-body-secondary">`)
 }
 
 func DisplayHeader(w *http.Response, l Language) {
+	defer prof.End(prof.Begin(""))
+
 	if CSSEnabled {
 		w.WriteString(`<header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow fixed-top">`)
 
@@ -61,19 +72,27 @@ func DisplayHeader(w *http.Response, l Language) {
 }
 
 func DisplaySidebarStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-body-tertiary vh-100 sidebar collapse navbar-custom">`)
 	w.WriteString(`<div class="position-sticky pt-3 sidebar-sticky">`)
 }
 
 func DisplaySidebarListStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<ul class="nav flex-column">`)
 }
 
 func DisplaySidebarListEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</ul>`)
 }
 
 func DisplaySidebarLink(w *http.Response, l Language, href string, text string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<a class="nav-link" href="`)
 	w.WriteString(href)
 	w.WriteString(`">`)
@@ -82,6 +101,8 @@ func DisplaySidebarLink(w *http.Response, l Language, href string, text string) 
 }
 
 func DisplaySidebarLinkIDName(w *http.Response, l Language, prefix string, id database.ID, text string, i int, name string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<a class="nav-link" href="`)
 	w.WriteString(prefix)
 	w.WriteString(`/`)
@@ -96,6 +117,8 @@ func DisplaySidebarLinkIDName(w *http.Response, l Language, prefix string, id da
 }
 
 func DisplaySidebarUser(w *http.Response, l Language, user *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<div><div class="text-center"><p class="nav-link link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">`)
 	w.WriteString(`<a class="nav-link" href="/user/`)
 	w.WriteID(user.ID)
@@ -106,10 +129,14 @@ func DisplaySidebarUser(w *http.Response, l Language, user *User) {
 }
 
 func DisplaySidebarEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</div></nav>`)
 }
 
 func DisplaySidebar(w *http.Response, l Language, session *Session) {
+	defer prof.End(prof.Begin(""))
+
 	if CSSEnabled {
 		DisplaySidebarStart(w)
 		{
@@ -139,6 +166,8 @@ func DisplaySidebar(w *http.Response, l Language, session *Session) {
 }
 
 func DisplaySidebarWithLessons(w *http.Response, l Language, session *Session, lessons []database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	if CSSEnabled {
 		DisplaySidebarStart(w)
 		{
@@ -176,10 +205,14 @@ func DisplaySidebarWithLessons(w *http.Response, l Language, session *Session, l
 }
 
 func DisplayMainStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<main class="col-md-9 ms-sm-auto col-lg-10 px-md-2 mt-5">`)
 }
 
 func DisplayCrumbsStart(w *http.Response, width int) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<nav aria-label="breadcrumb" class="col-lg-`)
 	w.WriteInt(width)
 	w.WriteString(` mx-auto" style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);">`)
@@ -188,6 +221,8 @@ func DisplayCrumbsStart(w *http.Response, width int) {
 }
 
 func DisplayCrumbsLinkIDStart(w *http.Response, prefix string, id database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<li class="breadcrumb-item">`)
 	w.WriteString(`<a class="link-body-emphasis text-decoration-none" href="`)
 	w.WriteString(prefix)
@@ -197,17 +232,23 @@ func DisplayCrumbsLinkIDStart(w *http.Response, prefix string, id database.ID) {
 }
 
 func DisplayCrumbsLinkEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</a>`)
 	w.WriteString(`</li>`)
 }
 
 func DisplayCrumbsLinkID(w *http.Response, prefix string, id database.ID, title string) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayCrumbsLinkIDStart(w, prefix, id)
 	w.WriteString(title)
 	DisplayCrumbsLinkEnd(w)
 }
 
 func DisplayCrumbsLink(w *http.Response, l Language, href string, title string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<li class="breadcrumb-item">`)
 	w.WriteString(`<a class="link-body-emphasis text-decoration-none" href="`)
 	w.WriteString(href)
@@ -217,6 +258,8 @@ func DisplayCrumbsLink(w *http.Response, l Language, href string, title string) 
 }
 
 func DisplayCrumbsSubmitRaw(w *http.Response, l Language, nextPage, title string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<li class="breadcrumb-item">`)
 	w.WriteString(`<button style="border: 0; vertical-align: top" class="btn btn-link link-body-emphasis text-decoration-none p-0" name="NextPage" value="`)
 	w.WriteString(Ls(l, nextPage))
@@ -227,42 +270,60 @@ func DisplayCrumbsSubmitRaw(w *http.Response, l Language, nextPage, title string
 }
 
 func DisplayCrumbsSubmit(w *http.Response, l Language, nextPage, title string) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayCrumbsSubmitRaw(w, l, nextPage, Ls(l, title))
 }
 
 func DisplayCrumbsItemStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<li class="breadcrumb-item fw-semibold" aria-current="page">`)
 }
 
 func DisplayCrumbsItemEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</li>`)
 }
 
 func DisplayCrumbsItemRaw(w *http.Response, title string) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayCrumbsItemStart(w)
 	w.WriteString(title)
 	DisplayCrumbsItemEnd(w)
 }
 
 func DisplayCrumbsItem(w *http.Response, l Language, title string) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayCrumbsItemRaw(w, Ls(l, title))
 }
 
 func DisplayCrumbsEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</ol></nav>`)
 }
 
 func DisplayPageStart(w *http.Response, width int) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<div class="p-4 p-md-5 border rounded-2 bg-body-tertiary col-md-10 mx-auto col-lg-`)
 	w.WriteInt(width)
 	w.WriteString(`">`)
 }
 
 func DisplayPageEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</div>`)
 }
 
 func DisplayFormPageStart(w *http.Response, r *http.Request, l Language, width int, title string, endpoint string, err error) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<form class="p-4 p-md-5 border rounded-2 bg-body-tertiary mx-auto col-lg-`)
 	w.WriteInt(width)
 	w.WriteString(`" method="POST" action="`)
@@ -275,6 +336,8 @@ func DisplayFormPageStart(w *http.Response, r *http.Request, l Language, width i
 }
 
 func DisplayFormStart(w *http.Response, r *http.Request, endpoint string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<form method="POST" action="`)
 	w.WriteString(endpoint)
 	w.WriteString(`">`)
@@ -283,6 +346,8 @@ func DisplayFormStart(w *http.Response, r *http.Request, endpoint string) {
 }
 
 func DisplayFormTitle(w *http.Response, l Language, title string, err error) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<h3 class="text-center">`)
 	w.WriteString(Ls(l, title))
 	w.WriteString(`</h3>`)
@@ -292,18 +357,26 @@ func DisplayFormTitle(w *http.Response, l Language, title string, err error) {
 }
 
 func DisplayFormEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</form>`)
 }
 
 func DisplayFormPageEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</form>`)
 }
 
 func DisplayMainEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</main>`)
 }
 
 func DisplayBodyEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	if JSEnabled {
 		w.WriteString(`<div class="dropdown position-fixed bottom-0 end-0 mb-3 me-3 bd-mode-toggle">`)
 		w.WriteString(`<input type="checkbox" class="btn-check" id="btn-toggle" onclick="function toggleTheme() { var html = document.querySelector('html'); html.setAttribute('data-bs-theme', html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark'); } toggleTheme()"/>`)
@@ -317,14 +390,20 @@ func DisplayBodyEnd(w *http.Response) {
 }
 
 func DisplayHTMLEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</html>`)
 }
 
 func DisplayFormattedTime(w *http.Response, t int64) {
+	defer prof.End(prof.Begin(""))
+
 	w.Write(time.Unix(t, 0).AppendFormat(make([]byte, 0, 20), "2006/01/02 15:04:05"))
 }
 
 func DisplayDeleted(w *http.Response, l Language, deleted bool) {
+	defer prof.End(prof.Begin(""))
+
 	if deleted {
 		w.WriteString(` [`)
 		w.WriteString(Ls(l, "deleted"))
@@ -333,6 +412,8 @@ func DisplayDeleted(w *http.Response, l Language, deleted bool) {
 }
 
 func DisplayDraft(w *http.Response, l Language, draft bool) {
+	defer prof.End(prof.Begin(""))
+
 	if draft {
 		w.WriteString(` (`)
 		w.WriteString(Ls(l, "draft"))
@@ -341,15 +422,21 @@ func DisplayDraft(w *http.Response, l Language, draft bool) {
 }
 
 func DisplayFrameStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<div class="border round p-4">`)
 }
 
 func DisplayFrameEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</div>`)
 	w.WriteString(`<br>`)
 }
 
 func DisplayTableStart(w *http.Response, l Language, cols []string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<table class="table table-bordered table-stripped table-hover">`)
 
 	w.WriteString(`<thead>`)
@@ -366,10 +453,14 @@ func DisplayTableStart(w *http.Response, l Language, cols []string) {
 }
 
 func DisplayTableRowStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<tr>`)
 }
 
 func DisplayTableRowLinkIDStart(w *http.Response, prefix string, id database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableRowStart(w)
 
 	w.WriteString(`<th class="text-center align-middle" scope="row">`)
@@ -384,34 +475,46 @@ func DisplayTableRowLinkIDStart(w *http.Response, prefix string, id database.ID)
 }
 
 func DisplayTableItemStart(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<td class="text-center align-middle">`)
 }
 
 func DisplayTableItemID(w *http.Response, id database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableItemStart(w)
 	w.WriteID(id)
 	DisplayTableItemEnd(w)
 }
 
 func DisplayTableItemInt(w *http.Response, x int) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableItemStart(w)
 	w.WriteInt(x)
 	DisplayTableItemEnd(w)
 }
 
 func DisplayTableItemString(w *http.Response, s string) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableItemStart(w)
 	w.WriteHTMLString(s)
 	DisplayTableItemEnd(w)
 }
 
 func DisplayTableItemTime(w *http.Response, t int64) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableItemStart(w)
 	DisplayFormattedTime(w, t)
 	DisplayTableItemEnd(w)
 }
 
 func DisplayTableItemFlags(w *http.Response, l Language, flags int32) {
+	defer prof.End(prof.Begin(""))
+
 	DisplayTableItemStart(w)
 	switch flags {
 	case 0: /* active */
@@ -431,19 +534,27 @@ func DisplayTableItemFlags(w *http.Response, l Language, flags int32) {
 }
 
 func DisplayTableItemEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</td>`)
 }
 
 func DisplayTableRowEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</tr>`)
 }
 
 func DisplayTableEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</tbody>`)
 	w.WriteString(`</table>`)
 }
 
 func DisplayLabel(w *http.Response, l Language, text string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<label class="form-label">`)
 	w.WriteString(Ls(l, text))
 	w.WriteString(`:<br>`)
@@ -451,6 +562,8 @@ func DisplayLabel(w *http.Response, l Language, text string) {
 }
 
 func DisplayInput(w *http.Response, t string, name, value string, required bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="form-control" type="`)
 	w.WriteString(t)
 	w.WriteString(`" name="`)
@@ -465,6 +578,8 @@ func DisplayInput(w *http.Response, t string, name, value string, required bool)
 }
 
 func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int, name, value string, required bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="form-control" type="`)
 	w.WriteString(t)
 	w.WriteString(`" minlength="`)
@@ -483,6 +598,8 @@ func DisplayConstraintInput(w *http.Response, t string, minLength, maxLength int
 }
 
 func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLength int, name string, index int, value string, required bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="input-field" type="`)
 	w.WriteString(t)
 	w.WriteString(`" minlength="`)
@@ -502,6 +619,8 @@ func DisplayConstraintIndexedInput(w *http.Response, t string, minLength, maxLen
 }
 
 func DisplayConstraintInlineTextarea(w *http.Response, minLength, maxLength int, name, value string, required bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <textarea class="btn btn-outline-dark" rows="1" minlength="`)
 	w.WriteInt(minLength)
 	w.WriteString(`" maxlength="`)
@@ -518,6 +637,8 @@ func DisplayConstraintInlineTextarea(w *http.Response, minLength, maxLength int,
 }
 
 func DisplayConstraintTextarea(w *http.Response, minLength, maxLength int, name, value string, required bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <textarea class="form-control" rows="10" minlength="`)
 	w.WriteInt(minLength)
 	w.WriteString(`" maxlength="`)
@@ -534,6 +655,8 @@ func DisplayConstraintTextarea(w *http.Response, minLength, maxLength int, name,
 }
 
 func DisplayHiddenID(w *http.Response, name string, id database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<input type="hidden" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
@@ -542,6 +665,8 @@ func DisplayHiddenID(w *http.Response, name string, id database.ID) {
 }
 
 func DisplayHiddenInt(w *http.Response, name string, i int) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<input type="hidden" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
@@ -550,6 +675,8 @@ func DisplayHiddenInt(w *http.Response, name string, i int) {
 }
 
 func DisplayHiddenString(w *http.Response, name string, value string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<input type="hidden" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
@@ -558,12 +685,16 @@ func DisplayHiddenString(w *http.Response, name string, value string) {
 }
 
 func DisplayCommand(w *http.Response, l Language, command string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="btn btn-outline-dark" type="submit" name="Command" value="`)
 	w.WriteString(Ls(l, command))
 	w.WriteString(`" formnovalidate>`)
 }
 
 func DisplayIndexedCommand(w *http.Response, l Language, index int, command string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="btn btn-outline-dark" type="submit" name="Command`)
 	w.WriteInt(index)
 	w.WriteString(`" value="`)
@@ -572,6 +703,8 @@ func DisplayIndexedCommand(w *http.Response, l Language, index int, command stri
 }
 
 func DisplayDoublyIndexedCommand(w *http.Response, l Language, pindex, sindex int, command string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="btn btn-outline-dark" type="submit" name="Command`)
 	w.WriteInt(pindex)
 	w.WriteString(`.`)
@@ -582,6 +715,8 @@ func DisplayDoublyIndexedCommand(w *http.Response, l Language, pindex, sindex in
 }
 
 func DisplayButton(w *http.Response, l Language, name string, value string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="btn btn-outline-dark" type="submit" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
@@ -590,12 +725,16 @@ func DisplayButton(w *http.Response, l Language, name string, value string) {
 }
 
 func DisplayNextPage(w *http.Response, l Language, value string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="w-100 btn btn-outline-primary mt-2" type="submit" name="NextPage" value="`)
 	w.WriteString(Ls(l, value))
 	w.WriteString(`" formnovalidate>`)
 }
 
 func DisplaySubmit(w *http.Response, l Language, name string, value string, verify bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <input class="w-100 mb-2 btn btn-lg rounded-3 btn-primary" type="submit" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
@@ -608,6 +747,8 @@ func DisplaySubmit(w *http.Response, l Language, name string, value string, veri
 }
 
 func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
+	defer prof.End(prof.Begin(""))
+
 	if utf8.RuneCountInString(s) < maxVisibleLen {
 		w.WriteHTMLString(s)
 	} else {
@@ -622,6 +763,8 @@ func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 }
 
 func DisplayMarkdown(w *http.Response, md string) {
+	defer prof.End(prof.Begin(""))
+
 	type Token struct {
 		Type   int
 		Start  string

@@ -7,6 +7,7 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
@@ -41,6 +42,8 @@ const (
 )
 
 func WhoIsUserInSubject(userID database.ID, subject *Subject) (SubjectUserType, error) {
+	defer prof.End(prof.Begin(""))
+
 	if userID == AdminID {
 		return SubjectUserAdmin, nil
 	}
@@ -61,6 +64,8 @@ func WhoIsUserInSubject(userID database.ID, subject *Subject) (SubjectUserType, 
 }
 
 func CreateSubject(subject *Subject) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	subject.ID, err = database.IncrementNextID(SubjectsDB)
@@ -72,6 +77,8 @@ func CreateSubject(subject *Subject) error {
 }
 
 func DBSubject2Subject(subject *Subject) {
+	defer prof.End(prof.Begin(""))
+
 	data := &subject.Data[0]
 
 	subject.Name = database.Offset2String(subject.Name, data)
@@ -79,6 +86,8 @@ func DBSubject2Subject(subject *Subject) {
 }
 
 func GetSubjectByID(id database.ID, subject *Subject) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := database.Read(SubjectsDB, id, subject); err != nil {
 		return err
 	}
@@ -88,6 +97,8 @@ func GetSubjectByID(id database.ID, subject *Subject) error {
 }
 
 func GetSubjects(pos *int64, subjects []Subject) (int, error) {
+	defer prof.End(prof.Begin(""))
+
 	n, err := database.ReadMany(SubjectsDB, pos, subjects)
 	if err != nil {
 		return 0, err
@@ -100,6 +111,8 @@ func GetSubjects(pos *int64, subjects []Subject) (int, error) {
 }
 
 func DeleteSubjectByID(id database.ID) error {
+	defer prof.End(prof.Begin(""))
+
 	flags := SubjectDeleted
 	var subject Subject
 
@@ -113,6 +126,8 @@ func DeleteSubjectByID(id database.ID) error {
 }
 
 func SaveSubject(subject *Subject) error {
+	defer prof.End(prof.Begin(""))
+
 	var subjectDB Subject
 	var n int
 
@@ -132,6 +147,8 @@ func SaveSubject(subject *Subject) error {
 }
 
 func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<form method="POST" action="/subject/lessons">`)
 	DisplayHiddenID(w, "ID", subject.ID)
 
@@ -188,6 +205,8 @@ func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject,
 }
 
 func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteHTMLString(subject.Name)
 	w.WriteString(` `)
 	w.WriteString(Ls(l, "with"))
@@ -204,6 +223,8 @@ func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher
 }
 
 func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
+	defer prof.End(prof.Begin(""))
+
 	var teacher User
 	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
 		/* TODO(anton2920): report error. */
@@ -218,6 +239,8 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 }
 
 func SubjectsPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	session, err := GetSessionFromRequest(r)
@@ -327,6 +350,8 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	var subject Subject
@@ -452,6 +477,8 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayTeacherSelect(w *http.Response, ids []string) {
+	defer prof.End(prof.Begin(""))
+
 	users := make([]User, 32)
 	var pos int64
 
@@ -493,6 +520,8 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 }
 
 func DisplayGroupSelect(w *http.Response, ids []string) {
+	defer prof.End(prof.Begin(""))
+
 	groups := make([]Group, 32)
 	var pos int64
 
@@ -532,6 +561,8 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 }
 
 func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, endpoint string, title string, action string, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -589,6 +620,8 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -605,6 +638,8 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error 
 }
 
 func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	var subject Subject
 
 	session, err := GetSessionFromRequest(r)
@@ -634,6 +669,8 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func SubjectLessonsVerify(l Language, subject *Subject) error {
+	defer prof.End(prof.Begin(""))
+
 	var lesson Lesson
 
 	if len(subject.Lessons) == 0 {
@@ -651,6 +688,8 @@ func SubjectLessonsVerify(l Language, subject *Subject) error {
 }
 
 func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -698,6 +737,8 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 }
 
 func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, subject *Subject, currentPage, k, command string) error {
+	defer prof.End(prof.Begin(""))
+
 	var lesson Lesson
 
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
@@ -737,6 +778,8 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 }
 
 func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var subject Subject
 	var lesson Lesson
 	var user User
@@ -964,6 +1007,8 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectCreateHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -1014,6 +1059,8 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var subject Subject
 
 	session, err := GetSessionFromRequest(r)
@@ -1048,6 +1095,8 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectEditHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var subject Subject
 
 	session, err := GetSessionFromRequest(r)

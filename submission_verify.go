@@ -15,6 +15,7 @@ import (
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/jail"
 	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
 )
 
@@ -29,6 +30,8 @@ const (
 var SubmissionVerifyChannel = make(chan database.ID, 128)
 
 func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
+	defer prof.End(prof.Begin(""))
+
 	test, _ := Step2Test(&submittedTest.Step)
 
 	scores := make([]int, len(test.Questions))
@@ -66,6 +69,8 @@ func SubmissionVerifyTest(submittedTest *SubmittedTest) error {
 }
 
 func PutProgrammingSource(buffer []byte, j jail.Jail, lang *ProgrammingLanguage) int {
+	defer prof.End(prof.Begin(""))
+
 	var n int
 
 	n += jail.PutEnv(buffer[n:], j)
@@ -79,6 +84,8 @@ func PutProgrammingSource(buffer []byte, j jail.Jail, lang *ProgrammingLanguage)
 }
 
 func PutProgrammingExecutable(buffer []byte, j jail.Jail, lang *ProgrammingLanguage) int {
+	defer prof.End(prof.Begin(""))
+
 	var n int
 
 	n += jail.PutEnv(buffer[n:], j)
@@ -92,6 +99,8 @@ func PutProgrammingExecutable(buffer []byte, j jail.Jail, lang *ProgrammingLangu
 }
 
 func SubmissionVerifyProgrammingCreateSource(j jail.Jail, lang *ProgrammingLanguage, solution string) error {
+	defer prof.End(prof.Begin(""))
+
 	buffer := make([]byte, syscall.PATH_MAX)
 	n := PutProgrammingSource(buffer, j, lang)
 	source := unsafe.String(unsafe.SliceData(buffer), n)
@@ -116,6 +125,8 @@ func SubmissionVerifyProgrammingCreateSource(j jail.Jail, lang *ProgrammingLangu
 }
 
 func SubmissionVerifyProgrammingCleanup(j jail.Jail, lang *ProgrammingLanguage) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	buffer := make([]byte, syscall.PATH_MAX)
@@ -144,6 +155,8 @@ func SubmissionVerifyProgrammingCleanup(j jail.Jail, lang *ProgrammingLanguage) 
 
 /* TODO(anton2920): rewrite without using standard library. */
 func SubmissionVerifyProgrammingCompile(l Language, j jail.Jail, lang *ProgrammingLanguage) error {
+	defer prof.End(prof.Begin(""))
+
 	var buffer bytes.Buffer
 
 	const timeout = 5
@@ -170,6 +183,8 @@ func SubmissionVerifyProgrammingCompile(l Language, j jail.Jail, lang *Programmi
 }
 
 func SubmissionVerifyProgrammingRun(l Language, j jail.Jail, lang *ProgrammingLanguage, input string, output *bytes.Buffer) error {
+	defer prof.End(prof.Begin(""))
+
 	var exe string
 	var args []string
 	if lang.Executable != "" {
@@ -212,6 +227,8 @@ func SubmissionVerifyProgrammingRun(l Language, j jail.Jail, lang *ProgrammingLa
 }
 
 func SubmissionVerifyProgrammingCheck(l Language, j jail.Jail, submittedTask *SubmittedProgramming, checkType CheckType) {
+	defer prof.End(prof.Begin(""))
+
 	var output bytes.Buffer
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -250,6 +267,8 @@ func SubmissionVerifyProgrammingCheck(l Language, j jail.Jail, submittedTask *Su
 }
 
 func SubmissionVerifyProgramming(l Language, submittedTask *SubmittedProgramming, checkType CheckType) error {
+	defer prof.End(prof.Begin(""))
+
 	lang := &ProgrammingLanguages[submittedTask.LanguageID]
 
 	j, err := jail.New("/usr/local/jails/templates/workster", WorkingDirectory)
@@ -286,6 +305,8 @@ func SubmissionVerifyProgramming(l Language, submittedTask *SubmittedProgramming
 }
 
 func SubmissionVerifyStep(submittedStep *SubmittedStep) {
+	defer prof.End(prof.Begin(""))
+
 	if submittedStep.Flags == SubmittedStepPassed {
 		switch submittedStep.Type {
 		case SubmittedTypeTest:
@@ -309,12 +330,16 @@ func SubmissionVerifyStep(submittedStep *SubmittedStep) {
 }
 
 func SubmissionVerify(submission *Submission) {
+	defer prof.End(prof.Begin(""))
+
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		SubmissionVerifyStep(&submission.SubmittedSteps[i])
 	}
 }
 
 func SubmissionVerifyWorker() {
+	defer prof.End(prof.Begin(""))
+
 	var submission Submission
 
 	for submissionID := range SubmissionVerifyChannel {

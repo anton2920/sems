@@ -1,8 +1,13 @@
 package main
 
-import "github.com/anton2920/gofa/net/http"
+import (
+	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
+)
 
 func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<div class="container-fluid">`)
 	w.WriteString(`<div class="row">`)
 
@@ -20,6 +25,8 @@ func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
 }
 
 func DisplayIndexButton(w *http.Response, l Language, href string, h2 string, p string) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<div class="col-md-6 mb-2">`)
 	w.WriteString(`<div class="h-100 p-5 bg-body-tertiary border rounded-3">`)
 
@@ -42,12 +49,16 @@ func DisplayIndexButton(w *http.Response, l Language, href string, h2 string, p 
 }
 
 func DisplayIndexButtonsEnd(w *http.Response) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`</div></div></main></div></div>`)
 	w.WriteString(`</div>`)
 	w.WriteString(`</div>`)
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		w.Redirect("/user/signin", http.StatusSeeOther)

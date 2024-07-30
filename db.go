@@ -7,6 +7,7 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
 )
@@ -23,6 +24,8 @@ var (
 const AdminID database.ID = 0
 
 func CreateInitialDBs() error {
+	defer prof.End(prof.Begin(""))
+
 	user := User{ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Unix())}
 
 	if err := CreateUser(&user); err != nil {
@@ -33,6 +36,8 @@ func CreateInitialDBs() error {
 }
 
 func PutPath(buf []byte, dir string, name string) int {
+	defer prof.End(prof.Begin(""))
+
 	var n int
 
 	n += copy(buf[n:], dir)
@@ -46,12 +51,16 @@ func PutPath(buf []byte, dir string, name string) int {
 }
 
 func OpenDB(dir string, name string) (*database.DB, error) {
+	defer prof.End(prof.Begin(""))
+
 	buf := make([]byte, syscall.PATH_MAX)
 	n := PutPath(buf, dir, name)
 	return database.Open(unsafe.String(unsafe.SliceData(buf), n))
 }
 
 func OpenDBs(dir string) error {
+	defer prof.End(prof.Begin(""))
+
 	var shouldCreate bool
 
 	err := syscall.Mkdir(dir, 0755)
@@ -103,6 +112,8 @@ func OpenDBs(dir string) error {
 }
 
 func CloseDBs() error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	if err1 := database.Close(UsersDB); err1 != nil {

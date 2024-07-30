@@ -37,6 +37,8 @@ var WorkingDirectory string
 var DateBufferPtr unsafe.Pointer
 
 func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
+	defer prof.End(prof.Begin(""))
+
 	switch {
 	default:
 		switch path {
@@ -114,6 +116,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 }
 
 func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
+	defer prof.End(prof.Begin(""))
+
 	switch {
 	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
@@ -158,6 +162,8 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 
 /* TODO(anton2920): maybe switch to sendfile(2)? */
 func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
+	defer prof.End(prof.Begin(""))
+
 	switch path {
 	case "/bootstrap.min.css":
 		w.Headers.Set("Content-Type", "text/css")
@@ -175,6 +181,8 @@ func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 }
 
 func RouterFunc(w *http.Response, r *http.Request) (err error) {
+	defer prof.End(prof.Begin(""))
+
 	defer func() {
 		if p := recover(); p != nil {
 			err = errors.NewPanic(p)
@@ -211,7 +219,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 
 		start := intel.RDTSC()
 		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
-		level := log.LevelInfo
+		level := log.LevelDebug
 		err := RouterFunc(w, r)
 		if err != nil {
 			ErrorPageHandler(w, r, GL, err)
@@ -241,6 +249,7 @@ func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
 
 func GetDateHeader() []byte {
 	defer prof.End(prof.Begin(""))
+
 	return unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
 }
 
@@ -434,12 +443,13 @@ func main() {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
 			case event.Read:
+				prof.BeginProfile()
+
 				ctx, err := http.Accept(l, 1024)
 				if err != nil {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
-				prof.BeginProfile()
 				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
 				counter++
 			case event.Timer:

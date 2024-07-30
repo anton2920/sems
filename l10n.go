@@ -1,5 +1,7 @@
 package main
 
+import "github.com/anton2920/gofa/prof"
+
 type Language int32
 
 const (
@@ -592,10 +594,14 @@ var Localizations = map[string]*[XX]string{
 var GL = RU
 
 func (l Language) String() string {
+	defer prof.End(prof.Begin(""))
+
 	return Language2String[l]
 }
 
 func Ls(l Language, s string) string {
+	defer prof.End(prof.Begin(""))
+
 	if l == EN {
 		return s
 	}

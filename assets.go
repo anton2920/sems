@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
 )
 
@@ -14,6 +15,8 @@ var (
 )
 
 func LoadAssetFile(path string) ([]byte, error) {
+	defer prof.End(prof.Begin(""))
+
 	var stat syscall.Stat_t
 
 	fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
@@ -36,6 +39,8 @@ func LoadAssetFile(path string) ([]byte, error) {
 }
 
 func LoadAssets() error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	BootstrapCSS, err = LoadAssetFile(AssetsDir + "/bootstrap.min.css")

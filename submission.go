@@ -9,6 +9,7 @@ import (
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
 )
@@ -114,6 +115,8 @@ var ProgrammingLanguages = []ProgrammingLanguage{
 }
 
 func Submitted2Test(submittedStep *SubmittedStep) (*SubmittedTest, error) {
+	defer prof.End(prof.Begin(""))
+
 	if submittedStep.Type != SubmittedTypeTest {
 		return nil, errors.New("invalid submitted type for test")
 	}
@@ -121,6 +124,8 @@ func Submitted2Test(submittedStep *SubmittedStep) (*SubmittedTest, error) {
 }
 
 func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming, error) {
+	defer prof.End(prof.Begin(""))
+
 	if submittedStep.Type != SubmittedTypeProgramming {
 		return nil, errors.New("invalid submitted type for programming")
 	}
@@ -128,6 +133,8 @@ func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming,
 }
 
 func CreateSubmission(submission *Submission) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	submission.ID, err = database.IncrementNextID(SubmissionsDB)
@@ -139,6 +146,8 @@ func CreateSubmission(submission *Submission) error {
 }
 
 func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
+	defer prof.End(prof.Begin(""))
+
 	submittedStep.Error = database.Offset2String(submittedStep.Error, data)
 	DBStep2Step(&submittedStep.Step, data)
 
@@ -172,6 +181,8 @@ func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
 }
 
 func DBSubmission2Submission(submission *Submission) {
+	defer prof.End(prof.Begin(""))
+
 	data := &submission.Data[0]
 
 	submission.SubmittedSteps = database.Offset2Slice(submission.SubmittedSteps, data)
@@ -181,6 +192,8 @@ func DBSubmission2Submission(submission *Submission) {
 }
 
 func GetSubmissionByID(id database.ID, submission *Submission) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := database.Read(SubmissionsDB, id, submission); err != nil {
 		return err
 	}
@@ -190,6 +203,8 @@ func GetSubmissionByID(id database.ID, submission *Submission) error {
 }
 
 func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
+	defer prof.End(prof.Begin(""))
+
 	n, err := database.ReadMany(SubmissionsDB, pos, submissions)
 	if err != nil {
 		return 0, err
@@ -202,6 +217,8 @@ func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
 }
 
 func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n int) int {
+	defer prof.End(prof.Begin(""))
+
 	ds.Flags = ss.Flags
 	ds.Status = ss.Status
 
@@ -251,6 +268,8 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 }
 
 func SaveSubmission(submission *Submission) error {
+	defer prof.End(prof.Begin(""))
+
 	var submissionDB Submission
 	var n int
 
@@ -274,6 +293,8 @@ func SaveSubmission(submission *Submission) error {
 }
 
 func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
+	defer prof.End(prof.Begin(""))
+
 	if submittedStep.Flags == SubmittedStepSkipped {
 		return 0
 	}
@@ -298,6 +319,8 @@ func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
 }
 
 func GetStepMaximumScore(step *Step) int {
+	defer prof.End(prof.Begin(""))
+
 	var maximum int
 	switch step.Type {
 	default:
@@ -313,6 +336,8 @@ func GetStepMaximumScore(step *Step) int {
 }
 
 func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *SubmittedStep) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<p>`)
 	w.WriteString(Ls(l, "Score"))
 	w.WriteString(`: `)
@@ -323,6 +348,8 @@ func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *Subm
 }
 
 func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
+	defer prof.End(prof.Begin(""))
+
 	var score, maximum int
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		score += GetSubmittedStepScore(&submission.SubmittedSteps[i])
@@ -335,6 +362,8 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 }
 
 func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(` <select name="LanguageID"`)
 	if !enabled {
 		w.WriteString(` disabled`)
@@ -357,6 +386,8 @@ func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedP
 }
 
 func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(Ls(l, "Submission"))
 	w.WriteString(` `)
 	w.WriteString(Ls(GL, "for"))
@@ -373,6 +404,8 @@ func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, less
 }
 
 func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission) {
+	defer prof.End(prof.Begin(""))
+
 	var user User
 
 	if err := GetUserByID(submission.UserID, &user); err != nil {
@@ -407,6 +440,8 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	var submission Submission
@@ -596,6 +631,8 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTest *SubmittedTest) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	test, _ := Step2Test(&submittedTest.Step)
@@ -722,6 +759,8 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 }
 
 func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, submittedTask *SubmittedProgramming, checkType CheckType) {
+	defer prof.End(prof.Begin(""))
+
 	task, _ := Step2Programming(&submittedTask.Step)
 	scores := submittedTask.Scores[checkType]
 	messages := submittedTask.Messages[checkType]
@@ -772,6 +811,8 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 }
 
 func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTask *SubmittedProgramming) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -858,6 +899,8 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 }
 
 func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedStep *SubmittedStep) error {
+	defer prof.End(prof.Begin(""))
+
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
@@ -871,6 +914,8 @@ func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session
 }
 
 func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var submission Submission
 	var subject Subject
 	var lesson Lesson
@@ -974,6 +1019,8 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmittedStepClear(submittedStep *SubmittedStep) {
+	defer prof.End(prof.Begin(""))
+
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
@@ -988,6 +1035,8 @@ func SubmittedStepClear(submittedStep *SubmittedStep) {
 }
 
 func SubmissionNewVerify(l Language, submission *Submission) error {
+	defer prof.End(prof.Begin(""))
+
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		submittedStep := &submission.SubmittedSteps[i]
@@ -1006,6 +1055,8 @@ func SubmissionNewVerify(l Language, submission *Submission) error {
 }
 
 func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTest) error {
+	defer prof.End(prof.Begin(""))
+
 	test, _ := Step2Test(&submittedTest.Step)
 
 	selectedAnswerKey := make([]byte, 30)
@@ -1036,6 +1087,8 @@ func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTes
 }
 
 func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
+	defer prof.End(prof.Begin(""))
+
 	test, _ := Step2Test(&submittedTest.Step)
 
 	for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
@@ -1054,6 +1107,8 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 }
 
 func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTest *SubmittedTest, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthMedium
 
 	test, _ := Step2Test(&submittedTest.Step)
@@ -1170,6 +1225,8 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
+	defer prof.End(prof.Begin(""))
+
 	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
 	if err != nil {
 		return http.ClientError(err)
@@ -1181,6 +1238,8 @@ func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *Submi
 }
 
 func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Language) error {
+	defer prof.End(prof.Begin(""))
+
 	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
 		return http.BadRequest(Ls(l, "selected language is not available"))
 	}
@@ -1193,6 +1252,8 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Langu
 }
 
 func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
 		check := &task.Checks[checkType][i]
@@ -1225,6 +1286,8 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 }
 
 func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTask *SubmittedProgramming, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	task, _ := Step2Programming(&submittedTask.Step)
@@ -1314,6 +1377,8 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 }
 
 func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
+	defer prof.End(prof.Begin(""))
+
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
@@ -1342,6 +1407,8 @@ func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
 }
 
 func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedStep *SubmittedStep, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	switch submittedStep.Type {
 	default:
 		panic("invalid step type")
@@ -1355,6 +1422,8 @@ func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -1450,6 +1519,8 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, subject *Subject, lesson *Lesson, submission *Submission, currentPage, k, command string) error {
+	defer prof.End(prof.Begin(""))
+
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
 		return http.ClientError(err)
@@ -1473,6 +1544,8 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, s
 }
 
 func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var submission Submission
 	var subject Subject
 	var lesson Lesson

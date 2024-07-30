@@ -10,6 +10,7 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
+	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 )
@@ -42,6 +43,8 @@ const (
 )
 
 func UserNameValid(l Language, name string) error {
+	defer prof.End(prof.Begin(""))
+
 	if !strings.LengthInRange(name, MinUserNameLen, MaxUserNameLen) {
 		return http.BadRequest(Ls(l, "length of the name must be between %d and %d characters"), MinUserNameLen, MaxUserNameLen)
 	}
@@ -63,6 +66,8 @@ func UserNameValid(l Language, name string) error {
 }
 
 func GetUserByEmail(email string, user *User) error {
+	defer prof.End(prof.Begin(""))
+
 	users := make([]User, 32)
 	var pos int64
 
@@ -86,6 +91,8 @@ func GetUserByEmail(email string, user *User) error {
 }
 
 func CreateUser(user *User) error {
+	defer prof.End(prof.Begin(""))
+
 	var err error
 
 	user.ID, err = database.IncrementNextID(UsersDB)
@@ -97,6 +104,8 @@ func CreateUser(user *User) error {
 }
 
 func DBUser2User(user *User) {
+	defer prof.End(prof.Begin(""))
+
 	data := &user.Data[0]
 
 	user.FirstName = database.Offset2String(user.FirstName, data)
@@ -107,6 +116,8 @@ func DBUser2User(user *User) {
 }
 
 func GetUserByID(id database.ID, user *User) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := database.Read(UsersDB, id, user); err != nil {
 		return err
 	}
@@ -116,6 +127,8 @@ func GetUserByID(id database.ID, user *User) error {
 }
 
 func GetUsers(pos *int64, users []User) (int, error) {
+	defer prof.End(prof.Begin(""))
+
 	n, err := database.ReadMany(UsersDB, pos, users)
 	if err != nil {
 		return 0, err
@@ -128,6 +141,8 @@ func GetUsers(pos *int64, users []User) (int, error) {
 }
 
 func DeleteUserByID(id database.ID) error {
+	defer prof.End(prof.Begin(""))
+
 	flags := UserDeleted
 	var user User
 
@@ -141,6 +156,8 @@ func DeleteUserByID(id database.ID) error {
 }
 
 func User2DBUser(userDB *User, user *User, data []byte, n int) {
+	defer prof.End(prof.Begin(""))
+
 	userDB.ID = user.ID
 	userDB.Flags = user.Flags
 
@@ -155,6 +172,8 @@ func User2DBUser(userDB *User, user *User, data []byte, n int) {
 }
 
 func SaveUser(user *User) error {
+	defer prof.End(prof.Begin(""))
+
 	var userDB User
 
 	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
@@ -164,6 +183,8 @@ func SaveUser(user *User) error {
 }
 
 func UserOwnsCourse(user *User, courseID database.ID) bool {
+	defer prof.End(prof.Begin(""))
+
 	/* TODO(anton2920): move this out to caller? */
 	if user.ID == AdminID {
 		return true
@@ -178,6 +199,8 @@ func UserOwnsCourse(user *User, courseID database.ID) bool {
 }
 
 func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	groups := make([]Group, 32)
 	var displayed bool
 	var pos int64
@@ -216,6 +239,8 @@ func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
 }
 
 func DisplayUserCourses(w *http.Response, l Language, user *User) {
+	defer prof.End(prof.Begin(""))
+
 	var course Course
 
 	w.WriteString(`<h3>`)
@@ -242,6 +267,8 @@ func DisplayUserCourses(w *http.Response, l Language, user *User) {
 }
 
 func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
+	defer prof.End(prof.Begin(""))
+
 	subjects := make([]Subject, 32)
 	var displayed bool
 	var pos int64
@@ -287,6 +314,8 @@ func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 }
 
 func DisplayUserTitle(w *http.Response, l Language, user *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteHTMLString(user.LastName)
 	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
@@ -297,6 +326,8 @@ func DisplayUserTitle(w *http.Response, l Language, user *User) {
 }
 
 func DisplayUserLink(w *http.Response, l Language, user *User) {
+	defer prof.End(prof.Begin(""))
+
 	w.WriteString(`<a href="/user/`)
 	w.WriteID(user.ID)
 	w.WriteString(`">`)
@@ -305,6 +336,8 @@ func DisplayUserLink(w *http.Response, l Language, user *User) {
 }
 
 func UsersPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	session, err := GetSessionFromRequest(r)
@@ -391,6 +424,8 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserPageHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthLarge
 
 	var user User
@@ -495,6 +530,8 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, user *User, endpoint string, title string, action string, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	const width = WidthSmall
 
 	DisplayHTMLStart(w)
@@ -563,6 +600,8 @@ func UserCreateEditPageHandler(w *http.Response, r *http.Request, session *Sessi
 }
 
 func UserCreatePageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -579,6 +618,8 @@ func UserCreatePageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func UserEditPageHandler(w *http.Response, r *http.Request, e error) error {
+	defer prof.End(prof.Begin(""))
+
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -609,6 +650,8 @@ func UserEditPageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func UserSigninPageHandler(w *http.Response, r *http.Request, err error) error {
+	defer prof.End(prof.Begin(""))
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -655,6 +698,8 @@ func UserSigninPageHandler(w *http.Response, r *http.Request, err error) error {
 }
 
 func UserCreateHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
 		return http.UnauthorizedError
@@ -713,6 +758,8 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserDeleteHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -755,6 +802,8 @@ func UserDeleteHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserEditHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	var user User
 
 	session, err := GetSessionFromRequest(r)
@@ -826,6 +875,8 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserSigninHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	if err := r.ParseForm(); err != nil {
 		return http.ClientError(err)
 	}
@@ -876,6 +927,8 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 }
 
 func UserSignoutHandler(w *http.Response, r *http.Request) error {
+	defer prof.End(prof.Begin(""))
+
 	token := r.Cookie("Token")
 	if token == "" {
 		return http.UnauthorizedError
