@@ -271,9 +271,6 @@ func ServerWorker(q *event.Queue) {
 		return q.GetEvents(events)
 	}
 
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
 	for {
 		n, err := getEvents(q, events)
 		if err != nil {
