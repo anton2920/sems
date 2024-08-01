@@ -260,7 +260,7 @@ func UpdateDateHeader(now int) {
 	atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
 }
 
-func ServerWorker(q *event.Queue, ctxs *alloc.SyncPool[http.Context]) {
+func ServerWorker(q *event.Queue) {
 	events := make([]event.Event, 64)
 
 	const batchSize = 32
@@ -293,8 +293,6 @@ func ServerWorker(q *event.Queue, ctxs *alloc.SyncPool[http.Context]) {
 			}
 			if e.EndOfFile() {
 				http.Close(ctx)
-				ctxs.Put(ctx)
-
 				prof.EndAndPrintProfile()
 				continue
 			}
@@ -312,7 +310,6 @@ func ServerWorker(q *event.Queue, ctxs *alloc.SyncPool[http.Context]) {
 						}
 						log.Errorf("Failed to read data from client: %v", err)
 						http.Close(ctx)
-						ctxs.Put(ctx)
 						break
 					}
 					read += n
@@ -334,7 +331,6 @@ func ServerWorker(q *event.Queue, ctxs *alloc.SyncPool[http.Context]) {
 				if err != nil {
 					log.Errorf("Failed to write data to client: %v", err)
 					http.Close(ctx)
-					ctxs.Put(ctx)
 					continue
 				}
 			}
@@ -416,15 +412,14 @@ func main() {
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	ctxs := make([]alloc.SyncPool[http.Context], nworkers)
+	ctxPool := alloc.NewSyncPool[http.Context](nworkers * 512)
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
-		ctxs[i] = alloc.NewSyncPool[http.Context](512)
 		qs[i], err = event.NewQueue()
 		if err != nil {
 			log.Fatalf("Failed to create new client queue: %v", err)
 		}
-		go ServerWorker(qs[i], &ctxs[i])
+		go ServerWorker(qs[i])
 	}
 	now := time.Unix()
 	UpdateDateHeader(now)
@@ -449,12 +444,13 @@ func main() {
 			case event.Read:
 				prof.BeginProfile()
 
-				ctx, err := ctxs[counter%len(ctxs)].Get()
+				ctx, err := http.Accept(l, &ctxPool, 1024)
 				if err != nil {
-					log.Errorf("Failed to acquire new HTTP context: %v", err)
-					continue
-				}
-				if err := http.Accept(l, ctx, 1024); err != nil {
+					if err == http.TooManyClients {
+						http1.FillError(ctx, err, GetDateHeader())
+						http.Write(ctx)
+						http.Close(ctx)
+					}
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
