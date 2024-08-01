@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/anton2920/gofa/alloc"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
 	"github.com/anton2920/gofa/intel"
@@ -259,7 +260,7 @@ func UpdateDateHeader(now int) {
 	atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
 }
 
-func ServerWorker(q *event.Queue) {
+func ServerWorker(q *event.Queue, ctxs *alloc.SyncPool[http.Context]) {
 	events := make([]event.Event, 64)
 
 	const batchSize = 32
@@ -292,6 +293,8 @@ func ServerWorker(q *event.Queue) {
 			}
 			if e.EndOfFile() {
 				http.Close(ctx)
+				ctxs.Put(ctx)
+
 				prof.EndAndPrintProfile()
 				continue
 			}
@@ -309,6 +312,7 @@ func ServerWorker(q *event.Queue) {
 						}
 						log.Errorf("Failed to read data from client: %v", err)
 						http.Close(ctx)
+						ctxs.Put(ctx)
 						break
 					}
 					read += n
@@ -330,6 +334,7 @@ func ServerWorker(q *event.Queue) {
 				if err != nil {
 					log.Errorf("Failed to write data to client: %v", err)
 					http.Close(ctx)
+					ctxs.Put(ctx)
 					continue
 				}
 			}
@@ -411,13 +416,15 @@ func main() {
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
+	ctxs := make([]alloc.SyncPool[http.Context], nworkers)
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
+		ctxs[i] = alloc.NewSyncPool[http.Context](512)
 		qs[i], err = event.NewQueue()
 		if err != nil {
 			log.Fatalf("Failed to create new client queue: %v", err)
 		}
-		go ServerWorker(qs[i])
+		go ServerWorker(qs[i], &ctxs[i])
 	}
 	now := time.Unix()
 	UpdateDateHeader(now)
@@ -442,8 +449,12 @@ func main() {
 			case event.Read:
 				prof.BeginProfile()
 
-				ctx, err := http.Accept(l, 1024)
+				ctx, err := ctxs[counter%len(ctxs)].Get()
 				if err != nil {
+					log.Errorf("Failed to acquire new HTTP context: %v", err)
+					continue
+				}
+				if err := http.Accept(l, ctx, 1024); err != nil {
 					log.Errorf("Failed to accept new HTTP connection: %v", err)
 					continue
 				}
