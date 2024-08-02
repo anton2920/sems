@@ -63,7 +63,7 @@ case $1 in
 		run rm -f c.out
 		;;
 	gofa/prof)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=gofa/prof" -tags gofaprof
+		run go build -o $PROJECT -ldflags="-s -w -X main.BuildMode=gofa/prof" -tags gofaprof
 		;;
 	disas | disasm | disassembly)
 		printv go build -gcflags="-S"
@@ -90,7 +90,7 @@ case $1 in
 		go tool pprof -png masters-cpu.pprof >cpu.png
 		;;
 	profiling)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Profiling"
+		run go build -o $PROJECT -ldflags="-s -w -X main.BuildMode=Profiling"
 		;;
 	release)
 		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w"
@@ -102,10 +102,10 @@ case $1 in
 	test-race-cover)
 		CGO_ENABLED=1; export CGO_ENABLED
 		run $0 $VERBOSITYFLAGS vet
-		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l -d=checkptr=0'
+		run go test $VERBOSITYFLAGS -c -o $PROJECT.test -vet=off -race -cover -gcflags='all=-N -l'
 		;;
 	tracing)
-		run go build -o $PROJECT -gcflags="-d=checkptr=0" -ldflags="-s -w -X main.BuildMode=Tracing"
+		run go build -o $PROJECT -ldflags="-s -w -X main.BuildMode=Tracing"
 		;;
 	vet)
 		run go vet $VERBOSITYFLAGS
