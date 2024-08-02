@@ -147,8 +147,6 @@ func SaveSubject(subject *Subject) error {
 }
 
 func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<form method="POST" action="/subject/lessons">`)
 	DisplayHiddenID(w, "ID", subject.ID)
 
@@ -205,8 +203,6 @@ func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject,
 }
 
 func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher *User) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteHTMLString(subject.Name)
 	w.WriteString(` `)
 	w.WriteString(Ls(l, "with"))
@@ -223,8 +219,6 @@ func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher
 }
 
 func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
-	defer prof.End(prof.Begin(""))
-
 	var teacher User
 	if err := GetUserByID(subject.TeacherID, &teacher); err != nil {
 		/* TODO(anton2920): report error. */
@@ -477,8 +471,6 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayTeacherSelect(w *http.Response, ids []string) {
-	defer prof.End(prof.Begin(""))
-
 	users := make([]User, 32)
 	var pos int64
 
@@ -520,8 +512,6 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 }
 
 func DisplayGroupSelect(w *http.Response, ids []string) {
-	defer prof.End(prof.Begin(""))
-
 	groups := make([]Group, 32)
 	var pos int64
 

@@ -199,8 +199,6 @@ func UserOwnsCourse(user *User, courseID database.ID) bool {
 }
 
 func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
-	defer prof.End(prof.Begin(""))
-
 	groups := make([]Group, 32)
 	var displayed bool
 	var pos int64
@@ -239,8 +237,6 @@ func DisplayUserGroups(w *http.Response, l Language, userID database.ID) {
 }
 
 func DisplayUserCourses(w *http.Response, l Language, user *User) {
-	defer prof.End(prof.Begin(""))
-
 	var course Course
 
 	w.WriteString(`<h3>`)
@@ -267,8 +263,6 @@ func DisplayUserCourses(w *http.Response, l Language, user *User) {
 }
 
 func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
-	defer prof.End(prof.Begin(""))
-
 	subjects := make([]Subject, 32)
 	var displayed bool
 	var pos int64
@@ -314,8 +308,6 @@ func DisplayUserSubjects(w *http.Response, l Language, userID database.ID) {
 }
 
 func DisplayUserTitle(w *http.Response, l Language, user *User) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteHTMLString(user.LastName)
 	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
@@ -326,8 +318,6 @@ func DisplayUserTitle(w *http.Response, l Language, user *User) {
 }
 
 func DisplayUserLink(w *http.Response, l Language, user *User) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<a href="/user/`)
 	w.WriteID(user.ID)
 	w.WriteString(`">`)

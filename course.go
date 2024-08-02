@@ -109,8 +109,6 @@ func SaveCourse(course *Course) error {
 }
 
 func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bool) {
-	defer prof.End(prof.Begin(""))
-
 	if len(course.Name) == 0 {
 		if italics {
 			w.WriteString(`<i>`)
@@ -127,8 +125,6 @@ func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bo
 }
 
 func DisplayCourseLink(w *http.Response, l Language, course *Course) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<a href="/course/`)
 	w.WriteID(course.ID)
 	w.WriteString(`">`)

@@ -129,8 +129,6 @@ func SaveGroup(group *Group) error {
 }
 
 func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<h3>`)
 	w.WriteString(Ls(GL, "Students"))
 	w.WriteString(`</h3>`)
@@ -150,8 +148,6 @@ func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
-	defer prof.End(prof.Begin(""))
-
 	subjects := make([]Subject, 32)
 	var displayed bool
 	var pos int64
@@ -189,8 +185,6 @@ func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteHTMLString(group.Name)
 	w.WriteString(` (ID: `)
 	w.WriteID(group.ID)
@@ -199,8 +193,6 @@ func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 }
 
 func DisplayGroupLink(w *http.Response, l Language, group *Group) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<a href="/group/`)
 	w.WriteID(group.ID)
 	w.WriteString(`">`)
@@ -396,8 +388,6 @@ func GroupPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func DisplayStudentsSelect(w *http.Response, ids []string) {
-	defer prof.End(prof.Begin(""))
-
 	users := make([]User, 32)
 	var pos int64
 

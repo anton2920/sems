@@ -293,7 +293,6 @@ func ServerWorker(q *event.Queue) {
 			}
 			if e.EndOfFile() {
 				http.Close(ctx)
-				prof.EndAndPrintProfile()
 				continue
 			}
 
@@ -368,6 +367,9 @@ func main() {
 		defer trace.Stop()
 	case "gofa/prof":
 		nworkers = 1
+
+		prof.BeginProfile()
+		defer prof.EndAndPrintProfile()
 	}
 	log.Infof("Starting SEMS in %q mode...", BuildMode)
 
@@ -442,8 +444,6 @@ func main() {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
 			case event.Read:
-				prof.BeginProfile()
-
 				ctx, err := http.Accept(l, &ctxPool, 1024)
 				if err != nil {
 					if err == http.TooManyClients {

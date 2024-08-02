@@ -336,8 +336,6 @@ func GetStepMaximumScore(step *Step) int {
 }
 
 func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *SubmittedStep) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<p>`)
 	w.WriteString(Ls(l, "Score"))
 	w.WriteString(`: `)
@@ -348,8 +346,6 @@ func DisplaySubmittedStepScore(w *http.Response, l Language, submittedStep *Subm
 }
 
 func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
-	defer prof.End(prof.Begin(""))
-
 	var score, maximum int
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		score += GetSubmittedStepScore(&submission.SubmittedSteps[i])
@@ -362,8 +358,6 @@ func DisplaySubmissionTotalScore(w *http.Response, submission *Submission) {
 }
 
 func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedProgramming, enabled bool) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(` <select name="LanguageID"`)
 	if !enabled {
 		w.WriteString(` disabled`)
@@ -386,8 +380,6 @@ func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedP
 }
 
 func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, lesson *Lesson, user *User) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(Ls(l, "Submission"))
 	w.WriteString(` `)
 	w.WriteString(Ls(GL, "for"))
@@ -404,8 +396,6 @@ func DisplaySubmissionTitle(w *http.Response, l Language, subject *Subject, less
 }
 
 func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission) {
-	defer prof.End(prof.Begin(""))
-
 	var user User
 
 	if err := GetUserByID(submission.UserID, &user); err != nil {

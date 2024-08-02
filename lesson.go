@@ -366,8 +366,6 @@ func LessonContainerName(l Language, containerType LessonContainerType) string {
 }
 
 func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
-	defer prof.End(prof.Begin(""))
-
 	var lesson Lesson
 
 	for i := 0; i < len(lessons); i++ {
@@ -403,8 +401,6 @@ func DisplayLessons(w *http.Response, l Language, lessons []database.ID) {
 }
 
 func DisplayLessonSubmissions(w *http.Response, l Language, lesson *Lesson, userID database.ID, who SubjectUserType) {
-	defer prof.End(prof.Begin(""))
-
 	var submission Submission
 	var displayed bool
 
@@ -483,8 +479,6 @@ func DisplayLessonSubmissions(w *http.Response, l Language, lesson *Lesson, user
 }
 
 func DisplayLessonTitle(w *http.Response, l Language, container string, lesson *Lesson) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteHTMLString(container)
 	w.WriteString(`: `)
 	w.WriteHTMLString(lesson.Name)
@@ -492,8 +486,6 @@ func DisplayLessonTitle(w *http.Response, l Language, container string, lesson *
 }
 
 func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
-	defer prof.End(prof.Begin(""))
-
 	w.WriteString(`<a href="/lesson/`)
 	w.WriteID(lesson.ID)
 	w.WriteString(`">`)
@@ -718,8 +710,6 @@ func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database
 }
 
 func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database.ID) {
-	defer prof.End(prof.Begin(""))
-
 	var lesson Lesson
 
 	for i := 0; i < len(lessons); i++ {

@@ -8,8 +8,6 @@ import (
 )
 
 func DisplayErrorMessage(w *http.Response, l Language, message string) {
-	defer prof.End(prof.Begin(""))
-
 	if message != "" {
 		w.WriteString(`<div><p>`)
 		w.WriteString(Ls(l, "Error"))
@@ -21,8 +19,6 @@ func DisplayErrorMessage(w *http.Response, l Language, message string) {
 }
 
 func DisplayError(w *http.Response, l Language, err error) {
-	defer prof.End(prof.Begin(""))
-
 	var message string
 
 	if err != nil {
