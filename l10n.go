@@ -46,6 +46,9 @@ var Localizations = map[string]*[XX]string{
 	"Add test": {
 		RU: "Добавить тест",
 	},
+	"All": {
+		RU: "Все",
+	},
 	"Answers": {
 		RU: "Ответы",
 		FR: "",

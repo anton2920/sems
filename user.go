@@ -244,7 +244,9 @@ func DisplayUserCourses(w *http.Response, l Language, user *User) {
 	w.WriteString(Ls(l, "Courses"))
 	w.WriteString(`</h3>`)
 	w.WriteString(`<ul>`)
-	for i := 0; i < len(user.Courses); i++ {
+
+	const coursesOnPage = 10
+	for i := 0; i < min(len(user.Courses), coursesOnPage); i++ {
 		if err := GetCourseByID(user.Courses[i], &course); err != nil {
 			/* TODO(anton2920): report error. */
 		}
@@ -254,6 +256,15 @@ func DisplayUserCourses(w *http.Response, l Language, user *User) {
 
 		w.WriteString(`<li>`)
 		DisplayCourseLink(w, l, &course)
+		w.WriteString(`</li>`)
+	}
+	if len(user.Courses) > coursesOnPage {
+		w.WriteString(`<li>`)
+		w.WriteString(`<a href="/courses">`)
+		w.WriteString(Ls(l, "All"))
+		w.WriteString(` `)
+		w.WriteString(Ls(l, "Courses"))
+		w.WriteString(`</a>`)
 		w.WriteString(`</li>`)
 	}
 	w.WriteString(`</ul>`)
@@ -351,13 +362,13 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 		}
 	}
 
-	totalUsers, err := database.GetNextID(UsersDB)
+	nusers, err := database.GetNextID(UsersDB)
 	if err != nil {
 		return http.ServerError(err)
 	}
 
 	const usersPerPage = 10
-	npages := int(totalUsers / usersPerPage)
+	npages := int(nusers / usersPerPage)
 	page = util.Clamp(page, 0, npages)
 
 	DisplayHTMLStart(w)

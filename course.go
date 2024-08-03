@@ -10,6 +10,7 @@ import (
 	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/util"
 )
 
 type Course struct {
@@ -142,10 +143,27 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 		return http.UnauthorizedError
 	}
 
+	if err := r.URL.ParseQuery(); err != nil {
+		return http.ClientError(err)
+	}
+
 	var user User
 	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
 	}
+	ncourses := len(user.Courses)
+
+	var page int
+	if r.URL.Query.Has("Page") {
+		page, err = r.URL.Query.GetInt("Page")
+		if err != nil {
+			return http.ClientError(err)
+		}
+	}
+
+	const coursesPerPage = 10
+	npages := ncourses / coursesPerPage
+	page = util.Clamp(page, 0, npages)
 
 	DisplayHTMLStart(w)
 
@@ -179,37 +197,29 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 
 			DisplayTableStart(w, GL, []string{"ID", "Name", "Lessons", "Status"})
 			{
-				courses := make([]Course, 32)
-				var pos int64
+				var course Course
 
-				for {
-					n, err := GetCourses(&pos, courses)
-					if err != nil {
+				start := page * coursesPerPage
+				for i := start; i < min(len(user.Courses), start+coursesPerPage); i++ {
+					id := user.Courses[i]
+					if err := GetCourseByID(id, &course); err != nil {
 						return http.ServerError(err)
 					}
-					if n == 0 {
-						break
-					}
 
-					for i := 0; i < n; i++ {
-						course := &courses[i]
-						if !UserOwnsCourse(&user, course.ID) {
-							continue
-						}
+					DisplayTableRowLinkIDStart(w, "/course", course.ID)
 
-						DisplayTableRowLinkIDStart(w, "/course", course.ID)
+					DisplayTableItemString(w, strings.Or(course.Name, Ls(GL, "Unnamed")))
+					DisplayTableItemInt(w, len(course.Lessons))
+					DisplayTableItemFlags(w, GL, course.Flags)
 
-						DisplayTableItemString(w, strings.Or(course.Name, Ls(GL, "Unnamed")))
-						DisplayTableItemInt(w, len(course.Lessons))
-						DisplayTableItemFlags(w, GL, course.Flags)
-
-						DisplayTableRowEnd(w)
-					}
+					DisplayTableRowEnd(w)
 				}
 			}
 			DisplayTableEnd(w)
 
+			DisplayPageSelector(w, "/courses", page, npages)
 			w.WriteString(`<br>`)
+
 			w.WriteString(`<form method="POST" action="/course/create">`)
 			DisplaySubmit(w, GL, "", "Create course", true)
 			w.WriteString(`</form>`)
@@ -272,7 +282,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 		DisplayCrumbsStart(w, width)
 		{
-			DisplayCrumbsItemRaw(w, course.Name)
+			DisplayCrumbsItemRaw(w, strings.Or(course.Name, Ls(GL, "Unnamed")))
 		}
 		DisplayCrumbsEnd(w)
 
