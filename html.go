@@ -405,6 +405,12 @@ func DisplayTableItemString(w *http.Response, s string) {
 	DisplayTableItemEnd(w)
 }
 
+func DisplayTableItemShortenedString(w *http.Response, s string, maxVisibleLen int) {
+	DisplayTableItemStart(w)
+	DisplayShortenedString(w, s, maxVisibleLen)
+	DisplayTableItemEnd(w)
+}
+
 func DisplayTableItemTime(w *http.Response, t int64) {
 	DisplayTableItemStart(w)
 	DisplayFormattedTime(w, t)
@@ -618,6 +624,93 @@ func DisplayShortenedString(w *http.Response, s string, maxVisibleLen int) {
 			w.WriteHTMLString(s[:space])
 		}
 		w.WriteString(`...`)
+	}
+}
+
+func DisplayPageSelectorEllipsis(w *http.Response) {
+	w.WriteString(`<li class="page-item"><a class="page-link" href="#">...</a></li>`)
+}
+
+func DisplayPageSelectorLink(w *http.Response, prefix string, page int, active bool) {
+	w.WriteString(`<li class="page-item`)
+	if active {
+		w.WriteString(` active" aria-current="page"`)
+	}
+	w.WriteString(`"><a class="page-link" href="`)
+	w.WriteString(prefix)
+	w.WriteString(`?Page=`)
+	w.WriteInt(page)
+	w.WriteString(`">`)
+	w.WriteInt(page + 1)
+	w.WriteString(`</a></li>`)
+}
+
+func DisplayPageSelector(w *http.Response, prefix string, page int, npages int) {
+	if page != npages {
+		w.WriteString(`<nav>`)
+		w.WriteString(`<ul class="pagination justify-content-center">`)
+
+		w.WriteString(`<li class="page-item`)
+		if page == 0 {
+			w.WriteString(` disabled`)
+		}
+		w.WriteString(`">`)
+		w.WriteString(`<a class="page-link" href="`)
+		w.WriteString(prefix)
+		w.WriteString(`?Page=`)
+		if page == 0 {
+			w.WriteInt(page)
+		} else {
+			w.WriteInt(page - 1)
+		}
+		w.WriteString(`" aria-label="Previous">`)
+		w.WriteString(`<span aria-hidden="true">&laquo;</span>`)
+		w.WriteString(`</a>`)
+		w.WriteString(`</li>`)
+
+		const windowSize = 5
+		switch {
+		case page < windowSize-1:
+			for i := 0; i < windowSize; i++ {
+				DisplayPageSelectorLink(w, prefix, i, page == i)
+			}
+			DisplayPageSelectorEllipsis(w)
+			DisplayPageSelectorLink(w, prefix, npages-1, page == npages-1)
+		default:
+			DisplayPageSelectorLink(w, prefix, 0, page == 0)
+			DisplayPageSelectorEllipsis(w)
+			for i := page - windowSize/2; i <= page+windowSize/2; i++ {
+				DisplayPageSelectorLink(w, prefix, i, page == i)
+			}
+			DisplayPageSelectorEllipsis(w)
+			DisplayPageSelectorLink(w, prefix, npages-1, page == npages-1)
+		case page > npages-windowSize:
+			DisplayPageSelectorLink(w, prefix, 0, page == 0)
+			DisplayPageSelectorEllipsis(w)
+			for i := npages - windowSize; i < npages; i++ {
+				DisplayPageSelectorLink(w, prefix, i, page == i)
+			}
+		}
+
+		w.WriteString(`<li class="page-item`)
+		if page == npages-1 {
+			w.WriteString(` disabled`)
+		}
+		w.WriteString(`">`)
+		w.WriteString(`<a class="page-link" href="`)
+		w.WriteString(prefix)
+		w.WriteString(`?Page=`)
+		if page == npages-1 {
+			w.WriteInt(page)
+		} else {
+			w.WriteInt(page + 1)
+		}
+		w.WriteString(`" aria-label="Next">`)
+		w.WriteString(`<span aria-hidden="true">&raquo;</span>`)
+		w.WriteString(` </a>`)
+		w.WriteString(`</li>`)
+		w.WriteString(`</ul>`)
+		w.WriteString(`</nav>`)
 	}
 }
 

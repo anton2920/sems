@@ -13,6 +13,7 @@ import (
 	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/util"
 )
 
 type User struct {
@@ -338,6 +339,27 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 		return http.ForbiddenError
 	}
 
+	if err := r.URL.ParseQuery(); err != nil {
+		return http.ClientError(err)
+	}
+
+	var page int
+	if r.URL.Query.Has("Page") {
+		page, err = r.URL.Query.GetInt("Page")
+		if err != nil {
+			return http.ClientError(err)
+		}
+	}
+
+	totalUsers, err := database.GetNextID(UsersDB)
+	if err != nil {
+		return http.ServerError(err)
+	}
+
+	const usersPerPage = 10
+	npages := int(totalUsers / usersPerPage)
+	page = util.Clamp(page, 0, npages)
+
 	DisplayHTMLStart(w)
 
 	DisplayHeadStart(w)
@@ -370,34 +392,32 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 
 			DisplayTableStart(w, GL, []string{"ID", "First name", "Last name", "Email", "Created on", "Status"})
 			{
-				users := make([]User, 32)
-				var pos int64
+				users := make([]User, usersPerPage)
+				pos := database.GetOffsetForID[User](database.ID(page * usersPerPage))
 
-				for {
-					n, err := GetUsers(&pos, users)
-					if err != nil {
-						return http.ServerError(err)
-					}
-					if n == 0 {
-						break
-					}
+				n, err := GetUsers(&pos, users)
+				if err != nil {
+					return http.ServerError(err)
+				}
 
-					for i := 0; i < n; i++ {
-						user := &users[i]
+				for i := 0; i < n; i++ {
+					user := &users[i]
 
-						DisplayTableRowLinkIDStart(w, "/user", user.ID)
+					DisplayTableRowLinkIDStart(w, "/user", user.ID)
 
-						DisplayTableItemString(w, user.FirstName)
-						DisplayTableItemString(w, user.LastName)
-						DisplayTableItemString(w, user.Email)
-						DisplayTableItemTime(w, user.CreatedOn)
-						DisplayTableItemFlags(w, GL, user.Flags)
+					const displayLen = 15
+					DisplayTableItemShortenedString(w, user.FirstName, displayLen)
+					DisplayTableItemShortenedString(w, user.LastName, displayLen)
+					DisplayTableItemShortenedString(w, user.Email, 20)
+					DisplayTableItemTime(w, user.CreatedOn)
+					DisplayTableItemFlags(w, GL, user.Flags)
 
-						DisplayTableRowEnd(w)
-					}
+					DisplayTableRowEnd(w)
 				}
 			}
 			DisplayTableEnd(w)
+
+			DisplayPageSelector(w, "/users", page, npages)
 			w.WriteString(`<br>`)
 
 			w.WriteString(`<form method="POST" action="/user/create">`)
