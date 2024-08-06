@@ -7,9 +7,9 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/log"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
+	"github.com/anton2920/gofa/trace"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 const AdminID database.ID = 0
 
 func CreateInitialDBs() error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	user := User{ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Unix())}
 
@@ -36,7 +36,7 @@ func CreateInitialDBs() error {
 }
 
 func PutPath(buf []byte, dir string, name string) int {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var n int
 
@@ -51,7 +51,7 @@ func PutPath(buf []byte, dir string, name string) int {
 }
 
 func OpenDB(dir string, name string) (*database.DB, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	buf := make([]byte, syscall.PATH_MAX)
 	n := PutPath(buf, dir, name)
@@ -59,7 +59,7 @@ func OpenDB(dir string, name string) (*database.DB, error) {
 }
 
 func OpenDBs(dir string) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var shouldCreate bool
 
@@ -112,7 +112,7 @@ func OpenDBs(dir string) error {
 }
 
 func CloseDBs() error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 

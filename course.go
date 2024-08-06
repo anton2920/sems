@@ -7,9 +7,9 @@ import (
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/trace"
 	"github.com/anton2920/gofa/util"
 )
 
@@ -31,7 +31,7 @@ const (
 )
 
 func CreateCourse(course *Course) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 
@@ -44,7 +44,7 @@ func CreateCourse(course *Course) error {
 }
 
 func DBCourse2Course(course *Course) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	data := &course.Data[0]
 
@@ -53,7 +53,7 @@ func DBCourse2Course(course *Course) {
 }
 
 func GetCourseByID(id database.ID, course *Course) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if err := database.Read(CoursesDB, id, course); err != nil {
 		return err
@@ -64,7 +64,7 @@ func GetCourseByID(id database.ID, course *Course) error {
 }
 
 func GetCourses(pos *int64, courses []Course) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	n, err := database.ReadMany(CoursesDB, pos, courses)
 	if err != nil {
@@ -78,7 +78,7 @@ func GetCourses(pos *int64, courses []Course) (int, error) {
 }
 
 func DeleteCourseByID(id database.ID) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	flags := CourseDeleted
 	var course Course
@@ -93,7 +93,7 @@ func DeleteCourseByID(id database.ID) error {
 }
 
 func SaveCourse(course *Course) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var courseDB Course
 	var n int
@@ -134,7 +134,7 @@ func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 }
 
 func CoursesPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -234,7 +234,7 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CoursePageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -320,13 +320,13 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CourseFillFromRequest(vs url.Values, course *Course) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	course.Name = vs.Get("Name")
 }
 
 func CourseVerify(l Language, course *Course) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lesson Lesson
 
@@ -350,7 +350,7 @@ func CourseVerify(l Language, course *Course) error {
 }
 
 func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, session *Session, course *Course, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthSmall
 
@@ -403,7 +403,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 }
 
 func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, course *Course, currentPage, k, command string) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lesson Lesson
 
@@ -444,7 +444,7 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 }
 
 func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var course Course
 	var lesson Lesson
@@ -641,7 +641,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func CourseDeleteHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var user User
 

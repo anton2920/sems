@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/trace"
 )
 
 const AssetsDir = "./assets"
@@ -15,7 +15,7 @@ var (
 )
 
 func LoadAssetFile(path string) ([]byte, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var stat syscall.Stat_t
 
@@ -39,7 +39,7 @@ func LoadAssetFile(path string) ([]byte, error) {
 }
 
 func LoadAssets() error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 

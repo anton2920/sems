@@ -7,12 +7,12 @@ import (
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/trace"
 )
 
 func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if !strings.StartsWith(u.Path, prefix) {
 		return 0, http.NotFound(Ls(l, "requested page does not exist"))
@@ -27,7 +27,7 @@ func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
 }
 
 func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssindex string, err error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if len(indicies) == 0 {
 		return
@@ -47,7 +47,7 @@ func GetIndicies(indicies string) (pindex int, spindex string, sindex int, ssind
 }
 
 func GetValidID(si string, nextID database.ID) (database.ID, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	id, err := strconv.Atoi(si)
 	if err != nil {
@@ -60,7 +60,7 @@ func GetValidID(si string, nextID database.ID) (database.ID, error) {
 }
 
 func GetValidIndex(si string, len int) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	i, err := strconv.Atoi(si)
 	if err != nil {
@@ -73,7 +73,7 @@ func GetValidIndex(si string, len int) (int, error) {
 }
 
 func MoveDown[T any](vs []T, i int) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if (i >= 0) && (i < len(vs)-1) {
 		vs[i], vs[i+1] = vs[i+1], vs[i]
@@ -81,7 +81,7 @@ func MoveDown[T any](vs []T, i int) {
 }
 
 func MoveUp[T any](vs []T, i int) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if (i > 0) && (i <= len(vs)-1) {
 		vs[i-1], vs[i] = vs[i], vs[i-1]
@@ -89,7 +89,7 @@ func MoveUp[T any](vs []T, i int) {
 }
 
 func RemoveAtIndex[T any](ts []T, i int) []T {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if (len(ts) == 0) || (i < 0) || (i >= len(ts)) {
 		return ts

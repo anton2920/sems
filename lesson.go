@@ -8,9 +8,9 @@ import (
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/trace"
 )
 
 type (
@@ -136,7 +136,7 @@ var (
 )
 
 func Step2Test(s *Step) (*StepTest, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if s.Type != StepTypeTest {
 		return nil, errors.New("invalid step type for test")
@@ -145,7 +145,7 @@ func Step2Test(s *Step) (*StepTest, error) {
 }
 
 func Step2Programming(s *Step) (*StepProgramming, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if s.Type != StepTypeProgramming {
 		return nil, errors.New("invalid step type for programming")
@@ -154,7 +154,7 @@ func Step2Programming(s *Step) (*StepProgramming, error) {
 }
 
 func CreateLesson(lesson *Lesson) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 
@@ -167,7 +167,7 @@ func CreateLesson(lesson *Lesson) error {
 }
 
 func DBStep2Step(step *Step, data *byte) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	step.Name = database.Offset2String(step.Name, data)
 
@@ -205,7 +205,7 @@ func DBStep2Step(step *Step, data *byte) {
 }
 
 func DBLesson2Lesson(lesson *Lesson) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	data := &lesson.Data[0]
 
@@ -220,7 +220,7 @@ func DBLesson2Lesson(lesson *Lesson) {
 }
 
 func GetLessonByID(id database.ID, lesson *Lesson) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if err := database.Read(LessonsDB, id, lesson); err != nil {
 		return err
@@ -231,7 +231,7 @@ func GetLessonByID(id database.ID, lesson *Lesson) error {
 }
 
 func GetLessons(pos *int64, lessons []Lesson) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	n, err := database.ReadMany(LessonsDB, pos, lessons)
 	if err != nil {
@@ -245,7 +245,7 @@ func GetLessons(pos *int64, lessons []Lesson) (int, error) {
 }
 
 func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	ds.Draft = ss.Draft
 
@@ -301,7 +301,7 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 }
 
 func SaveLesson(lesson *Lesson) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lessonDB Lesson
 	var n int
@@ -327,7 +327,7 @@ func SaveLesson(lesson *Lesson) error {
 }
 
 func StepStringType(l Language, s *Step) string {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch s.Type {
 	default:
@@ -340,7 +340,7 @@ func StepStringType(l Language, s *Step) string {
 }
 
 func LessonContainerLink(containerType LessonContainerType) string {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch containerType {
 	default:
@@ -353,7 +353,7 @@ func LessonContainerLink(containerType LessonContainerType) string {
 }
 
 func LessonContainerName(l Language, containerType LessonContainerType) string {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch containerType {
 	default:
@@ -494,7 +494,7 @@ func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 }
 
 func LessonPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -636,7 +636,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 /* TODO(anton2920): check whether this function is needed. */
 func StepDeepCopy(dst *Step, src *Step) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch src.Type {
 	default:
@@ -680,7 +680,7 @@ func StepDeepCopy(dst *Step, src *Step) {
 }
 
 func LessonsDeepCopy(dst *[]database.ID, src []database.ID, containerID database.ID, containerType LessonContainerType) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	*dst = make([]database.ID, len(src))
 
@@ -754,14 +754,14 @@ func DisplayLessonsEditableList(w *http.Response, l Language, lessons []database
 }
 
 func LessonFillFromRequest(vs url.Values, lesson *Lesson) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	lesson.Name = vs.Get("Name")
 	lesson.Theory = vs.Get("Theory")
 }
 
 func LessonVerify(l Language, lesson *Lesson) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if !strings.LengthInRange(lesson.Name, MinNameLen, MaxNameLen) {
 		return http.BadRequest(Ls(l, "lesson name length must be between %d and %d characters long"), MinNameLen, MaxNameLen)
@@ -790,7 +790,7 @@ func LessonVerify(l Language, lesson *Lesson) error {
 }
 
 func LessonTestFillFromRequest(vs url.Values, test *StepTest) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	test.Name = vs.Get("Name")
 
@@ -839,7 +839,7 @@ func LessonTestFillFromRequest(vs url.Values, test *StepTest) error {
 }
 
 func LessonTestVerify(l Language, test *StepTest) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if !strings.LengthInRange(test.Name, MinStepNameLen, MaxStepNameLen) {
 		return http.BadRequest(Ls(l, "test name length must be between %d and %d characters long"), MinStepNameLen, MaxStepNameLen)
@@ -867,7 +867,7 @@ func LessonTestVerify(l Language, test *StepTest) error {
 }
 
 func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, test *StepTest, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthMedium + 1
 
@@ -1006,7 +1006,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 }
 
 func LessonProgrammingFillFromRequest(vs url.Values, task *StepProgramming) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	task.Name = vs.Get("Name")
 	task.Description = vs.Get("Description")
@@ -1036,7 +1036,7 @@ func LessonProgrammingFillFromRequest(vs url.Values, task *StepProgramming) erro
 }
 
 func LessonProgrammingVerify(task *StepProgramming) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if !strings.LengthInRange(task.Name, MinStepNameLen, MaxStepNameLen) {
 		return http.BadRequest("programming task name length must be between %d and %d characters long", MinStepNameLen, MaxStepNameLen)
@@ -1066,7 +1066,7 @@ func LessonProgrammingVerify(task *StepProgramming) error {
 }
 
 func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	checks := task.Checks[checkType]
 
@@ -1104,7 +1104,7 @@ func LessonAddProgrammingDisplayChecks(w *http.Response, l Language, task *StepP
 }
 
 func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, task *StepProgramming, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -1178,7 +1178,7 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 }
 
 func LessonStepVerify(l Language, step *Step) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch step.Type {
 	default:
@@ -1193,7 +1193,7 @@ func LessonStepVerify(l Language, step *Step) error {
 }
 
 func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, step *Step, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch step.Type {
 	default:
@@ -1208,7 +1208,7 @@ func LessonAddStepPageHandler(w *http.Response, r *http.Request, session *Sessio
 }
 
 func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, container *LessonContainer, lesson *Lesson, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthMedium
 
@@ -1308,7 +1308,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 }
 
 func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, container *LessonContainer, currentPage, k, command string) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lesson Lesson
 

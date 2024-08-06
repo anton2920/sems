@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/prof"
+	"github.com/anton2920/gofa/trace"
 )
 
 func DisplayIndexButtonsStart(w *http.Response, l Language, title string) {
@@ -51,7 +51,7 @@ func DisplayIndexButtonsEnd(w *http.Response) {
 }
 
 func IndexPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {

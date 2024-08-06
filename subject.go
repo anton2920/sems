@@ -7,9 +7,9 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/trace"
 )
 
 type Subject struct {
@@ -42,7 +42,7 @@ const (
 )
 
 func WhoIsUserInSubject(userID database.ID, subject *Subject) (SubjectUserType, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if userID == AdminID {
 		return SubjectUserAdmin, nil
@@ -64,7 +64,7 @@ func WhoIsUserInSubject(userID database.ID, subject *Subject) (SubjectUserType, 
 }
 
 func CreateSubject(subject *Subject) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 
@@ -77,7 +77,7 @@ func CreateSubject(subject *Subject) error {
 }
 
 func DBSubject2Subject(subject *Subject) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	data := &subject.Data[0]
 
@@ -86,7 +86,7 @@ func DBSubject2Subject(subject *Subject) {
 }
 
 func GetSubjectByID(id database.ID, subject *Subject) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if err := database.Read(SubjectsDB, id, subject); err != nil {
 		return err
@@ -97,7 +97,7 @@ func GetSubjectByID(id database.ID, subject *Subject) error {
 }
 
 func GetSubjects(pos *int64, subjects []Subject) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	n, err := database.ReadMany(SubjectsDB, pos, subjects)
 	if err != nil {
@@ -111,7 +111,7 @@ func GetSubjects(pos *int64, subjects []Subject) (int, error) {
 }
 
 func DeleteSubjectByID(id database.ID) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	flags := SubjectDeleted
 	var subject Subject
@@ -126,7 +126,7 @@ func DeleteSubjectByID(id database.ID) error {
 }
 
 func SaveSubject(subject *Subject) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var subjectDB Subject
 	var n int
@@ -233,7 +233,7 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 }
 
 func SubjectsPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -344,7 +344,7 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -551,7 +551,7 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 }
 
 func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, endpoint string, title string, action string, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthSmall
 
@@ -610,7 +610,7 @@ func SubjectCreateEditPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -628,7 +628,7 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error 
 }
 
 func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var subject Subject
 
@@ -659,7 +659,7 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func SubjectLessonsVerify(l Language, subject *Subject) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lesson Lesson
 
@@ -678,7 +678,7 @@ func SubjectLessonsVerify(l Language, subject *Subject) error {
 }
 
 func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthSmall
 
@@ -727,7 +727,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 }
 
 func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, subject *Subject, currentPage, k, command string) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var lesson Lesson
 
@@ -768,7 +768,7 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 }
 
 func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var subject Subject
 	var lesson Lesson
@@ -997,7 +997,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectCreateHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -1049,7 +1049,7 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var subject Subject
 
@@ -1085,7 +1085,7 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubjectEditHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var subject Subject
 

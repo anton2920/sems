@@ -1,6 +1,6 @@
 package main
 
-import "github.com/anton2920/gofa/prof"
+import "github.com/anton2920/gofa/trace"
 
 type Language int32
 
@@ -597,13 +597,13 @@ var Localizations = map[string]*[XX]string{
 var GL = RU
 
 func (l Language) String() string {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	return Language2String[l]
 }
 
 func Ls(l Language, s string) string {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if l == EN {
 		return s

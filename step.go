@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/prof"
+	"github.com/anton2920/gofa/trace"
 )
 
 func StepsPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 

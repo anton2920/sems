@@ -7,9 +7,9 @@ import (
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
+	"github.com/anton2920/gofa/trace"
 )
 
 type Group struct {
@@ -34,7 +34,7 @@ const (
 )
 
 func UserInGroup(userID database.ID, group *Group) bool {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if userID == AdminID {
 		return true
@@ -48,7 +48,7 @@ func UserInGroup(userID database.ID, group *Group) bool {
 }
 
 func CreateGroup(group *Group) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 
@@ -61,7 +61,7 @@ func CreateGroup(group *Group) error {
 }
 
 func DBGroup2Group(group *Group) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	data := &group.Data[0]
 
@@ -70,7 +70,7 @@ func DBGroup2Group(group *Group) {
 }
 
 func GetGroupByID(id database.ID, group *Group) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if err := database.Read(GroupsDB, id, group); err != nil {
 		return err
@@ -81,7 +81,7 @@ func GetGroupByID(id database.ID, group *Group) error {
 }
 
 func GetGroups(pos *int64, groups []Group) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	n, err := database.ReadMany(GroupsDB, pos, groups)
 	if err != nil {
@@ -95,7 +95,7 @@ func GetGroups(pos *int64, groups []Group) (int, error) {
 }
 
 func DeleteGroupByID(id database.ID) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	flags := GroupDeleted
 	var group Group
@@ -110,7 +110,7 @@ func DeleteGroupByID(id database.ID) error {
 }
 
 func SaveGroup(group *Group) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var groupDB Group
 	var n int
@@ -201,7 +201,7 @@ func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 }
 
 func GroupsPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthMedium
 
@@ -289,7 +289,7 @@ func GroupsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -429,7 +429,7 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 }
 
 func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Session, group *Group, endpoint string, title string, action string, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthSmall
 
@@ -486,7 +486,7 @@ func GroupCreateEditPageHandler(w *http.Response, r *http.Request, session *Sess
 }
 
 func GroupCreatePageHandler(w *http.Response, r *http.Request, e error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -504,7 +504,7 @@ func GroupCreatePageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func GroupEditPageHandler(w *http.Response, r *http.Request, e error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var group Group
 
@@ -535,7 +535,7 @@ func GroupEditPageHandler(w *http.Response, r *http.Request, e error) error {
 }
 
 func GroupCreateHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
@@ -586,7 +586,7 @@ func GroupCreateHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupDeleteHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var group Group
 
@@ -622,7 +622,7 @@ func GroupDeleteHandler(w *http.Response, r *http.Request) error {
 }
 
 func GroupEditHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var group Group
 

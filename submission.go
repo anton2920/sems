@@ -9,9 +9,9 @@ import (
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/url"
-	"github.com/anton2920/gofa/prof"
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
+	"github.com/anton2920/gofa/trace"
 )
 
 type (
@@ -115,7 +115,7 @@ var ProgrammingLanguages = []ProgrammingLanguage{
 }
 
 func Submitted2Test(submittedStep *SubmittedStep) (*SubmittedTest, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if submittedStep.Type != SubmittedTypeTest {
 		return nil, errors.New("invalid submitted type for test")
@@ -124,7 +124,7 @@ func Submitted2Test(submittedStep *SubmittedStep) (*SubmittedTest, error) {
 }
 
 func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if submittedStep.Type != SubmittedTypeProgramming {
 		return nil, errors.New("invalid submitted type for programming")
@@ -133,7 +133,7 @@ func Submitted2Programming(submittedStep *SubmittedStep) (*SubmittedProgramming,
 }
 
 func CreateSubmission(submission *Submission) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var err error
 
@@ -146,7 +146,7 @@ func CreateSubmission(submission *Submission) error {
 }
 
 func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	submittedStep.Error = database.Offset2String(submittedStep.Error, data)
 	DBStep2Step(&submittedStep.Step, data)
@@ -181,7 +181,7 @@ func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
 }
 
 func DBSubmission2Submission(submission *Submission) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	data := &submission.Data[0]
 
@@ -192,7 +192,7 @@ func DBSubmission2Submission(submission *Submission) {
 }
 
 func GetSubmissionByID(id database.ID, submission *Submission) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if err := database.Read(SubmissionsDB, id, submission); err != nil {
 		return err
@@ -203,7 +203,7 @@ func GetSubmissionByID(id database.ID, submission *Submission) error {
 }
 
 func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	n, err := database.ReadMany(SubmissionsDB, pos, submissions)
 	if err != nil {
@@ -217,7 +217,7 @@ func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
 }
 
 func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n int) int {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	ds.Flags = ss.Flags
 	ds.Status = ss.Status
@@ -268,7 +268,7 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 }
 
 func SaveSubmission(submission *Submission) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var submissionDB Submission
 	var n int
@@ -293,7 +293,7 @@ func SaveSubmission(submission *Submission) error {
 }
 
 func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if submittedStep.Flags == SubmittedStepSkipped {
 		return 0
@@ -319,7 +319,7 @@ func GetSubmittedStepScore(submittedStep *SubmittedStep) int {
 }
 
 func GetStepMaximumScore(step *Step) int {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var maximum int
 	switch step.Type {
@@ -430,7 +430,7 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 }
 
 func SubmissionPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -621,7 +621,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTest *SubmittedTest) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -749,7 +749,7 @@ func SubmissionResultsTestPageHandler(w *http.Response, r *http.Request, session
 }
 
 func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, submittedTask *SubmittedProgramming, checkType CheckType) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	task, _ := Step2Programming(&submittedTask.Step)
 	scores := submittedTask.Scores[checkType]
@@ -801,7 +801,7 @@ func SubmissionResultsProgrammingDisplayChecks(w *http.Response, l Language, sub
 }
 
 func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedTask *SubmittedProgramming) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -889,7 +889,7 @@ func SubmissionResultsProgrammingPageHandler(w *http.Response, r *http.Request, 
 }
 
 func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, submittedStep *SubmittedStep) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch submittedStep.Type {
 	default:
@@ -904,7 +904,7 @@ func SubmissionResultsStepPageHandler(w *http.Response, r *http.Request, session
 }
 
 func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var submission Submission
 	var subject Subject
@@ -1009,7 +1009,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 }
 
 func SubmittedStepClear(submittedStep *SubmittedStep) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch submittedStep.Type {
 	default:
@@ -1025,7 +1025,7 @@ func SubmittedStepClear(submittedStep *SubmittedStep) {
 }
 
 func SubmissionNewVerify(l Language, submission *Submission) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	empty := true
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
@@ -1045,7 +1045,7 @@ func SubmissionNewVerify(l Language, submission *Submission) error {
 }
 
 func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTest) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	test, _ := Step2Test(&submittedTest.Step)
 
@@ -1077,7 +1077,7 @@ func SubmissionNewTestFillFromRequest(vs url.Values, submittedTest *SubmittedTes
 }
 
 func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	test, _ := Step2Test(&submittedTest.Step)
 
@@ -1097,7 +1097,7 @@ func SubmissionNewTestVerify(l Language, submittedTest *SubmittedTest) error {
 }
 
 func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTest *SubmittedTest, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthMedium
 
@@ -1215,7 +1215,7 @@ func SubmissionNewTestPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *SubmittedProgramming) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	id, err := GetValidID(vs.Get("LanguageID"), database.ID(len(ProgrammingLanguages)))
 	if err != nil {
@@ -1228,7 +1228,7 @@ func SubmissionNewProgrammingFillFromRequest(vs url.Values, submittedTask *Submi
 }
 
 func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Language) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
 		return http.BadRequest(Ls(l, "selected language is not available"))
@@ -1242,7 +1242,7 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Langu
 }
 
 func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *StepProgramming, checkType CheckType) {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	w.WriteString(`<ol>`)
 	for i := 0; i < len(task.Checks[checkType]); i++ {
@@ -1276,7 +1276,7 @@ func SubmissionNewDisplayProgrammingChecks(w *http.Response, l Language, task *S
 }
 
 func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedTask *SubmittedProgramming, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthLarge
 
@@ -1367,7 +1367,7 @@ func SubmissionNewProgrammingPageHandler(w *http.Response, r *http.Request, sess
 }
 
 func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch submittedStep.Type {
 	default:
@@ -1397,7 +1397,7 @@ func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
 }
 
 func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submittedStep *SubmittedStep, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	switch submittedStep.Type {
 	default:
@@ -1412,7 +1412,7 @@ func SubmissionNewStepPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Session, subject *Subject, lesson *Lesson, submission *Submission, err error) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	const width = WidthSmall
 
@@ -1509,7 +1509,7 @@ func SubmissionNewMainPageHandler(w *http.Response, r *http.Request, session *Se
 }
 
 func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, session *Session, subject *Subject, lesson *Lesson, submission *Submission, currentPage, k, command string) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	pindex, spindex, _, _, err := GetIndicies(k[len("Command"):])
 	if err != nil {
@@ -1534,7 +1534,7 @@ func SubmissionNewHandleCommand(w *http.Response, r *http.Request, l Language, s
 }
 
 func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
-	defer prof.End(prof.Begin(""))
+	defer trace.End(trace.Begin(""))
 
 	var submission Submission
 	var subject Subject
