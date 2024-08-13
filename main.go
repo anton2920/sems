@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/anton2920/gofa/alloc"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
 	"github.com/anton2920/gofa/intel"
@@ -339,7 +338,7 @@ func ServerWorker(q *event.Queue) {
 func main() {
 	var err error
 
-	nworkers := min(runtime.GOMAXPROCS(0)/2, runtime.NumCPU())
+	nworkers := runtime.NumCPU() / 2
 	switch BuildMode {
 	default:
 		BuildMode = "Release"
@@ -404,7 +403,6 @@ func main() {
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	ctxPool := alloc.NewSyncPool[http.Context](nworkers * 512)
 	qs := make([]*event.Queue, nworkers)
 	for i := 0; i < nworkers; i++ {
 		qs[i], err = event.NewQueue()
@@ -434,7 +432,7 @@ func main() {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
 			case event.Read:
-				ctx, err := http.Accept(l, &ctxPool, 1024)
+				ctx, err := http.Accept(l, 1024)
 				if err != nil {
 					if err == http.TooManyClients {
 						http1.FillError(ctx, err, GetDateHeader())

@@ -82,13 +82,15 @@ func DBSubject2Subject(subject *Subject) {
 	data := &subject.Data[0]
 
 	subject.Name = database.Offset2String(subject.Name, data)
-	subject.Lessons = database.Offset2Slice(subject.Lessons, data)
+
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&subject.Lessons)), data)
+	subject.Lessons = *(*[]database.ID)(unsafe.Pointer(&slice))
 }
 
 func GetSubjectByID(id database.ID, subject *Subject) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(SubjectsDB, id, subject); err != nil {
+	if err := database.Read(SubjectsDB, id, unsafe.Pointer(subject), int(unsafe.Sizeof(*subject))); err != nil {
 		return err
 	}
 
@@ -99,7 +101,7 @@ func GetSubjectByID(id database.ID, subject *Subject) error {
 func GetSubjects(pos *int64, subjects []Subject) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(SubjectsDB, pos, subjects)
+	n, err := database.ReadMany(SubjectsDB, pos, *(*[]byte)(unsafe.Pointer(&subjects)), int(unsafe.Sizeof(subjects[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -139,11 +141,11 @@ func SaveSubject(subject *Subject) error {
 	/* TODO(anton2920): save up to a sizeof(subject.Data). */
 	data := unsafe.Slice(&subjectDB.Data[0], len(subjectDB.Data))
 	n += database.String2DBString(&subjectDB.Name, subject.Name, data, n)
-	n += database.Slice2DBSlice(&subjectDB.Lessons, subject.Lessons, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&subjectDB.Lessons)), *(*[]byte)(unsafe.Pointer(&subject.Lessons)), int(unsafe.Sizeof(subject.Lessons[0])), int(unsafe.Alignof(subject.Lessons[0])), data, n)
 
 	subjectDB.CreatedOn = subject.CreatedOn
 
-	return database.Write(SubjectsDB, subjectDB.ID, &subjectDB)
+	return database.Write(SubjectsDB, subjectDB.ID, unsafe.Pointer(&subjectDB), int(unsafe.Sizeof(subjectDB)))
 }
 
 func DisplaySubjectCoursesSelect(w *http.Response, l Language, subject *Subject, teacher *User) {
@@ -742,7 +744,7 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 	case "Main":
 		switch command {
 		case Ls(l, "Delete"):
-			subject.Lessons = RemoveAtIndex(subject.Lessons, pindex)
+			subject.Lessons = RemoveLessonAtIndex(subject.Lessons, pindex)
 		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(subject.Lessons)) {
 				return http.ClientError(nil)
@@ -758,9 +760,9 @@ func SubjectLessonsHandleCommand(w *http.Response, r *http.Request, l Language, 
 			r.Form.Set("LessonIndex", spindex)
 			return LessonAddPageHandler(w, r, session, &subject.LessonContainer, &lesson, nil)
 		case "↑", "^|":
-			MoveUp(subject.Lessons, pindex)
+			MoveLessonUp(subject.Lessons, pindex)
 		case "↓", "|v":
-			MoveDown(subject.Lessons, pindex)
+			MoveLessonDown(subject.Lessons, pindex)
 		}
 
 		return SubjectLessonsMainPageHandler(w, r, session, subject, nil)

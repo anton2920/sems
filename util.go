@@ -71,32 +71,3 @@ func GetValidIndex(si string, len int) (int, error) {
 	}
 	return i, nil
 }
-
-func MoveDown[T any](vs []T, i int) {
-	defer trace.End(trace.Begin(""))
-
-	if (i >= 0) && (i < len(vs)-1) {
-		vs[i], vs[i+1] = vs[i+1], vs[i]
-	}
-}
-
-func MoveUp[T any](vs []T, i int) {
-	defer trace.End(trace.Begin(""))
-
-	if (i > 0) && (i <= len(vs)-1) {
-		vs[i-1], vs[i] = vs[i], vs[i-1]
-	}
-}
-
-func RemoveAtIndex[T any](ts []T, i int) []T {
-	defer trace.End(trace.Begin(""))
-
-	if (len(ts) == 0) || (i < 0) || (i >= len(ts)) {
-		return ts
-	}
-
-	if i < len(ts)-1 {
-		copy(ts[i:], ts[i+1:])
-	}
-	return ts[:len(ts)-1]
-}

@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	sys "syscall"
 	"time"
 	"unsafe"
@@ -19,7 +19,7 @@ import (
 	"github.com/anton2920/gofa/trace"
 )
 
-type SubmissionCheckStatus = int
+type SubmissionCheckStatus int
 
 const (
 	SubmissionCheckPending SubmissionCheckStatus = iota
@@ -153,32 +153,44 @@ func SubmissionVerifyProgrammingCleanup(j jail.Jail, lang *ProgrammingLanguage) 
 	return nil
 }
 
+func SubmissionVerifyProgramWatchdog(cmd *exec.Cmd, seconds time.Duration, done <-chan struct{}, timeout *int32) {
+	select {
+	case <-time.After(seconds * time.Second):
+		pid := atomic.LoadInt32((*int32)(unsafe.Pointer(&cmd.Process.Pid)))
+		syscall.Kill(-pid, syscall.SIGKILL)
+		atomic.StoreInt32(timeout, 1)
+	case <-done:
+		atomic.StoreInt32(timeout, 0)
+	}
+}
+
 /* TODO(anton2920): rewrite without using standard library. */
 func SubmissionVerifyProgrammingCompile(l Language, j jail.Jail, lang *ProgrammingLanguage) error {
 	defer trace.End(trace.Begin(""))
 
 	var buffer bytes.Buffer
 
-	const timeout = 5
-	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, lang.Compiler, append(lang.CompilerArgs, lang.SourceFile)...)
+	cmd := exec.Command(lang.Compiler, append(lang.CompilerArgs, lang.SourceFile)...)
 	cmd.Dir = "/tmp"
 	cmd.SysProcAttr = &sys.SysProcAttr{Setsid: true, Jail: int(j.ID)}
-	cmd.Cancel = func() error {
-		return syscall.Kill(int32(-cmd.Process.Pid), syscall.SIGKILL)
-	}
 	cmd.Stdout = &buffer
 	cmd.Stderr = &buffer
 
-	if err := cmd.Run(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf(Ls(l, "failed to compile program: exceeded compilation timeout of %d seconds"), timeout)
-		}
+	done := make(chan struct{})
+
+	const timeout = 5
+	var timeoutExceeded int32
+	go SubmissionVerifyProgramWatchdog(cmd, timeout, done, &timeoutExceeded)
+
+	err := cmd.Run()
+	close(done)
+
+	if atomic.LoadInt32(&timeoutExceeded) == 1 {
+		return fmt.Errorf(Ls(l, "failed to compile program: exceeded compilation timeout of %d seconds"), timeout)
+	}
+	if err != nil {
 		return fmt.Errorf(Ls(l, "failed to compile program: %s %w"), buffer.String(), err)
 	}
-
 	return nil
 }
 
@@ -194,16 +206,9 @@ func SubmissionVerifyProgrammingRun(l Language, j jail.Jail, lang *ProgrammingLa
 		args = append(lang.RunnerArgs, lang.SourceFile)
 	}
 
-	const timeout = 2
-	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, exe, args...)
+	cmd := exec.Command(exe, args...)
 	cmd.Dir = "/tmp"
 	cmd.SysProcAttr = &sys.SysProcAttr{Setsid: true, Jail: int(j.ID)}
-	cmd.Cancel = func() error {
-		return syscall.Kill(int32(-cmd.Process.Pid), syscall.SIGKILL)
-	}
 	cmd.Stdout = output
 	cmd.Stderr = output
 
@@ -216,13 +221,21 @@ func SubmissionVerifyProgrammingRun(l Language, j jail.Jail, lang *ProgrammingLa
 	}
 	stdin.Close()
 
-	if err := cmd.Run(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf(Ls(l, "failed to run program: exceeded timeout of %d seconds"), timeout)
-		}
+	done := make(chan struct{})
+
+	const timeout = 2
+	var timeoutExceeded int32
+	go SubmissionVerifyProgramWatchdog(cmd, timeout, done, &timeoutExceeded)
+
+	err = cmd.Run()
+	close(done)
+
+	if atomic.LoadInt32(&timeoutExceeded) == 1 {
+		return fmt.Errorf(Ls(l, "failed to run program: exceeded timeout of %d seconds"), timeout)
+	}
+	if err != nil {
 		return fmt.Errorf(Ls(l, "failed to run program: %s %w"), output.String(), err)
 	}
-
 	return nil
 }
 

@@ -157,21 +157,30 @@ func DBSubmitted2Submitted(submittedStep *SubmittedStep, data *byte) {
 	case SubmittedTypeTest:
 		submittedTest, _ := Submitted2Test(submittedStep)
 
-		submittedTest.SubmittedQuestions = database.Offset2Slice(submittedTest.SubmittedQuestions, data)
+		slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submittedTest.SubmittedQuestions)), data)
+		submittedTest.SubmittedQuestions = *(*[]SubmittedQuestion)(unsafe.Pointer(&slice))
+
 		for i := 0; i < len(submittedTest.SubmittedQuestions); i++ {
 			submittedQuestion := &submittedTest.SubmittedQuestions[i]
-			submittedQuestion.SelectedAnswers = database.Offset2Slice(submittedQuestion.SelectedAnswers, data)
+
+			slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submittedQuestion.SelectedAnswers)), data)
+			submittedQuestion.SelectedAnswers = *(*[]int)(unsafe.Pointer(&slice))
 		}
-		submittedTest.Scores = database.Offset2Slice(submittedTest.Scores, data)
+
+		slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submittedTest.Scores)), data)
+		submittedTest.Scores = *(*[]int)(unsafe.Pointer(&slice))
 	case SubmittedTypeProgramming:
 		submittedTask, _ := Submitted2Programming(submittedStep)
 
 		submittedTask.Solution = database.Offset2String(submittedTask.Solution, data)
 
 		for i := 0; i < 2; i++ {
-			submittedTask.Scores[i] = database.Offset2Slice(submittedTask.Scores[i], data)
+			slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submittedTask.Scores[i])), data)
+			submittedTask.Scores[i] = *(*[]int)(unsafe.Pointer(&slice))
 
-			submittedTask.Messages[i] = database.Offset2Slice(submittedTask.Messages[i], data)
+			slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submittedTask.Messages[i])), data)
+			submittedTask.Messages[i] = *(*[]string)(unsafe.Pointer(&slice))
+
 			for j := 0; j < len(submittedTask.Messages[i]); j++ {
 				submittedTask.Messages[i][j] = database.Offset2String(submittedTask.Messages[i][j], data)
 			}
@@ -185,7 +194,8 @@ func DBSubmission2Submission(submission *Submission) {
 
 	data := &submission.Data[0]
 
-	submission.SubmittedSteps = database.Offset2Slice(submission.SubmittedSteps, data)
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&submission.SubmittedSteps)), data)
+	submission.SubmittedSteps = *(*[]SubmittedStep)(unsafe.Pointer(&slice))
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		DBSubmitted2Submitted(&submission.SubmittedSteps[i], data)
 	}
@@ -194,7 +204,7 @@ func DBSubmission2Submission(submission *Submission) {
 func GetSubmissionByID(id database.ID, submission *Submission) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(SubmissionsDB, id, submission); err != nil {
+	if err := database.Read(SubmissionsDB, id, unsafe.Pointer(submission), int(unsafe.Sizeof(*submission))); err != nil {
 		return err
 	}
 
@@ -205,7 +215,7 @@ func GetSubmissionByID(id database.ID, submission *Submission) error {
 func GetSubmissions(pos *int64, submissions []Submission) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(SubmissionsDB, pos, submissions)
+	n, err := database.ReadMany(SubmissionsDB, pos, *(*[]byte)(unsafe.Pointer(&submissions)), int(unsafe.Sizeof(submissions[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -238,11 +248,11 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 		for i := 0; i < len(st.SubmittedQuestions); i++ {
 			sq := &st.SubmittedQuestions[i]
 			dq := &dt.SubmittedQuestions[i]
-			n += database.Slice2DBSlice(&dq.SelectedAnswers, sq.SelectedAnswers, data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dq.SelectedAnswers)), *(*[]byte)(unsafe.Pointer(&sq.SelectedAnswers)), int(unsafe.Sizeof(sq.SelectedAnswers[0])), int(unsafe.Alignof(sq.SelectedAnswers[0])), data, n)
 		}
-		n += database.Slice2DBSlice(&dt.SubmittedQuestions, dt.SubmittedQuestions, data, n)
+		n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.SubmittedQuestions)), *(*[]byte)(unsafe.Pointer(&dt.SubmittedQuestions)), int(unsafe.Sizeof(dt.SubmittedQuestions[0])), int(unsafe.Alignof(dt.SubmittedQuestions[0])), data, n)
 
-		n += database.Slice2DBSlice(&dt.Scores, st.Scores, data, n)
+		n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.Scores)), *(*[]byte)(unsafe.Pointer(&st.Scores)), int(unsafe.Sizeof(st.Scores[0])), int(unsafe.Alignof(st.Scores[0])), data, n)
 	case SubmittedTypeProgramming:
 		st, _ := Submitted2Programming(ss)
 
@@ -254,13 +264,13 @@ func Submitted2DBSubmitted(ds *SubmittedStep, ss *SubmittedStep, data []byte, n 
 		n += database.String2DBString(&dt.Solution, st.Solution, data, n)
 
 		for i := 0; i < 2; i++ {
-			n += database.Slice2DBSlice(&dt.Scores[i], st.Scores[i], data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.Scores[i])), *(*[]byte)(unsafe.Pointer(&st.Scores[i])), int(unsafe.Sizeof(st.Scores[i][0])), int(unsafe.Alignof(st.Scores[i][0])), data, n)
 
 			dt.Messages[i] = make([]string, len(st.Messages[i]))
 			for j := 0; j < len(st.Messages[i]); j++ {
 				n += database.String2DBString(&dt.Messages[i][j], st.Messages[i][j], data, n)
 			}
-			n += database.Slice2DBSlice(&dt.Messages[i], dt.Messages[i], data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.Messages[i])), *(*[]byte)(unsafe.Pointer(&dt.Messages[i])), int(unsafe.Sizeof(dt.Messages[i][0])), int(unsafe.Alignof(dt.Messages[i][0])), data, n)
 		}
 	}
 
@@ -287,9 +297,9 @@ func SaveSubmission(submission *Submission) error {
 	for i := 0; i < len(submission.SubmittedSteps); i++ {
 		n += Submitted2DBSubmitted(&submissionDB.SubmittedSteps[i], &submission.SubmittedSteps[i], data, n)
 	}
-	n += database.Slice2DBSlice(&submissionDB.SubmittedSteps, submissionDB.SubmittedSteps, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&submissionDB.SubmittedSteps)), *(*[]byte)(unsafe.Pointer(&submissionDB.SubmittedSteps)), int(unsafe.Sizeof(submissionDB.SubmittedSteps[0])), int(unsafe.Alignof(submissionDB.SubmittedSteps[0])), data, n)
 
-	return database.Write(SubmissionsDB, submissionDB.ID, &submissionDB)
+	return database.Write(SubmissionsDB, submissionDB.ID, unsafe.Pointer(&submissionDB), int(unsafe.Sizeof(submissionDB)))
 }
 
 func GetSubmittedStepScore(submittedStep *SubmittedStep) int {

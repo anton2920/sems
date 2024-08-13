@@ -11,6 +11,7 @@ import (
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/trace"
+	"github.com/anton2920/gofa/util"
 )
 
 type (
@@ -136,8 +137,6 @@ var (
 )
 
 func Step2Test(s *Step) (*StepTest, error) {
-	defer trace.End(trace.Begin(""))
-
 	if s.Type != StepTypeTest {
 		return nil, errors.New("invalid step type for test")
 	}
@@ -145,12 +144,98 @@ func Step2Test(s *Step) (*StepTest, error) {
 }
 
 func Step2Programming(s *Step) (*StepProgramming, error) {
-	defer trace.End(trace.Begin(""))
-
 	if s.Type != StepTypeProgramming {
 		return nil, errors.New("invalid step type for programming")
 	}
 	return (*StepProgramming)(unsafe.Pointer(s)), nil
+}
+
+func MoveLessonDown(vs []database.ID, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveStepDown(vs []Step, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveQuestionDown(vs []Question, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveCheckDown(vs []Check, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveLessonUp(vs []database.ID, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
+func MoveStepUp(vs []Step, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
+func MoveQuestionUp(vs []Question, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
+func MoveCheckUp(vs []Check, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
+func RemoveLessonAtIndex(vs []database.ID, i int) []database.ID {
+	if (len(vs) == 0) || (i < 0) || (i >= len(vs)) {
+		return vs
+	}
+	if i < len(vs)-1 {
+		copy(vs[i:], vs[i+1:])
+	}
+	return vs[:len(vs)-1]
+}
+
+func RemoveStepAtIndex(vs []Step, i int) []Step {
+	if (len(vs) == 0) || (i < 0) || (i >= len(vs)) {
+		return vs
+	}
+	if i < len(vs)-1 {
+		copy(vs[i:], vs[i+1:])
+	}
+	return vs[:len(vs)-1]
+}
+
+func RemoveQuestionAtIndex(vs []Question, i int) []Question {
+	if (len(vs) == 0) || (i < 0) || (i >= len(vs)) {
+		return vs
+	}
+	if i < len(vs)-1 {
+		copy(vs[i:], vs[i+1:])
+	}
+	return vs[:len(vs)-1]
+}
+
+func RemoveCheckAtIndex(vs []Check, i int) []Check {
+	if (len(vs) == 0) || (i < 0) || (i >= len(vs)) {
+		return vs
+	}
+	if i < len(vs)-1 {
+		copy(vs[i:], vs[i+1:])
+	}
+	return vs[:len(vs)-1]
 }
 
 func CreateLesson(lesson *Lesson) error {
@@ -177,12 +262,18 @@ func DBStep2Step(step *Step, data *byte) {
 	case StepTypeTest:
 		test, _ := Step2Test(step)
 
-		test.Questions = database.Offset2Slice(test.Questions, data)
+		slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&test.Questions)), data)
+		test.Questions = *(*[]Question)(unsafe.Pointer(&slice))
+
 		for i := 0; i < len(test.Questions); i++ {
 			question := &test.Questions[i]
 			question.Name = database.Offset2String(question.Name, data)
-			question.Answers = database.Offset2Slice(question.Answers, data)
-			question.CorrectAnswers = database.Offset2Slice(question.CorrectAnswers, data)
+
+			slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&question.Answers)), data)
+			question.Answers = *(*[]string)(unsafe.Pointer(&slice))
+
+			slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&question.CorrectAnswers)), data)
+			question.CorrectAnswers = *(*[]int)(unsafe.Pointer(&slice))
 
 			for j := 0; j < len(question.Answers); j++ {
 				question.Answers[j] = database.Offset2String(question.Answers[j], data)
@@ -194,7 +285,9 @@ func DBStep2Step(step *Step, data *byte) {
 		task.Description = database.Offset2String(task.Description, data)
 
 		for i := 0; i < len(task.Checks); i++ {
-			task.Checks[i] = database.Offset2Slice(task.Checks[i], data)
+			slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&task.Checks[i])), data)
+			task.Checks[i] = *(*[]Check)(unsafe.Pointer(&slice))
+
 			for j := 0; j < len(task.Checks[i]); j++ {
 				check := &task.Checks[i][j]
 				check.Input = database.Offset2String(check.Input, data)
@@ -212,17 +305,21 @@ func DBLesson2Lesson(lesson *Lesson) {
 	lesson.Name = database.Offset2String(lesson.Name, data)
 	lesson.Theory = database.Offset2String(lesson.Theory, data)
 
-	lesson.Steps = database.Offset2Slice(lesson.Steps, data)
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&lesson.Steps)), data)
+	lesson.Steps = *(*[]Step)(unsafe.Pointer(&slice))
+
 	for i := 0; i < len(lesson.Steps); i++ {
 		DBStep2Step(&lesson.Steps[i], data)
 	}
-	lesson.Submissions = database.Offset2Slice(lesson.Submissions, data)
+
+	slice = database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&lesson.Submissions)), data)
+	lesson.Submissions = *(*[]database.ID)(unsafe.Pointer(&slice))
 }
 
 func GetLessonByID(id database.ID, lesson *Lesson) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(LessonsDB, id, lesson); err != nil {
+	if err := database.Read(LessonsDB, id, unsafe.Pointer(lesson), int(unsafe.Sizeof(*lesson))); err != nil {
 		return err
 	}
 
@@ -233,7 +330,7 @@ func GetLessonByID(id database.ID, lesson *Lesson) error {
 func GetLessons(pos *int64, lessons []Lesson) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(LessonsDB, pos, lessons)
+	n, err := database.ReadMany(LessonsDB, pos, *(*[]byte)(unsafe.Pointer(&lessons)), int(unsafe.Sizeof(lessons[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -271,11 +368,11 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 			for j := 0; j < len(sq.Answers); j++ {
 				n += database.String2DBString(&dq.Answers[j], sq.Answers[j], data, n)
 			}
-			n += database.Slice2DBSlice(&dq.Answers, dq.Answers, data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dq.Answers)), *(*[]byte)(unsafe.Pointer(&dq.Answers)), int(unsafe.Sizeof(dq.Answers[0])), int(unsafe.Alignof(dq.Answers[0])), data, n)
 
-			n += database.Slice2DBSlice(&dq.CorrectAnswers, sq.CorrectAnswers, data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dq.CorrectAnswers)), *(*[]byte)(unsafe.Pointer(&sq.CorrectAnswers)), int(unsafe.Sizeof(sq.CorrectAnswers[0])), int(unsafe.Alignof(sq.CorrectAnswers[0])), data, n)
 		}
-		n += database.Slice2DBSlice(&dt.Questions, dt.Questions, data, n)
+		n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.Questions)), *(*[]byte)(unsafe.Pointer(&dt.Questions)), int(unsafe.Sizeof(dt.Questions[0])), int(unsafe.Alignof(dt.Questions[0])), data, n)
 	case StepTypeProgramming:
 		st, _ := Step2Programming(ss)
 
@@ -293,7 +390,7 @@ func Step2DBStep(ds *Step, ss *Step, data []byte, n int) int {
 				n += database.String2DBString(&dc.Input, sc.Input, data, n)
 				n += database.String2DBString(&dc.Output, sc.Output, data, n)
 			}
-			n += database.Slice2DBSlice(&dt.Checks[i], dt.Checks[i], data, n)
+			n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&dt.Checks[i])), *(*[]byte)(unsafe.Pointer(&dt.Checks[i])), int(unsafe.Sizeof(dt.Checks[i][0])), int(unsafe.Alignof(dt.Checks[i][0])), data, n)
 		}
 	}
 
@@ -320,10 +417,10 @@ func SaveLesson(lesson *Lesson) error {
 
 	n += database.String2DBString(&lessonDB.Name, lesson.Name, data, n)
 	n += database.String2DBString(&lessonDB.Theory, lesson.Theory, data, n)
-	n += database.Slice2DBSlice(&lessonDB.Steps, lessonDB.Steps, data, n)
-	n += database.Slice2DBSlice(&lessonDB.Submissions, lesson.Submissions, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&lessonDB.Steps)), *(*[]byte)(unsafe.Pointer(&lessonDB.Steps)), int(unsafe.Sizeof(lessonDB.Steps[0])), int(unsafe.Alignof(lessonDB.Steps[0])), data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&lessonDB.Submissions)), *(*[]byte)(unsafe.Pointer(&lesson.Submissions)), int(unsafe.Sizeof(lesson.Submissions[0])), int(unsafe.Alignof(lesson.Submissions[0])), data, n)
 
-	return database.Write(LessonsDB, lessonDB.ID, &lessonDB)
+	return database.Write(LessonsDB, lessonDB.ID, unsafe.Pointer(&lessonDB), int(unsafe.Sizeof(lessonDB)))
 }
 
 func StepStringType(l Language, s *Step) string {
@@ -1333,7 +1430,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 
 		switch command {
 		case Ls(l, "Delete"):
-			lesson.Steps = RemoveAtIndex(lesson.Steps, pindex)
+			lesson.Steps = RemoveStepAtIndex(lesson.Steps, pindex)
 		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(lesson.Steps)) {
 				return http.ClientError(nil)
@@ -1344,9 +1441,9 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			r.Form.Set("StepIndex", spindex)
 			return LessonAddStepPageHandler(w, r, session, container, &lesson, step, nil)
 		case "↑", "^|":
-			MoveUp(lesson.Steps, pindex)
+			MoveStepUp(lesson.Steps, pindex)
 		case "↓", "|v":
-			MoveDown(lesson.Steps, pindex)
+			MoveStepDown(lesson.Steps, pindex)
 		}
 
 		return LessonAddPageHandler(w, r, session, container, &lesson, nil)
@@ -1389,11 +1486,11 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			if (sindex < 0) || (sindex >= len(question.Answers)) {
 				return http.ClientError(nil)
 			}
-			question.Answers = RemoveAtIndex(question.Answers, sindex)
+			question.Answers = util.RemoveStringAtIndex(question.Answers, sindex)
 
 			for i := 0; i < len(question.CorrectAnswers); i++ {
 				if question.CorrectAnswers[i] == sindex {
-					question.CorrectAnswers = RemoveAtIndex(question.CorrectAnswers, i)
+					question.CorrectAnswers = util.RemoveIntAtIndex(question.CorrectAnswers, i)
 					i--
 				} else if question.CorrectAnswers[i] > sindex {
 					question.CorrectAnswers[i]--
@@ -1402,17 +1499,17 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 		case Ls(l, "Add another question"):
 			test.Questions = append(test.Questions, Question{})
 		case Ls(l, "Delete"):
-			test.Questions = RemoveAtIndex(test.Questions, pindex)
+			test.Questions = RemoveQuestionAtIndex(test.Questions, pindex)
 		case "↑", "^|":
 			if ssindex == "" {
-				MoveUp(test.Questions, pindex)
+				MoveQuestionUp(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
 					return http.ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
-				MoveUp(question.Answers, sindex)
+				util.MoveStringUp(question.Answers, sindex)
 				for i := 0; i < len(question.CorrectAnswers); i++ {
 					if question.CorrectAnswers[i] == sindex-1 {
 						/* If previous answer is correct and current is not. */
@@ -1431,14 +1528,14 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			}
 		case "↓", "|v":
 			if ssindex == "" {
-				MoveDown(test.Questions, pindex)
+				MoveQuestionDown(test.Questions, pindex)
 			} else {
 				if (pindex < 0) || (pindex >= len(test.Questions)) {
 					return http.ClientError(nil)
 				}
 				question := &test.Questions[pindex]
 
-				MoveDown(question.Answers, sindex)
+				util.MoveStringDown(question.Answers, sindex)
 				for i := 0; i < len(question.CorrectAnswers); i++ {
 					if question.CorrectAnswers[i] == sindex {
 						/* If current answer is correct and next is not. */
@@ -1490,17 +1587,17 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
 				return http.ClientError(nil)
 			}
-			task.Checks[sindex] = RemoveAtIndex(task.Checks[sindex], pindex)
+			task.Checks[sindex] = RemoveCheckAtIndex(task.Checks[sindex], pindex)
 		case "↑", "^|":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
 				return http.ClientError(nil)
 			}
-			MoveUp(task.Checks[sindex], pindex)
+			MoveCheckUp(task.Checks[sindex], pindex)
 		case "↓", "|v":
 			if (sindex < 0) || (sindex >= len(task.Checks)) {
 				return http.ClientError(nil)
 			}
-			MoveDown(task.Checks[sindex], pindex)
+			MoveCheckDown(task.Checks[sindex], pindex)
 		}
 
 		return LessonAddProgrammingPageHandler(w, r, session, container, &lesson, task, nil)

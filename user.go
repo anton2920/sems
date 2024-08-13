@@ -113,13 +113,15 @@ func DBUser2User(user *User) {
 	user.LastName = database.Offset2String(user.LastName, data)
 	user.Email = database.Offset2String(user.Email, data)
 	user.Password = database.Offset2String(user.Password, data)
-	user.Courses = database.Offset2Slice(user.Courses, data)
+
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&user.Courses)), data)
+	user.Courses = *(*[]database.ID)(unsafe.Pointer(&slice))
 }
 
 func GetUserByID(id database.ID, user *User) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(UsersDB, id, user); err != nil {
+	if err := database.Read(UsersDB, id, unsafe.Pointer(user), int(unsafe.Sizeof(*user))); err != nil {
 		return err
 	}
 
@@ -130,7 +132,7 @@ func GetUserByID(id database.ID, user *User) error {
 func GetUsers(pos *int64, users []User) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(UsersDB, pos, users)
+	n, err := database.ReadMany(UsersDB, pos, *(*[]byte)(unsafe.Pointer(&users)), int(unsafe.Sizeof(users[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -167,7 +169,7 @@ func User2DBUser(userDB *User, user *User, data []byte, n int) {
 	n += database.String2DBString(&userDB.LastName, user.LastName, data, n)
 	n += database.String2DBString(&userDB.Email, user.Email, data, n)
 	n += database.String2DBString(&userDB.Password, user.Password, data, n)
-	n += database.Slice2DBSlice(&userDB.Courses, user.Courses, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&userDB.Courses)), *(*[]byte)(unsafe.Pointer(&user.Courses)), int(unsafe.Sizeof(user.Courses[0])), int(unsafe.Alignof(user.Courses[0])), data, n)
 
 	userDB.CreatedOn = user.CreatedOn
 }
@@ -180,7 +182,7 @@ func SaveUser(user *User) error {
 	data := unsafe.Slice(&userDB.Data[0], len(userDB.Data))
 	User2DBUser(&userDB, user, data, 0)
 
-	return database.Write(UsersDB, userDB.ID, &userDB)
+	return database.Write(UsersDB, userDB.ID, unsafe.Pointer(&userDB), int(unsafe.Sizeof(userDB)))
 }
 
 func UserOwnsCourse(user *User, courseID database.ID) bool {
@@ -404,7 +406,7 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 			DisplayTableStart(w, GL, []string{"ID", "First name", "Last name", "Email", "Created on", "Status"})
 			{
 				users := make([]User, usersPerPage)
-				pos := database.GetOffsetForID[User](database.ID(page * usersPerPage))
+				pos := database.GetOffsetForID(database.ID(page*usersPerPage), int(unsafe.Sizeof(users[0])))
 
 				n, err := GetUsers(&pos, users)
 				if err != nil {

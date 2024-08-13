@@ -49,13 +49,15 @@ func DBCourse2Course(course *Course) {
 	data := &course.Data[0]
 
 	course.Name = database.Offset2String(course.Name, data)
-	course.Lessons = database.Offset2Slice(course.Lessons, data)
+
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&course.Lessons)), data)
+	course.Lessons = *(*[]database.ID)(unsafe.Pointer(&slice))
 }
 
 func GetCourseByID(id database.ID, course *Course) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(CoursesDB, id, course); err != nil {
+	if err := database.Read(CoursesDB, id, unsafe.Pointer(course), int(unsafe.Sizeof(*course))); err != nil {
 		return err
 	}
 
@@ -66,7 +68,7 @@ func GetCourseByID(id database.ID, course *Course) error {
 func GetCourses(pos *int64, courses []Course) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(CoursesDB, pos, courses)
+	n, err := database.ReadMany(CoursesDB, pos, *(*[]byte)(unsafe.Pointer(&courses)), int(unsafe.Sizeof(courses[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -104,9 +106,9 @@ func SaveCourse(course *Course) error {
 	/* TODO(anton2920): save up to a sizeof(course.Data). */
 	data := unsafe.Slice(&courseDB.Data[0], len(courseDB.Data))
 	n += database.String2DBString(&courseDB.Name, course.Name, data, n)
-	n += database.Slice2DBSlice(&courseDB.Lessons, course.Lessons, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&courseDB.Lessons)), *(*[]byte)(unsafe.Pointer(&course.Lessons)), int(unsafe.Sizeof(course.Lessons[0])), int(unsafe.Alignof(course.Lessons[0])), data, n)
 
-	return database.Write(CoursesDB, courseDB.ID, &courseDB)
+	return database.Write(CoursesDB, courseDB.ID, unsafe.Pointer(&courseDB), int(unsafe.Sizeof(courseDB)))
 }
 
 func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bool) {
@@ -418,7 +420,7 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 	case "Course":
 		switch command {
 		case Ls(l, "Delete"):
-			course.Lessons = RemoveAtIndex(course.Lessons, pindex)
+			course.Lessons = RemoveLessonAtIndex(course.Lessons, pindex)
 		case Ls(l, "Edit"):
 			if (pindex < 0) || (pindex >= len(course.Lessons)) {
 				return http.ClientError(nil)
@@ -434,9 +436,9 @@ func CourseCreateEditHandleCommand(w *http.Response, r *http.Request, l Language
 			r.Form.Set("LessonIndex", spindex)
 			return LessonAddPageHandler(w, r, session, &course.LessonContainer, &lesson, nil)
 		case "↑", "^|":
-			MoveUp(course.Lessons, pindex)
+			MoveLessonUp(course.Lessons, pindex)
 		case "↓", "|v":
-			MoveDown(course.Lessons, pindex)
+			MoveLessonDown(course.Lessons, pindex)
 		}
 
 		return CourseCreateEditCoursePageHandler(w, r, session, course, nil)

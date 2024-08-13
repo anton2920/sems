@@ -66,13 +66,15 @@ func DBGroup2Group(group *Group) {
 	data := &group.Data[0]
 
 	group.Name = database.Offset2String(group.Name, data)
-	group.Students = database.Offset2Slice(group.Students, data)
+
+	slice := database.Offset2Slice(*(*[]byte)(unsafe.Pointer(&group.Students)), data)
+	group.Students = *(*[]database.ID)(unsafe.Pointer(&slice))
 }
 
 func GetGroupByID(id database.ID, group *Group) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := database.Read(GroupsDB, id, group); err != nil {
+	if err := database.Read(GroupsDB, id, unsafe.Pointer(group), int(unsafe.Sizeof(*group))); err != nil {
 		return err
 	}
 
@@ -83,7 +85,7 @@ func GetGroupByID(id database.ID, group *Group) error {
 func GetGroups(pos *int64, groups []Group) (int, error) {
 	defer trace.End(trace.Begin(""))
 
-	n, err := database.ReadMany(GroupsDB, pos, groups)
+	n, err := database.ReadMany(GroupsDB, pos, *(*[]byte)(unsafe.Pointer(&groups)), int(unsafe.Sizeof(groups[0])))
 	if err != nil {
 		return 0, err
 	}
@@ -121,11 +123,11 @@ func SaveGroup(group *Group) error {
 	/* TODO(anton2920): save up to a sizeof(group.Data). */
 	data := unsafe.Slice(&groupDB.Data[0], len(groupDB.Data))
 	n += database.String2DBString(&groupDB.Name, group.Name, data, n)
-	n += database.Slice2DBSlice(&groupDB.Students, group.Students, data, n)
+	n += database.Slice2DBSlice((*[]byte)(unsafe.Pointer(&groupDB.Students)), *(*[]byte)(unsafe.Pointer(&group.Students)), int(unsafe.Sizeof(group.Students[0])), int(unsafe.Alignof(group.Students[0])), data, n)
 
 	groupDB.CreatedOn = group.CreatedOn
 
-	return database.Write(GroupsDB, groupDB.ID, &groupDB)
+	return database.Write(GroupsDB, groupDB.ID, unsafe.Pointer(&groupDB), int(unsafe.Sizeof(groupDB)))
 }
 
 func DisplayGroupStudents(w *http.Response, l Language, group *Group) {
