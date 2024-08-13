@@ -360,7 +360,7 @@ func main() {
 		trace.BeginProfile()
 		defer trace.EndAndPrintProfile()
 	}
-	log.Infof("Starting SEMS in %q mode...", BuildMode)
+	log.Infof("Starting SEMS in %q mode... (%s)", BuildMode, runtime.Version())
 
 	WorkingDirectory, err = os.Getwd()
 	if err != nil {
