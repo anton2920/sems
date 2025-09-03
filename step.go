@@ -12,7 +12,7 @@ func StepsPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	DisplayHTMLStart(w)

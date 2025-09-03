@@ -241,7 +241,7 @@ func SubjectsPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	DisplayHTMLStart(w)
@@ -354,7 +354,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(GL, r.URL, "/subject/")
@@ -363,7 +363,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubjectByID(id, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -372,7 +372,7 @@ func SubjectPageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 	if who == SubjectUserNone {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	var teacher User
@@ -616,14 +616,10 @@ func SubjectCreatePageHandler(w *http.Response, r *http.Request, e error) error 
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	return SubjectCreateEditPageHandler(w, r, session, nil, APIPrefix+"/subject/create", "Create subject", "Create", e)
@@ -636,14 +632,10 @@ func SubjectEditPageHandler(w *http.Response, r *http.Request, e error) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	subjectID, err := r.Form.GetID("ID")
@@ -666,7 +658,7 @@ func SubjectLessonsVerify(l Language, subject *Subject) error {
 	var lesson Lesson
 
 	if len(subject.Lessons) == 0 {
-		return http.BadRequest(Ls(l, "create at least one lesson"))
+		return http.BadRequest("%s", Ls(l, "create at least one lesson"))
 	}
 	for li := 0; li < len(subject.Lessons); li++ {
 		if err := GetLessonByID(subject.Lessons[li], &lesson); err != nil {
@@ -778,14 +770,10 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
@@ -797,14 +785,14 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubjectByID(subjectID, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
 	defer SaveSubject(&subject)
 
 	if (session.ID != AdminID) && (session.ID != subject.TeacherID) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	switch r.Form.Get("Action") {
@@ -816,7 +804,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(err)
 		}
 		if !UserOwnsCourse(&user, courseID) {
-			return http.ForbiddenError
+			return ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
 			if err == database.NotFound {
@@ -837,7 +825,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(err)
 		}
 		if !UserOwnsCourse(&user, courseID) {
-			return http.ForbiddenError
+			return ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
 			if err == database.NotFound {
@@ -1003,14 +991,10 @@ func SubjectCreateHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	name := r.Form.Get("Name")
@@ -1057,14 +1041,10 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	subjectID, err := r.Form.GetID("ID")
@@ -1073,7 +1053,7 @@ func SubjectDeleteHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubjectByID(subjectID, &subject); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "subject with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "subject with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -1093,14 +1073,10 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	subjectID, err := r.Form.GetID("ID")

@@ -142,11 +142,7 @@ func CoursesPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.URL.ParseQuery(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	var user User
@@ -245,7 +241,7 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
@@ -256,11 +252,11 @@ func CoursePageHandler(w *http.Response, r *http.Request) error {
 		return err
 	}
 	if !UserOwnsCourse(&user, id) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 	if err := GetCourseByID(id, &course); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "course with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "course with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -337,7 +333,7 @@ func CourseVerify(l Language, course *Course) error {
 	}
 
 	if len(course.Lessons) == 0 {
-		return http.BadRequest(Ls(l, "create at least one lesson"))
+		return http.BadRequest("%s", Ls(l, "create at least one lesson"))
 	}
 	for li := 0; li < len(course.Lessons); li++ {
 		if err := GetLessonByID(course.Lessons[li], &lesson); err != nil {
@@ -454,14 +450,10 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if err := GetUserByID(session.ID, &user); err != nil {
 		return http.ServerError(err)
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
@@ -484,7 +476,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 			return http.ClientError(err)
 		}
 		if !UserOwnsCourse(&user, courseID) {
-			return http.ForbiddenError
+			return ForbiddenError
 		}
 		if err := GetCourseByID(courseID, &course); err != nil {
 			if err == database.NotFound {
@@ -649,11 +641,7 @@ func CourseDeleteHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	courseID, err := r.Form.GetID("ID")
@@ -665,7 +653,7 @@ func CourseDeleteHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 	if !UserOwnsCourse(&user, courseID) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	if err := DeleteCourseByID(courseID); err != nil {

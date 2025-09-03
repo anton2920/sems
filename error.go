@@ -7,6 +7,11 @@ import (
 	"github.com/anton2920/gofa/trace"
 )
 
+var (
+	UnauthorizedError = http.Unauthorized("%s", "whoops... You have to sign in to see this page")
+	ForbiddenError    = http.Forbidden("%s", "whoops... Your permissions are insufficient")
+)
+
 func DisplayErrorMessage(w *http.Response, l Language, message string) {
 	if message != "" {
 		w.WriteString(`<div><p>`)
@@ -24,10 +29,10 @@ func DisplayError(w *http.Response, l Language, err error) {
 	if err != nil {
 		if httpError, ok := err.(http.Error); ok {
 			w.StatusCode = httpError.StatusCode
-			message = httpError.DisplayMessage
+			message = httpError.DisplayErrorMessage
 		} else if _, ok := err.(errors.Panic); ok {
-			w.StatusCode = http.ServerError(nil).StatusCode
-			message = http.ServerError(nil).DisplayMessage
+			w.StatusCode = http.StatusInternalServerError
+			message = http.ServerDisplayErrorMessage
 		} else {
 			log.Panicf("Unsupported error type %T", err)
 		}

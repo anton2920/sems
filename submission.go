@@ -451,7 +451,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(GL, r.URL, "/submission/")
@@ -477,7 +477,7 @@ func SubmissionPageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 	if who == SubjectUserNone {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 	teacher := (who == SubjectUserAdmin) || (who == SubjectUserTeacher)
 
@@ -922,11 +922,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	submissionID, err := r.Form.GetID("ID")
@@ -935,7 +931,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetSubmissionByID(submissionID, &submission); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "submission with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "submission with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -953,7 +949,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 	}
 	switch who {
 	default:
-		return http.ForbiddenError
+		return ForbiddenError
 	case SubjectUserAdmin, SubjectUserTeacher:
 		r.Form.Set("Teacher", "yay")
 	case SubjectUserStudent:
@@ -1049,7 +1045,7 @@ func SubmissionNewVerify(l Language, submission *Submission) error {
 		}
 	}
 	if empty {
-		return http.BadRequest(Ls(l, "you have to pass at least one step"))
+		return http.BadRequest("%s", Ls(l, "you have to pass at least one step"))
 	}
 	return nil
 }
@@ -1241,7 +1237,7 @@ func SubmissionNewProgrammingVerify(submittedTask *SubmittedProgramming, l Langu
 	defer trace.End(trace.Begin(""))
 
 	if !ProgrammingLanguages[submittedTask.LanguageID].Available {
-		return http.BadRequest(Ls(l, "selected language is not available"))
+		return http.BadRequest("%s", Ls(l, "selected language is not available"))
 	}
 
 	if !strings.LengthInRange(submittedTask.Solution, MinSolutionLen, MaxSolutionLen) {
@@ -1392,7 +1388,7 @@ func SubmissionNewStepVerify(l Language, submittedStep *SubmittedStep) error {
 		}
 
 		if err := SubmissionVerifyProgramming(GL, submittedTask, CheckTypeExample); err != nil {
-			return http.BadRequest(err.Error())
+			return http.BadRequest("%v", err)
 		}
 
 		scores := submittedTask.Scores[CheckTypeExample]
@@ -1552,11 +1548,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	currentPage := r.Form.Get("CurrentPage")
@@ -1584,7 +1576,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 	if who != SubjectUserStudent {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	submissionIndex := r.Form.Get("SubmissionIndex")

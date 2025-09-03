@@ -601,7 +601,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(GL, r.URL, "/lesson/")
@@ -610,7 +610,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetLessonByID(id, &lesson); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "lesson with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "lesson with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -626,7 +626,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			return http.ServerError(err)
 		}
 		if !UserOwnsCourse(&user, lesson.ContainerID) {
-			return http.ForbiddenError
+			return ForbiddenError
 		}
 		if err := GetCourseByID(lesson.ContainerID, &course); err != nil {
 			return http.ServerError(err)
@@ -643,7 +643,7 @@ func LessonPageHandler(w *http.Response, r *http.Request) error {
 			return http.ServerError(err)
 		}
 		if who == SubjectUserNone {
-			return http.ForbiddenError
+			return ForbiddenError
 		}
 		container = &subject.LessonContainer
 	}

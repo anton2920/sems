@@ -12,13 +12,16 @@ import (
 	"github.com/anton2920/gofa/event"
 	"github.com/anton2920/gofa/intel"
 	"github.com/anton2920/gofa/log"
+	"github.com/anton2920/gofa/mime/multipart"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/net/http/http1"
 	"github.com/anton2920/gofa/net/tcp"
+	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
 	"github.com/anton2920/gofa/trace"
+	"github.com/anton2920/gofa/util"
 )
 
 const (
@@ -111,7 +114,7 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		}
 	}
 
-	return http.NotFound(Ls(GL, "requested page does not exist"))
+	return http.NotFound("%s", Ls(GL, "requested page does not exist"))
 }
 
 func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
@@ -156,7 +159,7 @@ func HandleAPIRequest(w *http.Response, r *http.Request, path string) error {
 		}
 	}
 
-	return http.NotFound(Ls(GL, "requested API endpoint does not exist"))
+	return http.NotFound("%s", Ls(GL, "requested API endpoint does not exist"))
 }
 
 /* TODO(anton2920): maybe switch to sendfile(2)? */
@@ -176,7 +179,7 @@ func HandleFSRequest(w *http.Response, r *http.Request, path string) error {
 		return nil
 	}
 
-	return http.NotFound(Ls(GL, "requested file does not exist"))
+	return http.NotFound("%s", Ls(GL, "requested file does not exist"))
 }
 
 func RouterFunc(w *http.Response, r *http.Request) (err error) {
@@ -187,6 +190,26 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 			err = errors.NewPanic(p)
 		}
 	}()
+
+	switch r.Method {
+	case "GET":
+		if len(r.URL.RawQuery) > 0 {
+			err = r.URL.ParseQuery()
+		}
+	case "POST":
+		if len(r.Body) > 0 {
+			contentType := r.Headers.Get("Content-Type")
+			switch {
+			case contentType == "application/x-www-form-urlencoded":
+				err = url.ParseQuery(&r.Form, util.Slice2String(r.Body))
+			case strings.StartsWith(contentType, "multipart/form-data; boundary="):
+				err = multipart.ParseFormData(contentType, &r.Form, &r.Files, r.Body)
+			}
+		}
+	}
+	if err != nil {
+		return http.ClientError(err)
+	}
 
 	path := r.URL.Path
 	switch {
@@ -411,7 +434,7 @@ func main() {
 		}
 		go ServerWorker(qs[i])
 	}
-	now := time.Unix()
+	now := int(time.Unix())
 	UpdateDateHeader(now)
 
 	events := make([]event.Event, 64)

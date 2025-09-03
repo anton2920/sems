@@ -15,7 +15,7 @@ func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
 	defer trace.End(trace.Begin(""))
 
 	if !strings.StartsWith(u.Path, prefix) {
-		return 0, http.NotFound(Ls(l, "requested page does not exist"))
+		return 0, http.NotFound("%s", Ls(l, "requested page does not exist"))
 	}
 
 	id, err := strconv.Atoi(u.Path[len(prefix):])

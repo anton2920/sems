@@ -53,13 +53,13 @@ func UserNameValid(l Language, name string) error {
 	/* Fist character must be a letter. */
 	r, nbytes := utf8.DecodeRuneInString(name)
 	if !unicode.IsLetter(r) {
-		return http.BadRequest(Ls(l, "first character of the name must be a letter"))
+		return http.BadRequest("%s", Ls(l, "first character of the name must be a letter"))
 	}
 
 	/* Latter characters may include: letters, spaces, dots, hyphens and apostrophes. */
 	for _, r := range name[nbytes:] {
 		if (!unicode.IsLetter(r)) && (r != ' ') && (r != '.') && (r != '-') && (r != '\'') {
-			return http.BadRequest(Ls(l, "second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes"))
+			return http.BadRequest("%s", Ls(l, "second and latter characters of the name must be letters, spaces, dots, hyphens or apostrophes"))
 		}
 	}
 
@@ -346,14 +346,10 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.URL.ParseQuery(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	var page int
@@ -455,7 +451,7 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	id, err := GetIDFromURL(GL, r.URL, "/user/")
@@ -464,12 +460,12 @@ func UserPageHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetUserByID(id, &user); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "user with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "user with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
 	if (session.ID != AdminID) && (session.ID != user.ID) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	DisplayHTMLStart(w)
@@ -627,14 +623,10 @@ func UserCreatePageHandler(w *http.Response, r *http.Request, e error) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	return UserCreateEditPageHandler(w, r, session, nil, APIPrefix+"/user/create", "Create user", "Create", e)
@@ -647,11 +639,7 @@ func UserEditPageHandler(w *http.Response, r *http.Request, e error) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	userID, err := r.Form.GetID("ID")
@@ -659,12 +647,12 @@ func UserEditPageHandler(w *http.Response, r *http.Request, e error) error {
 		return http.ClientError(err)
 	}
 	if (session.ID != userID) && (session.ID != AdminID) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	if err := GetUserByID(userID, &user); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "user with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "user with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
@@ -725,14 +713,10 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return ForbiddenError
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -747,7 +731,7 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserCreatePageHandler(w, r, http.BadRequest("%s", Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
@@ -757,12 +741,12 @@ func UserCreateHandler(w *http.Response, r *http.Request) error {
 		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return UserCreatePageHandler(w, r, http.BadRequest(Ls(GL, "passwords do not match each other")))
+		return UserCreatePageHandler(w, r, http.BadRequest("%s", Ls(GL, "passwords do not match each other")))
 	}
 
 	var user User
 	if err := GetUserByEmail(email, &user); err == nil {
-		return UserCreatePageHandler(w, r, http.Conflict(Ls(GL, "user with this email already exists")))
+		return UserCreatePageHandler(w, r, http.Conflict("%s", Ls(GL, "user with this email already exists")))
 	}
 
 	user.FirstName = firstName
@@ -787,11 +771,7 @@ func UserDeleteHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	userID, err := r.Form.GetID("ID")
@@ -800,15 +780,15 @@ func UserDeleteHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetUserByID(userID, &user); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "user with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "user with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
 	if session.ID != AdminID {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 	if userID == AdminID {
-		return http.Conflict(Ls(GL, "cannot delete Admin user"))
+		return http.Conflict("%s", Ls(GL, "cannot delete Admin user"))
 	}
 
 	/* TODO(anton2920): maybe in race with 'UserSigninHandler'. */
@@ -831,11 +811,7 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 
 	session, err := GetSessionFromRequest(r)
 	if err != nil {
-		return http.UnauthorizedError
-	}
-
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
+		return UnauthorizedError
 	}
 
 	userID, err := r.Form.GetID("ID")
@@ -844,12 +820,12 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 	}
 	if err := GetUserByID(userID, &user); err != nil {
 		if err == database.NotFound {
-			return http.NotFound(Ls(GL, "user with this ID does not exist"))
+			return http.NotFound("%s", Ls(GL, "user with this ID does not exist"))
 		}
 		return http.ServerError(err)
 	}
 	if (session.ID != userID) && (session.ID != AdminID) {
-		return http.ForbiddenError
+		return ForbiddenError
 	}
 
 	firstName := r.Form.Get("FirstName")
@@ -864,7 +840,7 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserEditPageHandler(w, r, http.BadRequest("%s", Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
@@ -874,12 +850,12 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "password length must be between %d and %d characters long"), MinPasswordLen, MaxPasswordLen))
 	}
 	if password != repeatPassword {
-		return UserEditPageHandler(w, r, http.BadRequest(Ls(GL, "passwords do not match each other")))
+		return UserEditPageHandler(w, r, http.BadRequest("%s", Ls(GL, "passwords do not match each other")))
 	}
 
 	var user2 User
 	if err := GetUserByEmail(email, &user2); (err == nil) && (user2.ID != userID) {
-		return UserEditPageHandler(w, r, http.Conflict(Ls(GL, "user with this email already exists")))
+		return UserEditPageHandler(w, r, http.Conflict("%s", Ls(GL, "user with this email already exists")))
 	}
 
 	user.FirstName = firstName
@@ -900,27 +876,23 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 func UserSigninHandler(w *http.Response, r *http.Request) error {
 	defer trace.End(trace.Begin(""))
 
-	if err := r.ParseForm(); err != nil {
-		return http.ClientError(err)
-	}
-
 	address, err := mail.ParseAddress(r.Form.Get("Email"))
 	if err != nil {
-		return UserSigninPageHandler(w, r, http.BadRequest(Ls(GL, "provided email is not valid")))
+		return UserSigninPageHandler(w, r, http.BadRequest("%s", Ls(GL, "provided email is not valid")))
 	}
 	email := address.Address
 
 	var user User
 	if err := GetUserByEmail(email, &user); err != nil {
 		if err == database.NotFound {
-			return UserSigninPageHandler(w, r, http.NotFound(Ls(GL, "user with this email does not exist")))
+			return UserSigninPageHandler(w, r, http.NotFound("%s", Ls(GL, "user with this email does not exist")))
 		}
 		return http.ServerError(err)
 	}
 
 	password := r.Form.Get("Password")
 	if user.Password != password {
-		return UserSigninPageHandler(w, r, http.Conflict(Ls(GL, "provided password is incorrect")))
+		return UserSigninPageHandler(w, r, http.Conflict("%s", Ls(GL, "provided password is incorrect")))
 	}
 
 	token, err := GenerateSessionToken()
@@ -954,11 +926,11 @@ func UserSignoutHandler(w *http.Response, r *http.Request) error {
 
 	token := r.Cookie("Token")
 	if token == "" {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	if _, err := GetSessionFromToken(token); err != nil {
-		return http.UnauthorizedError
+		return UnauthorizedError
 	}
 
 	SessionsLock.Lock()

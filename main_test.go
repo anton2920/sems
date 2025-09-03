@@ -70,7 +70,9 @@ func testPost(t *testing.T, endpoint string, form url.Values, expectedStatus htt
 	var w http.Response
 	var r http.Request
 
+	r.Method = http.MethodPost
 	r.URL.Path = endpoint
+	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.Body = []byte(form.Encode())
 
 	w.StatusCode = http.StatusOK
@@ -89,8 +91,10 @@ func testPostAuth(t *testing.T, endpoint string, token string, form url.Values, 
 	var w http.Response
 	var r http.Request
 
-	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
+	r.Method = http.MethodPost
 	r.URL.Path = endpoint
+	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
 	r.Body = []byte(form.Encode())
 
 	w.StatusCode = http.StatusOK
@@ -109,8 +113,10 @@ func testPostInvalidFormAuth(t *testing.T, endpoint string, token string) {
 	var w http.Response
 	var r http.Request
 
-	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
+	r.Method = http.MethodPost
 	r.URL.Path = endpoint
+	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
 	r.Body = testInvalidForm
 
 	w.StatusCode = http.StatusOK
