@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/anton2920/gofa/bytes"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
 	"github.com/anton2920/gofa/intel"
@@ -21,7 +22,6 @@ import (
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/time"
 	"github.com/anton2920/gofa/trace"
-	"github.com/anton2920/gofa/util"
 )
 
 const (
@@ -46,6 +46,8 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		switch path {
 		case "/":
 			return IndexPageHandler(w, r)
+		case "/new":
+			return NewPage(w, r)
 		}
 	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
@@ -201,7 +203,7 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 			contentType := r.Headers.Get("Content-Type")
 			switch {
 			case contentType == "application/x-www-form-urlencoded":
-				err = url.ParseQuery(&r.Form, util.Slice2String(r.Body))
+				err = url.ParseQuery(&r.Form, bytes.AsString(r.Body))
 			case strings.StartsWith(contentType, "multipart/form-data; boundary="):
 				err = multipart.ParseFormData(contentType, &r.Form, &r.Files, r.Body)
 			}
