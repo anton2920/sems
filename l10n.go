@@ -1,6 +1,9 @@
 package main
 
-import "github.com/anton2920/gofa/trace"
+import (
+	"github.com/anton2920/gofa/l10n"
+	"github.com/anton2920/gofa/trace"
+)
 
 type Language int32
 
@@ -18,7 +21,7 @@ var Language2String = [...]string{
 }
 
 /* TODO(anton2920): remove '([A-Z]|[a-z])[a-z]+' duplicates. */
-var Localizations = map[string]*[XX]string{
+var Localizations = l10n.Localizations{
 	"Active": {
 		RU: "Активнен",
 	},
@@ -596,6 +599,10 @@ var Localizations = map[string]*[XX]string{
 
 var GL = RU
 
+func init() {
+	l10n.Add(Localizations)
+}
+
 func (l Language) String() string {
 	defer trace.End(trace.Begin(""))
 
@@ -610,7 +617,7 @@ func Ls(l Language, s string) string {
 	}
 
 	ls := Localizations[s]
-	if (ls == nil) || (ls[l] == "") {
+	if (len(ls) == 0) || (ls[l] == "") {
 		/*
 			switch s {
 			default:

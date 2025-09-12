@@ -5,7 +5,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/anton2920/gofa/database"
-	"github.com/anton2920/gofa/net/html"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 )
@@ -22,7 +21,7 @@ const (
 )
 
 func DisplayHTMLStart(w *http.Response) {
-	w.WriteString(html.Header)
+	w.WriteString(`<!DOCTYPE html>`)
 	w.WriteString(`<html lang="en" data-bs-theme="light">`)
 }
 

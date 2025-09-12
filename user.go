@@ -9,11 +9,11 @@ import (
 	"unsafe"
 
 	"github.com/anton2920/gofa/database"
+	"github.com/anton2920/gofa/ints"
 	"github.com/anton2920/gofa/net/http"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
 	"github.com/anton2920/gofa/trace"
-	"github.com/anton2920/gofa/util"
 )
 
 type User struct {
@@ -367,7 +367,7 @@ func UsersPageHandler(w *http.Response, r *http.Request) error {
 
 	const usersPerPage = 10
 	npages := int(nusers / usersPerPage)
-	page = util.Clamp(page, 0, npages)
+	page = ints.Clamp(page, 0, npages)
 
 	DisplayHTMLStart(w)
 

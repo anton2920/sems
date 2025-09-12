@@ -11,7 +11,6 @@ import (
 	"github.com/anton2920/gofa/slices"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/trace"
-	"github.com/anton2920/gofa/util"
 )
 
 type (
@@ -1486,11 +1485,11 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 			if (sindex < 0) || (sindex >= len(question.Answers)) {
 				return http.ClientError(nil)
 			}
-			question.Answers = util.RemoveStringAtIndex(question.Answers, sindex)
+			question.Answers = RemoveAt(question.Answers, sindex)
 
 			for i := 0; i < len(question.CorrectAnswers); i++ {
 				if question.CorrectAnswers[i] == sindex {
-					question.CorrectAnswers = util.RemoveIntAtIndex(question.CorrectAnswers, i)
+					question.CorrectAnswers = RemoveAt(question.CorrectAnswers, i)
 					i--
 				} else if question.CorrectAnswers[i] > sindex {
 					question.CorrectAnswers[i]--
@@ -1509,7 +1508,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 				}
 				question := &test.Questions[pindex]
 
-				util.MoveStringUp(question.Answers, sindex)
+				MoveUp(question.Answers, sindex)
 				for i := 0; i < len(question.CorrectAnswers); i++ {
 					if question.CorrectAnswers[i] == sindex-1 {
 						/* If previous answer is correct and current is not. */
@@ -1535,7 +1534,7 @@ func LessonAddHandleCommand(w *http.Response, r *http.Request, l Language, sessi
 				}
 				question := &test.Questions[pindex]
 
-				util.MoveStringDown(question.Answers, sindex)
+				MoveDown(question.Answers, sindex)
 				for i := 0; i < len(question.CorrectAnswers); i++ {
 					if question.CorrectAnswers[i] == sindex {
 						/* If current answer is correct and next is not. */

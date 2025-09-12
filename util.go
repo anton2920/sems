@@ -71,3 +71,25 @@ func GetValidIndex(si string, len int) (int, error) {
 	}
 	return i, nil
 }
+
+func MoveDown[T any](vs []T, i int) {
+	if (i >= 0) && (i < len(vs)-1) {
+		vs[i], vs[i+1] = vs[i+1], vs[i]
+	}
+}
+
+func MoveUp[T any](vs []T, i int) {
+	if (i > 0) && (i <= len(vs)-1) {
+		vs[i-1], vs[i] = vs[i], vs[i-1]
+	}
+}
+
+func RemoveAt[T any](vs []T, i int) []T {
+	if (len(vs) == 0) || (i < 0) || (i >= len(vs)) {
+		return vs
+	}
+	if i < len(vs)-1 {
+		copy(vs[i:], vs[i+1:])
+	}
+	return vs[:len(vs)-1]
+}
