@@ -189,14 +189,14 @@ func DisplayGroupSubjects(w *http.Response, l Language, group *Group) {
 func DisplayGroupTitle(w *http.Response, l Language, group *Group) {
 	w.WriteHTMLString(group.Name)
 	w.WriteString(` (ID: `)
-	w.WriteID(group.ID)
+	w.WriteInt(int(group.ID))
 	w.WriteString(`)`)
 	DisplayDeleted(w, l, group.Flags == GroupDeleted)
 }
 
 func DisplayGroupLink(w *http.Response, l Language, group *Group) {
 	w.WriteString(`<a href="/group/`)
-	w.WriteID(group.ID)
+	w.WriteInt(int(group.ID))
 	w.WriteString(`">`)
 	DisplayGroupTitle(w, l, group)
 	w.WriteString(`</a>`)
@@ -409,7 +409,7 @@ func DisplayStudentsSelect(w *http.Response, ids []string) {
 			}
 
 			w.WriteString(`<option value="`)
-			w.WriteID(user.ID)
+			w.WriteInt(int(user.ID))
 			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
@@ -661,6 +661,6 @@ func GroupEditHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.RedirectID("/group/", groupID, http.StatusSeeOther)
+	w.Redirect(w.PathID("/group/", groupID), http.StatusSeeOther)
 	return nil
 }

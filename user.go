@@ -326,14 +326,14 @@ func DisplayUserTitle(w *http.Response, l Language, user *User) {
 	w.WriteString(` `)
 	w.WriteHTMLString(user.FirstName)
 	w.WriteString(` (ID: `)
-	w.WriteID(user.ID)
+	w.WriteInt(int(user.ID))
 	w.WriteString(`)`)
 	DisplayDeleted(w, l, user.Flags == UserDeleted)
 }
 
 func DisplayUserLink(w *http.Response, l Language, user *User) {
 	w.WriteString(`<a href="/user/`)
-	w.WriteID(user.ID)
+	w.WriteInt(int(user.ID))
 	w.WriteString(`">`)
 	DisplayUserTitle(w, l, user)
 	w.WriteString(`</a>`)
@@ -869,7 +869,7 @@ func UserEditHandler(w *http.Response, r *http.Request) error {
 
 	UpdateAllUserSessions(&user)
 
-	w.RedirectID("/user/", userID, http.StatusSeeOther)
+	w.Redirect(w.PathID("/user/", userID), http.StatusSeeOther)
 	return nil
 }
 
@@ -913,9 +913,9 @@ func UserSigninHandler(w *http.Response, r *http.Request) error {
 	SessionsLock.Unlock()
 
 	if Debug {
-		w.SetCookieUnsafe("Token", token, int(expiry.Unix()))
+		w.SetCookieUnsafe("Token", token, expiry.Unix())
 	} else {
-		w.SetCookie("Token", token, int(expiry.Unix()))
+		w.SetCookie("Token", token, expiry.Unix())
 	}
 	w.Redirect("/", http.StatusSeeOther)
 	return nil

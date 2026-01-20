@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/anton2920/gofa/database"
 	"github.com/anton2920/gofa/jail"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/net/http"
+	myurl "github.com/anton2920/gofa/net/url"
 )
 
 var (
@@ -29,102 +29,97 @@ func testString(len int) string {
 func testGet(t *testing.T, endpoint string, expectedStatus http.Status) {
 	t.Helper()
 
-	var ctx http.Context
 	var w http.Response
 	var r http.Request
 
-	r.URL.Path = endpoint
+	r.URL.Path = myurl.Path(endpoint)
 
-	w.StatusCode = http.StatusOK
+	w.Status = http.StatusOK
 
-	Router(&ctx, unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+	RouterFunc(&w, &r)
 
-	if w.StatusCode != expectedStatus {
-		t.Errorf("GET %s -> %d, expected %d", endpoint, w.StatusCode, expectedStatus)
+	if w.Status != expectedStatus {
+		t.Errorf("GET %s -> %d, expected %d", endpoint, w.Status, expectedStatus)
 	}
 }
 
 func testGetAuth(t *testing.T, endpoint string, token string, expectedStatus http.Status) {
 	t.Helper()
 
-	var ctx http.Context
 	var w http.Response
 	var r http.Request
 
 	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
-	r.URL.Path = endpoint
+	r.URL.Path = myurl.Path(endpoint)
 
-	w.StatusCode = http.StatusOK
+	w.Status = http.StatusOK
 
-	Router(&ctx, unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+	RouterFunc(&w, &r)
 
-	if w.StatusCode != expectedStatus {
-		t.Errorf("GET %s -> %d, expected %d", endpoint, w.StatusCode, expectedStatus)
+	if w.Status != expectedStatus {
+		t.Errorf("GET %s -> %d, expected %d", endpoint, w.Status, expectedStatus)
 	}
 }
 
 func testPost(t *testing.T, endpoint string, form url.Values, expectedStatus http.Status) {
 	t.Helper()
 
-	var ctx http.Context
 	var w http.Response
 	var r http.Request
 
 	r.Method = http.MethodPost
-	r.URL.Path = endpoint
+	r.URL.Path = myurl.Path(endpoint)
 	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.Body = []byte(form.Encode())
 
-	w.StatusCode = http.StatusOK
+	w.Status = http.StatusOK
 
-	Router(&ctx, unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+	RouterFunc(&w, &r)
 
-	if w.StatusCode != expectedStatus {
-		t.Errorf("POST %s -> %d (with form %v), expected %d", endpoint, w.StatusCode, form, expectedStatus)
+	if w.Status != expectedStatus {
+		t.Errorf("POST %s -> %d (with form %v), expected %d", endpoint, w.Status, form, expectedStatus)
 	}
 }
 
 func testPostAuth(t *testing.T, endpoint string, token string, form url.Values, expectedStatus http.Status) {
 	t.Helper()
 
-	var ctx http.Context
 	var w http.Response
 	var r http.Request
 
 	r.Method = http.MethodPost
-	r.URL.Path = endpoint
+	r.URL.Path = myurl.Path(endpoint)
 	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
 	r.Body = []byte(form.Encode())
 
-	w.StatusCode = http.StatusOK
+	w.Status = http.StatusOK
 
-	Router(&ctx, unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+	RouterFunc(&w, &r)
 
-	if w.StatusCode != expectedStatus {
-		t.Errorf("POST %s -> %d (with form %v), expected %d", endpoint, w.StatusCode, form, expectedStatus)
+	if w.Status != expectedStatus {
+		t.Errorf("POST %s -> %d (with form %v), expected %d", endpoint, w.Status, form, expectedStatus)
 	}
 }
 
 func testPostInvalidFormAuth(t *testing.T, endpoint string, token string) {
 	t.Helper()
 
-	var ctx http.Context
 	var w http.Response
 	var r http.Request
 
 	r.Method = http.MethodPost
-	r.URL.Path = endpoint
+	r.URL.Path = myurl.Path(endpoint)
 	r.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.Headers.Set("Cookie", fmt.Sprintf("Token=%s", token))
 	r.Body = testInvalidForm
 
-	w.StatusCode = http.StatusOK
+	w.Status = http.StatusOK
 
-	Router(&ctx, unsafe.Slice(&w, 1), unsafe.Slice(&r, 1))
+	RouterFunc(&w, &r)
 
-	if w.StatusCode != http.StatusBadRequest {
-		t.Errorf("POST %s -> %d (with invalid payload), expected 400", endpoint, w.StatusCode)
+	if w.Status != http.StatusBadRequest {
+		t.Errorf("POST %s -> %d (with invalid payload), expected 400", endpoint, w.Status)
 	}
 }
 

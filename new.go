@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/anton2920/gofa/net/html"
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/session"
 	"github.com/anton2920/gofa/trace"
 )
 
@@ -31,11 +30,8 @@ var (
 
 )
 
-func NewPage(w *http.Response, r *http.Request) error {
+func NewPage(h *html.HTML) error {
 	defer trace.End(trace.Begin(""))
-
-	session := session.Get(w, r)
-	h := html.New(w, r, session, Styles)
 
 	h.Begin()
 
@@ -63,7 +59,7 @@ func NewPage(w *http.Response, r *http.Request) error {
 
 		h.WithoutTheme().Button("Are you satisfied with your salary?", html.Class("bttn"))
 
-		h.FormBegin("POST", APIPrefix+"/new")
+		h.FormBegin("POST", html.Action(APIPrefix+"/new"), html.Class("mb-3"))
 		{
 			h.H4("Edit user", html.Class("text-center mb-3"))
 
@@ -85,9 +81,8 @@ func NewPage(w *http.Response, r *http.Request) error {
 			h.Button("Save", html.Name("ButtonName"))
 		}
 		h.FormEnd()
-		h.BR()
 
-		h.FormBegin("POST", APIPrefix+"/new")
+		h.FormBegin("POST", html.Action(APIPrefix+"/new"))
 		{
 			h.H4("Sign in", html.Class("text-center mb-3"))
 
@@ -112,4 +107,90 @@ func NewPage(w *http.Response, r *http.Request) error {
 
 	h.End()
 	return nil
+}
+
+func NewHandler(w *http.Response, r *http.Request) error {
+	h := html.New(w, r, &Styles)
+	return NewPage(&h)
+}
+
+func NewPage2(h *html.HTML) error {
+	h.Begin2()
+
+	h.HeadBegin2()
+	{
+		h.String(`<link rel="stylesheet" href="/fs/bootstrap.min.css"/>`)
+		h.String(`<style>.navbar-custom { position: fixed; z-index: 190; }</style>`)
+		h.String(`<style>.bttn {}</style>`)
+		h.String(`<style>input.bttn[type="submit"]:hover { transform: translate(1000px, 0px); }</style>`)
+		h.Title2("New page")
+	}
+	h.HeadEnd2()
+
+	h.BodyBegin2()
+	{
+		h.H12("This is the new test page")
+		h.H22("This page is indended to test new HTML component system")
+
+		h.H3Begin2()
+		{
+			h.LString("Powered by")
+			h.A2("https://github.com/anton2920/gofa", "GOFA library")
+		}
+		h.H3End2()
+
+		h.WithoutTheme().Button2("Are you satisfied with your salary?").Class("bttn")
+
+		h.FormBegin2("POST").Action(APIPrefix + "/new").Class("mb-3")
+		{
+			h.H42("Edit user").Class("text-center mb-3")
+
+			h.Label2("First name")
+			h.Input2("text").MinLength(MinNameLen).MaxLength(MaxNameLen).Name("FirstName").Value(h.Form.Get("FirstName")).Required(true)
+
+			h.Label2("Last name")
+			h.Input2("text").MinLength(MinNameLen).MaxLength(MaxNameLen).Name("LastName").Value(h.Form.Get("LastName")).Required(true)
+
+			h.Label2("Email")
+			h.Input2("email").Name("Email").Value(h.Form.Get("Email")).Required(true)
+
+			h.Label2("Password")
+			h.Input2("password").Name("Password").Required(true)
+
+			h.Label2("Repeat password")
+			h.Input2("password").MinLength(MinPasswordLen).MaxLength(MaxPasswordLen).Name("RepeatRepeat").Required(true)
+
+			h.Button2("Save").Name("ButtonName")
+		}
+		h.FormEnd2()
+
+		h.FormBegin2("POST").Action(APIPrefix + "/new")
+		{
+			h.H4Begin2().Class("text-center mb-3").LString("Sign in").H4End2()
+
+			h.Input2("email").Name("Email").Value(h.Form.Get("Email")).Placeholder("Email").Required(true)
+			h.Input2("password").Name("Password").Placeholder("Password").Required(true)
+
+			h.DivBegin2().Class("form-check mb-2")
+			{
+				h.LabelBegin2()
+				h.Checkbox2().Name("Remember").Checked(true)
+				h.LString("Remember me")
+				h.LabelEnd2()
+			}
+			h.DivEnd2()
+
+			h.Button2("Sign in").Name("ButtonName")
+		}
+		h.FormEnd2()
+	}
+	h.BodyEnd2()
+
+	h.End2()
+	return nil
+}
+
+func NewHandler2(w *http.Response, r *http.Request) error {
+	h := html.New(w, r, &Styles)
+	return NewPage2(&h)
 }

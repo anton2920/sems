@@ -26,7 +26,7 @@ const AdminID database.ID = 0
 func CreateInitialDBs() error {
 	defer trace.End(trace.Begin(""))
 
-	user := User{ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Unix())}
+	user := User{ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Now())}
 
 	if err := CreateUser(&user); err != nil {
 		return fmt.Errorf("failed to create administrator: %w", err)

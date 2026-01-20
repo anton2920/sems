@@ -31,7 +31,7 @@ func LoadAssetFile(path string) ([]byte, error) {
 
 	buffer := make([]byte, stat.Size)
 	n, err := syscall.Read(fd, buffer)
-	if (err != nil) || (n != len(buffer)) {
+	if (err != nil) || (n != int64(len(buffer))) {
 		return nil, fmt.Errorf("failed to read asset file contents: %w", err)
 	}
 

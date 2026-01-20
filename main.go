@@ -11,12 +11,9 @@ import (
 	"github.com/anton2920/gofa/bytes"
 	"github.com/anton2920/gofa/errors"
 	"github.com/anton2920/gofa/event"
-	"github.com/anton2920/gofa/intel"
 	"github.com/anton2920/gofa/log"
 	"github.com/anton2920/gofa/mime/multipart"
 	"github.com/anton2920/gofa/net/http"
-	"github.com/anton2920/gofa/net/http/http1"
-	"github.com/anton2920/gofa/net/tcp"
 	"github.com/anton2920/gofa/net/url"
 	"github.com/anton2920/gofa/strings"
 	"github.com/anton2920/gofa/syscall"
@@ -47,7 +44,9 @@ func HandlePageRequest(w *http.Response, r *http.Request, path string) error {
 		case "/":
 			return IndexPageHandler(w, r)
 		case "/new":
-			return NewPage(w, r)
+			return NewHandler(w, r)
+		case "/new2":
+			return NewHandler2(w, r)
 		}
 	case strings.StartsWith(path, "/course"):
 		switch path[len("/course"):] {
@@ -196,14 +195,14 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	switch r.Method {
 	case "GET":
 		if len(r.URL.RawQuery) > 0 {
-			err = r.URL.ParseQuery()
+			err = r.URL.ParseQuery(&r.Arena)
 		}
 	case "POST":
 		if len(r.Body) > 0 {
 			contentType := r.Headers.Get("Content-Type")
 			switch {
 			case contentType == "application/x-www-form-urlencoded":
-				err = url.ParseQuery(&r.Form, bytes.AsString(r.Body))
+				err = url.ParseQuery(&r.Arena, &r.Form, bytes.AsString(r.Body))
 			case strings.StartsWith(contentType, "multipart/form-data; boundary="):
 				err = multipart.ParseFormData(contentType, &r.Form, &r.Files, r.Body)
 			}
@@ -213,7 +212,7 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 		return http.ClientError(err)
 	}
 
-	path := r.URL.Path
+	path := string(r.URL.Path)
 	switch {
 	default:
 		return HandlePageRequest(w, r, path)
@@ -229,141 +228,24 @@ func RouterFunc(w *http.Response, r *http.Request) (err error) {
 	}
 }
 
-func Router(ctx *http.Context, ws []http.Response, rs []http.Request) {
-	defer trace.End(trace.Begin(""))
-
-	for i := 0; i < len(rs); i++ {
-		w := &ws[i]
-		r := &rs[i]
-
-		if r.URL.Path == "/plaintext" {
-			w.WriteString("Hello, world!\n")
-			continue
-		}
-
-		start := intel.RDTSC()
-		w.Headers.Set("Content-Type", `text/html; charset="UTF-8"`)
-		level := log.LevelDebug
-		err := RouterFunc(w, r)
-		if err != nil {
-			ErrorPageHandler(w, r, GL, err)
-			if (w.StatusCode >= http.StatusBadRequest) && (w.StatusCode < http.StatusInternalServerError) {
-				level = log.LevelWarn
-			} else {
-				level = log.LevelError
-			}
-			http.CloseAfterWrite(ctx)
-		}
-
-		if r.Headers.Get("Connection") == "close" {
-			w.Headers.Set("Connection", "close")
-			http.CloseAfterWrite(ctx)
-		}
-
-		addr := ctx.ClientAddress
-		if r.Headers.Has("X-Forwarded-For") {
-			addr = r.Headers.Get("X-Forwarded-For")
-		}
-		end := intel.RDTSC()
-		elapsed := end - start
-
-		log.Logf(level, "[%21s] %7s %s -> %v (%v), %4dµs", addr, r.Method, r.URL.Path, w.StatusCode, err, elapsed.ToUsec())
-	}
-}
-
 func GetDateHeader() []byte {
 	defer trace.End(trace.Begin(""))
 
 	return unsafe.Slice((*byte)(atomic.LoadPointer(&DateBufferPtr)), time.RFC822Len)
 }
 
-func UpdateDateHeader(now int) {
+func UpdateDateHeader(now int64) {
 	buffer := make([]byte, time.RFC822Len)
 	time.PutTmRFC822(buffer, time.ToTm(now))
 	atomic.StorePointer(&DateBufferPtr, unsafe.Pointer(&buffer[0]))
 }
 
-func ServerWorker(q *event.Queue) {
-	events := make([]event.Event, 64)
-
-	const batchSize = 32
-	ws := make([]http.Response, batchSize)
-	rs := make([]http.Request, batchSize)
-
-	getEvents := func(q *event.Queue, events []event.Event) (int, error) {
-		defer trace.End(trace.Begin("github.com/anton2920/gofa/event.(*Queue).GetEvents"))
-		return q.GetEvents(events)
-	}
-
-	for {
-		n, err := getEvents(q, events)
-		if err != nil {
-			log.Errorf("Failed to get events from client queue: %v", err)
-			continue
-		}
-		dateBuffer := GetDateHeader()
-
-		for i := 0; i < n; i++ {
-			e := &events[i]
-			if errno := e.Error(); errno != 0 {
-				log.Errorf("Event for %v returned code %d (%s)", e.Identifier, errno, errno)
-				continue
-			}
-
-			ctx, ok := http.GetContextFromPointer(e.UserData)
-			if !ok {
-				continue
-			}
-			if e.EndOfFile() {
-				http.Close(ctx)
-				continue
-			}
-
-			switch e.Type {
-			case event.Read:
-				var read int
-				for read < e.Data {
-					n, err := http.Read(ctx)
-					if err != nil {
-						if err == http.NoSpaceLeft {
-							http1.FillError(ctx, err, dateBuffer)
-							http.CloseAfterWrite(ctx)
-							break
-						}
-						log.Errorf("Failed to read data from client: %v", err)
-						http.Close(ctx)
-						break
-					}
-					read += n
-
-					for n > 0 {
-						n, err = http1.ParseRequestsUnsafe(ctx, rs)
-						if err != nil {
-							http1.FillError(ctx, err, dateBuffer)
-							http.CloseAfterWrite(ctx)
-							break
-						}
-						Router(ctx, ws[:n], rs[:n])
-						http1.FillResponses(ctx, ws[:n], dateBuffer)
-					}
-				}
-				fallthrough
-			case event.Write:
-				_, err = http.Write(ctx)
-				if err != nil {
-					log.Errorf("Failed to write data to client: %v", err)
-					http.Close(ctx)
-					continue
-				}
-			}
-		}
-	}
-}
-
 func main() {
 	var err error
 
-	nworkers := runtime.NumCPU() / 2
+	trace.BeginProfile()
+	defer trace.EndAndPrintProfile()
+
 	switch BuildMode {
 	default:
 		BuildMode = "Release"
@@ -379,11 +261,6 @@ func main() {
 
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
-	case "Tracing":
-		nworkers = 1
-
-		trace.BeginProfile()
-		defer trace.EndAndPrintProfile()
 	}
 	log.Infof("Starting SEMS in %q mode... (%s)", BuildMode, runtime.Version())
 
@@ -408,11 +285,11 @@ func main() {
 	go SubmissionVerifyWorker()
 
 	const address = "0.0.0.0:7072"
-	l, err := tcp.Listen(address, 128)
+	l, err := http.Listen(address)
 	if err != nil {
 		log.Fatalf("Failed to listen on port: %v", err)
 	}
-	defer syscall.Close(l)
+	defer l.Close()
 
 	log.Infof("Listening on %s...", address)
 
@@ -422,25 +299,16 @@ func main() {
 	}
 	defer q.Close()
 
-	_ = q.AddSocket(l, event.RequestRead, event.TriggerEdge, nil)
-	_ = q.AddTimer(1, 1, event.Seconds, nil)
+	_ = q.AddSocket(int32(l.Socket), event.RequestRead, event.TriggerEdge, nil)
+	_ = q.AddTimer(1, 1*time.Second, nil)
 
 	_ = syscall.IgnoreSignals(syscall.SIGINT, syscall.SIGTERM)
 	_ = q.AddSignals(syscall.SIGINT, syscall.SIGTERM)
 
-	qs := make([]*event.Queue, nworkers)
-	for i := 0; i < nworkers; i++ {
-		qs[i], err = event.NewQueue()
-		if err != nil {
-			log.Fatalf("Failed to create new client queue: %v", err)
-		}
-		go ServerWorker(qs[i])
-	}
-	now := int(time.Unix())
+	now := time.Now()
 	UpdateDateHeader(now)
 
 	events := make([]event.Event, 64)
-	var counter int
 
 	var quit bool
 	for !quit {
@@ -456,23 +324,16 @@ func main() {
 			switch e.Type {
 			default:
 				log.Panicf("Unhandled event: %#v", e)
-			case event.Read:
-				ctx, err := http.Accept(l, 1024)
+			case event.TypeRead:
+				c, err := l.Accept()
 				if err != nil {
-					if err == http.TooManyClients {
-						http1.FillError(ctx, err, GetDateHeader())
-						http.Write(ctx)
-						http.Close(ctx)
-					}
-					log.Errorf("Failed to accept new HTTP connection: %v", err)
-					continue
+					log.Errorf("Failed to accept new connection: %v", err)
 				}
-				_ = qs[counter%len(qs)].AddHTTP(ctx, event.RequestRead, event.TriggerEdge)
-				counter++
-			case event.Timer:
+				go http.Serve(c, RouterFunc)
+			case event.TypeTimer:
 				now += e.Data
 				UpdateDateHeader(now)
-			case event.Signal:
+			case event.TypeSignal:
 				log.Infof("Received signal %d, exitting...", e.Identifier)
 				quit = true
 				break

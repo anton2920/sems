@@ -129,7 +129,7 @@ func DisplayCourseTitle(w *http.Response, l Language, course *Course, italics bo
 
 func DisplayCourseLink(w *http.Response, l Language, course *Course) {
 	w.WriteString(`<a href="/course/`)
-	w.WriteID(course.ID)
+	w.WriteInt(int(course.ID))
 	w.WriteString(`">`)
 	DisplayCourseTitle(w, l, course, true)
 	w.WriteString(`</a>`)
@@ -376,7 +376,7 @@ func CourseCreateEditCoursePageHandler(w *http.Response, r *http.Request, sessio
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormPageStart(w, r, GL, width, "Course", r.URL.Path, err)
+		DisplayFormPageStart(w, r, GL, width, "Course", string(r.URL.Path), err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Course")
 
@@ -629,7 +629,7 @@ func CourseCreateEditPageHandler(w *http.Response, r *http.Request) error {
 		}
 		course.Flags = CourseActive
 
-		w.RedirectID("/course/", course.ID, http.StatusSeeOther)
+		w.Redirect(w.PathID("/course/", course.ID), http.StatusSeeOther)
 		return nil
 	}
 }

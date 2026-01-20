@@ -10,10 +10,10 @@ import (
 
 func testCreateInitialDBs() error {
 	users := [...]User{
-		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Unix()), Courses: []database.ID{0}},
-		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: int64(time.Unix()), Courses: []database.ID{1}},
-		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: int64(time.Unix())},
-		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: int64(time.Unix())},
+		AdminID: {ID: AdminID, FirstName: "Admin", LastName: "Admin", Email: "admin@masters.com", Password: "admin", CreatedOn: int64(time.Now()), Courses: []database.ID{0}},
+		{FirstName: "Larisa", LastName: "Sidorova", Email: "teacher@masters.com", Password: "teacher", CreatedOn: int64(time.Now()), Courses: []database.ID{1}},
+		{FirstName: "Anatolii", LastName: "Ivanov", Email: "student@masters.com", Password: "student", CreatedOn: int64(time.Now())},
+		{FirstName: "Robert", LastName: "Martin", Email: "student2@masters.com", Password: "student2", CreatedOn: int64(time.Now())},
 	}
 
 	if err := database.Drop(UsersDB); err != nil {
@@ -26,7 +26,7 @@ func testCreateInitialDBs() error {
 	}
 
 	groups := [...]Group{
-		{Name: "18-SWE", Students: []database.ID{2, 3}, CreatedOn: int64(time.Unix())},
+		{Name: "18-SWE", Students: []database.ID{2, 3}, CreatedOn: int64(time.Now())},
 	}
 	if err := database.Drop(GroupsDB); err != nil {
 		return fmt.Errorf("failed to drop groups data: %w", err)
@@ -129,8 +129,8 @@ func testCreateInitialDBs() error {
 	}
 
 	subjects := [...]Subject{
-		{LessonContainer{Name: "Programming"}, 0, 0, int64(time.Unix()), [1024]byte{}},
-		{LessonContainer{Name: "Physics", Lessons: []database.ID{2}}, 1, 0, int64(time.Unix()), [1024]byte{}},
+		{LessonContainer{Name: "Programming"}, 0, 0, int64(time.Now()), [1024]byte{}},
+		{LessonContainer{Name: "Physics", Lessons: []database.ID{2}}, 1, 0, int64(time.Now()), [1024]byte{}},
 	}
 	if err := database.Drop(SubjectsDB); err != nil {
 		return fmt.Errorf("failed to drop subjects data: %w", err)

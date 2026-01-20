@@ -14,11 +14,11 @@ import (
 func GetIDFromURL(l Language, u url.URL, prefix string) (database.ID, error) {
 	defer trace.End(trace.Begin(""))
 
-	if !strings.StartsWith(u.Path, prefix) {
+	if !strings.StartsWith(string(u.Path), prefix) {
 		return 0, http.NotFound("%s", Ls(l, "requested page does not exist"))
 	}
 
-	id, err := strconv.Atoi(u.Path[len(prefix):])
+	id, err := strconv.Atoi(string(u.Path)[len(prefix):])
 	if (err != nil) || (id < 0) || (id >= (1 << 31)) {
 		return 0, http.BadRequest(Ls(l, "invalid ID for %q"), prefix)
 	}

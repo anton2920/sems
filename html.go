@@ -84,7 +84,7 @@ func DisplaySidebarLinkIDName(w *http.Response, l Language, prefix string, id da
 	w.WriteString(`<a class="nav-link" href="`)
 	w.WriteString(prefix)
 	w.WriteString(`/`)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	w.WriteString(`">`)
 	w.WriteString(Ls(l, text))
 	w.WriteString(` #`)
@@ -97,7 +97,7 @@ func DisplaySidebarLinkIDName(w *http.Response, l Language, prefix string, id da
 func DisplaySidebarUser(w *http.Response, l Language, user *User) {
 	w.WriteString(`<div><div class="text-center"><p class="nav-link link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover">`)
 	w.WriteString(`<a class="nav-link" href="/user/`)
-	w.WriteID(user.ID)
+	w.WriteInt(int(user.ID))
 	w.WriteString(`">`)
 	DisplayUserTitle(w, l, user)
 	w.WriteString(`</a>`)
@@ -191,7 +191,7 @@ func DisplayCrumbsLinkIDStart(w *http.Response, prefix string, id database.ID) {
 	w.WriteString(`<a class="link-body-emphasis text-decoration-none" href="`)
 	w.WriteString(prefix)
 	w.WriteString(`/`)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	w.WriteString(`">`)
 }
 
@@ -375,9 +375,9 @@ func DisplayTableRowLinkIDStart(w *http.Response, prefix string, id database.ID)
 	w.WriteString(`<a href="`)
 	w.WriteString(prefix)
 	w.WriteString(`/`)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	w.WriteString(`">`)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	w.WriteString(`</a>`)
 	w.WriteString(`</th>`)
 }
@@ -388,7 +388,7 @@ func DisplayTableItemStart(w *http.Response) {
 
 func DisplayTableItemID(w *http.Response, id database.ID) {
 	DisplayTableItemStart(w)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	DisplayTableItemEnd(w)
 }
 
@@ -542,7 +542,7 @@ func DisplayHiddenID(w *http.Response, name string, id database.ID) {
 	w.WriteString(`<input type="hidden" name="`)
 	w.WriteString(name)
 	w.WriteString(`" value="`)
-	w.WriteID(id)
+	w.WriteInt(int(id))
 	w.WriteString(`">`)
 }
 

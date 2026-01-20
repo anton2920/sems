@@ -583,7 +583,7 @@ func DisplayLessonTitle(w *http.Response, l Language, container string, lesson *
 
 func DisplayLessonLink(w *http.Response, l Language, lesson *Lesson) {
 	w.WriteString(`<a href="/lesson/`)
-	w.WriteID(lesson.ID)
+	w.WriteInt(int(lesson.ID))
 	w.WriteString(`">`)
 	w.WriteString(Ls(l, "Open"))
 	w.WriteString(`</a>`)
@@ -988,7 +988,7 @@ func LessonAddTestPageHandler(w *http.Response, r *http.Request, session *Sessio
 
 		DisplayMainStart(w)
 
-		DisplayFormStart(w, r, r.URL.Path)
+		DisplayFormStart(w, r, string(r.URL.Path))
 		DisplayHiddenString(w, "CurrentPage", "Test")
 		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1221,7 +1221,7 @@ func LessonAddProgrammingPageHandler(w *http.Response, r *http.Request, session 
 
 		DisplayMainStart(w)
 
-		DisplayFormStart(w, r, r.URL.Path)
+		DisplayFormStart(w, r, string(r.URL.Path))
 		DisplayHiddenString(w, "CurrentPage", "Programming")
 		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 		DisplayHiddenString(w, "StepIndex", r.Form.Get("StepIndex"))
@@ -1325,7 +1325,7 @@ func LessonAddPageHandler(w *http.Response, r *http.Request, session *Session, c
 
 		DisplayMainStart(w)
 
-		DisplayFormStart(w, r, r.URL.Path)
+		DisplayFormStart(w, r, string(r.URL.Path))
 		DisplayHiddenString(w, "CurrentPage", "Lesson")
 		DisplayHiddenString(w, "LessonIndex", r.Form.Get("LessonIndex"))
 

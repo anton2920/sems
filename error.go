@@ -28,10 +28,10 @@ func DisplayError(w *http.Response, l Language, err error) {
 
 	if err != nil {
 		if httpError, ok := err.(http.Error); ok {
-			w.StatusCode = httpError.StatusCode
+			w.Status = httpError.Status
 			message = httpError.DisplayErrorMessage
 		} else if _, ok := err.(errors.Panic); ok {
-			w.StatusCode = http.StatusInternalServerError
+			w.Status = http.StatusInternalServerError
 			message = http.ServerDisplayErrorMessage
 		} else {
 			log.Panicf("Unsupported error type %T", err)

@@ -213,7 +213,7 @@ func DisplaySubjectTitle(w *http.Response, l Language, subject *Subject, teacher
 	w.WriteString(` `)
 	w.WriteHTMLString(teacher.FirstName)
 	w.WriteString(` (ID: `)
-	w.WriteID(subject.ID)
+	w.WriteInt(int(subject.ID))
 	w.WriteString(`)`)
 	if subject.Flags == SubjectDeleted {
 		w.WriteString(` [deleted]`)
@@ -228,7 +228,7 @@ func DisplaySubjectLink(w *http.Response, l Language, subject *Subject) {
 	}
 
 	w.WriteString(`<a href="/subject/`)
-	w.WriteID(subject.ID)
+	w.WriteInt(int(subject.ID))
 	w.WriteString(`">`)
 	DisplaySubjectTitle(w, l, subject, &teacher)
 	w.WriteString(`</a>`)
@@ -492,7 +492,7 @@ func DisplayTeacherSelect(w *http.Response, ids []string) {
 			}
 
 			w.WriteString(`<option value="`)
-			w.WriteID(user.ID)
+			w.WriteInt(int(user.ID))
 			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
@@ -533,7 +533,7 @@ func DisplayGroupSelect(w *http.Response, ids []string) {
 			}
 
 			w.WriteString(`<option value="`)
-			w.WriteID(group.ID)
+			w.WriteInt(int(group.ID))
 			w.WriteString(`"`)
 			for j := 0; j < len(ids); j++ {
 				id, err := GetValidID(ids[j], database.MaxValidID)
@@ -700,7 +700,7 @@ func SubjectLessonsMainPageHandler(w *http.Response, r *http.Request, session *S
 		}
 		DisplayCrumbsEnd(w)
 
-		DisplayFormPageStart(w, r, GL, width, "Edit lessons", r.URL.Path, err)
+		DisplayFormPageStart(w, r, GL, width, "Edit lessons", string(r.URL.Path), err)
 		{
 			DisplayHiddenString(w, "CurrentPage", "Main")
 
@@ -839,7 +839,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 
 		LessonsDeepCopy(&subject.Lessons, course.Lessons, subject.ID, LessonContainerSubject)
 
-		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+		w.Redirect(w.PathID("/subject/", subjectID), http.StatusSeeOther)
 		return nil
 	}
 
@@ -981,7 +981,7 @@ func SubjectLessonsPageHandler(w *http.Response, r *http.Request) error {
 			return SubjectLessonsMainPageHandler(w, r, session, &subject, err)
 		}
 
-		w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+		w.Redirect(w.PathID("/subject/", subjectID), http.StatusSeeOther)
 		return nil
 	}
 }
@@ -1121,6 +1121,6 @@ func SubjectEditHandler(w *http.Response, r *http.Request) error {
 		return http.ServerError(err)
 	}
 
-	w.RedirectID("/subject/", subjectID, http.StatusSeeOther)
+	w.Redirect(w.PathID("/subject/", subjectID), http.StatusSeeOther)
 	return nil
 }

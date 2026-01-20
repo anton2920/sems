@@ -377,7 +377,7 @@ func DisplaySubmissionLanguageSelect(w *http.Response, submittedTask *SubmittedP
 		lang := &ProgrammingLanguages[i]
 
 		w.WriteString(`<option value="`)
-		w.WriteID(i)
+		w.WriteInt(int(i))
 		w.WriteString(`"`)
 		if i == submittedTask.LanguageID {
 			w.WriteString(` selected`)
@@ -413,7 +413,7 @@ func DisplaySubmissionLink(w *http.Response, l Language, submission *Submission)
 	}
 
 	w.WriteString(`<a href="/submission/`)
-	w.WriteID(submission.ID)
+	w.WriteInt(int(submission.ID))
 	w.WriteString(`">`)
 	w.WriteHTMLString(user.LastName)
 	w.WriteString(` `)
@@ -1005,7 +1005,7 @@ func SubmissionResultsPageHandler(w *http.Response, r *http.Request) error {
 
 				SubmissionVerifyChannel <- submission.ID
 
-				w.RedirectID("/submission/", submission.ID, http.StatusSeeOther)
+				w.Redirect(w.PathID("/submission/", submission.ID), http.StatusSeeOther)
 				return nil
 			}
 		}
@@ -1695,7 +1695,7 @@ func SubmissionNewPageHandler(w *http.Response, r *http.Request) error {
 		}
 		SubmissionVerifyChannel <- submission.ID
 
-		w.RedirectID("/lesson/", lessonID, http.StatusSeeOther)
+		w.Redirect(w.PathID("/lesson/", lessonID), http.StatusSeeOther)
 		return nil
 	}
 }
